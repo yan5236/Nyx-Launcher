@@ -7,14 +7,27 @@ namespace NyxLauncher;
 /// <summary>承载主导航、真实版本目录管理、下载配置及账户菜单。</summary>
 public sealed partial class MainPage : Page
 {
+    private readonly DownloadTaskManager _tasks;
+
+    /// <summary>供窗口关闭流程等待下载取消及临时资源清理，不删除已完成版本。</summary>
+    public Task StopDownloadsAsync() => _tasks.ShutdownAsync();
     /// <summary>加载页面，共用下载设置并初始化游戏目录，连接安装新版本导航后选中首页。</summary>
     public MainPage()
     {
         InitializeComponent();
         var settings = new DownloadSettingsStore();
-        DownloadsContent.Configure(settings);
+        var folders = new GameFolderStore();
+        var tasks = new DownloadTaskManager(settings, action => DispatcherQueue.TryEnqueue(() => action()));
+        _tasks = tasks;
+        DownloadsContent.Configure(settings, tasks, folders);
         SettingsContent.Configure(settings);
-        VersionsContent.Configure(new GameFolderStore());
+        VersionsContent.Configure(folders);
+        HomeContent.Configure(folders, settings);
+        tasks.InstallationCompleted += (_, _) =>
+        {
+            if (VersionsScroll.Visibility == Visibility.Visible) VersionsContent.SetActive(true);
+            HomeContent.Refresh();
+        };
         VersionsContent.InstallRequested += Versions_InstallRequested;
         Navigation.SelectedItem = HomeItem;
     }
@@ -60,5 +73,6 @@ public sealed partial class MainPage : Page
         SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent.SetActive(page == "downloads");
         VersionsContent.SetActive(page == "versions");
+        if (page == "home") HomeContent.Refresh();
     }
 }

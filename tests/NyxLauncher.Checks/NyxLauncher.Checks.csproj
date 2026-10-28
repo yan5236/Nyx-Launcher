@@ -6,6 +6,8 @@
   <Nullable>enable</Nullable>
  </PropertyGroup>
  <ItemGroup>
+  <PackageReference Include="CmlLib.Core" Version="4.1.0" />
+  <PackageReference Include="CmlLib.Core.Installer.Forge" Version="2.0.0" />
   <Compile Include="../../src/NyxLauncher/Services/*.cs" Link="Services/%(Filename)%(Extension)" />
   <Compile Include="../../src/NyxLauncher/Views/DownloadEntry.cs" Link="DownloadEntry.cs" />
  </ItemGroup>

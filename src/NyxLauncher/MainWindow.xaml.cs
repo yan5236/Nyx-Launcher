@@ -5,6 +5,8 @@ namespace NyxLauncher;
 /// <summary>承载启动器标题栏与页面容器的桌面主窗口。</summary>
 public sealed partial class MainWindow : Window
 {
+    private bool _closing;
+    private bool _readyToClose;
     /// <summary>加载主窗口、设置标题栏与图标，以 1040×680 的初始尺寸显示原型首页。</summary>
     public MainWindow()
     {
@@ -14,5 +16,17 @@ public sealed partial class MainWindow : Window
         AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1040, 680));
         RootFrame.Navigate(typeof(MainPage));
+        AppWindow.Closing += Window_Closing;
+    }
+
+    /// <summary>关闭窗口前取消本会话任务并等待处理器退出，防止后台继续修改游戏文件。</summary>
+    private async void Window_Closing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
+    {
+        if (_readyToClose) return;
+        args.Cancel = true;
+        if (_closing) return;
+        _closing = true;
+        try { if (RootFrame.Content is MainPage page) await page.StopDownloadsAsync(); }
+        finally { _readyToClose = true; Close(); }
     }
 }

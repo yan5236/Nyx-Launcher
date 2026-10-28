@@ -19,6 +19,7 @@ public sealed partial class DownloadsView : UserControl
     private string _category = "game";
     private bool _active;
     private bool _busy;
+    private bool _showTasks;
 
     /// <summary>创建下载页并注册重试、安装配置返回和卸载清理；尚未打开下载页时不发网络请求。</summary>
     public DownloadsView()
@@ -26,11 +27,40 @@ public sealed partial class DownloadsView : UserControl
         InitializeComponent();
         LoadStatus.RetryRequested += RetryRequested;
         InstallationContent.BackRequested += Installation_BackRequested;
+        InstallationContent.TaskCreated += Installation_TaskCreated;
         Unloaded += View_Unloaded;
     }
 
     /// <summary>注入主页面共用设置，使重新进入下载页立即采用最新源策略。</summary>
-    public void Configure(DownloadSettingsStore settings) => _settings = settings;
+    public void Configure(DownloadSettingsStore settings, DownloadTaskManager tasks, GameFolderStore folders)
+    {
+        _settings = settings;
+        TasksContent.Configure(tasks);
+        InstallationContent.Configure(tasks, folders);
+        tasks.TaskAdded += (_, _) => TaskBadge.Visibility = _showTasks && _active ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>任务创建后立即恢复下载列表；不切到任务页，保留右上角未读提示。</summary>
+    private void Installation_TaskCreated(object? sender, EventArgs e)
+    {
+        InstallationContent.Close();
+        InstallationContent.Visibility = Visibility.Collapsed;
+        CatalogPanel.Visibility = Visibility.Visible;
+        ResetPage(CatalogPanel);
+        ResetPage(InstallationContent);
+    }
+
+    /// <summary>右侧独立 Tab 与左侧分类互斥，进入任务页清除未读提示并停止无关清单请求。</summary>
+    private void TaskSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (sender.SelectedItem is null || TasksContent is null) return;
+        _showTasks = true;
+        ContentSelector.SelectedItem = null;
+        CancelLoad();
+        SearchControls.Visibility = ContentGrid.Visibility = DemoHint.Visibility = Visibility.Collapsed;
+        TasksContent.Visibility = Visibility.Visible;
+        TaskBadge.Visibility = Visibility.Collapsed;
+    }
 
     /// <summary>安装新版本入口使用游戏分类；分类切换时沿用现有筛选重置与加载流程。</summary>
     public void ShowGames() => ContentSelector.SelectedItem = ContentSelector.Items[0];
@@ -40,7 +70,11 @@ public sealed partial class DownloadsView : UserControl
     {
         if (_active == active) return;
         _active = active;
-        if (active) _ = LoadCategoryAsync();
+        if (active)
+        {
+            if (_showTasks) TaskBadge.Visibility = Visibility.Collapsed;
+            else _ = LoadCategoryAsync();
+        }
         else
         {
             CancelLoad();
@@ -155,6 +189,10 @@ public sealed partial class DownloadsView : UserControl
     private void ContentSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (LoadStatus is null || sender.SelectedItem?.Tag is not string category) return;
+        _showTasks = false;
+        if (TaskSelector is not null) TaskSelector.SelectedItem = null;
+        if (TasksContent is not null) TasksContent.Visibility = Visibility.Collapsed;
+        SearchControls.Visibility = ContentGrid.Visibility = Visibility.Visible;
         _category = category;
         SearchBox.PlaceholderText = DownloadCatalog.GetSearchHint(category);
         SearchBox.Text = "";

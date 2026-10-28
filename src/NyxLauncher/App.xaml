@@ -30,6 +30,12 @@
                 <Setter Property="Padding" Value="14,8" />
                 <Setter Property="CornerRadius" Value="6" />
             </Style>
+            <Style x:Key="DeepButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Background" Value="#28563B" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="BorderBrush" Value="#28563B" />
+                <Setter Property="CornerRadius" Value="6" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

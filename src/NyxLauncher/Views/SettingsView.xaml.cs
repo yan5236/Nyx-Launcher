@@ -20,6 +20,7 @@ public sealed partial class SettingsView : UserControl
         VersionSource.SelectedIndex = (int)settings.VersionSource;
         Connections.Value = settings.MaxConnections;
         Speed.Value = settings.SpeedLimitMiB;
+        Isolation.SelectedIndex = (int)settings.Isolation;
         _store = store;
         UpdateLabels();
         SaveError.Message = store.LoadError ?? "";
@@ -54,7 +55,7 @@ public sealed partial class SettingsView : UserControl
         if (_store is null) return;
         UpdateLabels();
         string? error = _store.Save(new DownloadSettings((SourceStrategy)FileSource.SelectedIndex,
-            (SourceStrategy)VersionSource.SelectedIndex, (int)Connections.Value, (int)Speed.Value));
+            (SourceStrategy)VersionSource.SelectedIndex, (int)Connections.Value, (int)Speed.Value, (IsolationMode)Isolation.SelectedIndex));
         SaveError.Message = error ?? "";
         SaveError.IsOpen = error is not null;
     }

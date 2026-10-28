@@ -48,7 +48,7 @@ public static class InstalledVersionService
             throw new ArgumentException("无效的版本目录名。");
     }
 
-    /// <summary>递归合并最多 16 层继承，子版本优先；限制单份 JSON 为 8 MiB，循环、缺失父版本与坏格式均明确报错。</summary>
+    /// <summary>递归合并最多 16 层继承，子版本优先；从库坐标及现代 FML 启动参数识别加载器，限制清单为 8 MiB并报告循环或坏格式。</summary>
     private static (string Game, string Kind, string Loader) ReadMetadata(string versions, string name, HashSet<string> seen)
     {
         ValidateName(name);
@@ -95,6 +95,23 @@ public static class InstalledVersionService
         if (root.TryGetProperty("patches", out var patches) && patches.ValueKind == JsonValueKind.Array)
             foreach (var patch in patches.EnumerateArray())
                 if (Text(patch, "id") == "game" && Text(patch, "version") is { Length: > 0 } patchedGame) game = patchedGame;
+        if (root.TryGetProperty("arguments", out var arguments) && arguments.ValueKind == JsonValueKind.Object &&
+            arguments.TryGetProperty("game", out var gameArguments) && gameArguments.ValueKind == JsonValueKind.Array)
+        {
+            var tokens = gameArguments.EnumerateArray().ToArray();
+            for (int i = 0; i + 1 < tokens.Length; i++)
+            {
+                if (tokens[i].ValueKind != JsonValueKind.String || tokens[i + 1].ValueKind != JsonValueKind.String) continue;
+                string value = tokens[i + 1].GetString()!;
+                if (string.IsNullOrWhiteSpace(value) || value.StartsWith("--")) continue;
+                switch (tokens[i].GetString())
+                {
+                    case "--fml.neoForgeVersion": loader = "NeoForge: " + value; break;
+                    case "--fml.forgeVersion" when !loader.StartsWith("NeoForge:"): loader = "Forge: " + value; break;
+                    case "--fml.mcVersion": game = value; break;
+                }
+            }
+        }
         if (AprilFoolsVersions.Ids.Contains(game)) kind = "愚人节版";
         return (game, kind, loader.Length > 0 ? loader : inherited.Loader);
     }

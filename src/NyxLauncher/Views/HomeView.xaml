@@ -12,14 +12,10 @@
         </Border>
         <Grid ColumnSpacing="16">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <ComboBox SelectedIndex="0" FontSize="15" MinWidth="200" HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                      AutomationProperties.Name="游戏版本">
-                <ComboBoxItem Content="1.21.4 · 原版" />
-                <ComboBoxItem Content="1.21.4 · Fabric" />
-                <ComboBoxItem Content="1.20.1 · Forge" />
-            </ComboBox>
-            <Button Grid.Column="1" IsEnabled="False" VerticalAlignment="Center" Padding="22,11"
-                    Background="#397450" Foreground="White" AutomationProperties.Name="启动游戏，原型暂不可用">
+            <ComboBox x:Name="VersionList" FontSize="15" MinWidth="200" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                      DisplayMemberPath="Name" PlaceholderText="请先安装游戏" AutomationProperties.Name="游戏版本" />
+            <Button x:Name="LaunchButton" Grid.Column="1" Click="Launch_Click" VerticalAlignment="Center" Padding="22,11"
+                    Background="#397450" Foreground="White" AutomationProperties.Name="启动游戏">
                 <Button.Resources>
                     <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#397450" />
                     <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="White" />
@@ -30,5 +26,7 @@
                 </StackPanel>
             </Button>
         </Grid>
+        <TextBlock Text="当前账户：Steve（离线）" FontSize="12" Foreground="#6B7A70" />
+        <InfoBar x:Name="Status" IsClosable="True" />
     </StackPanel>
 </UserControl>

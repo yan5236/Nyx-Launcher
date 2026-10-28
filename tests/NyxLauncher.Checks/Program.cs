@@ -11,6 +11,13 @@ internal static class Program
     /// <summary>运行离线断言；--live 验证游戏清单，--live-loaders 验证加载器，--live-fabric 仅验证 Fabric 26.3，--live-loader-lists 分源验证完整清单，均不下载游戏文件。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--live-install"))
+        {
+            if (args.Contains("--direct")) HttpClient.DefaultProxy = new WebProxy();
+            await DownloadChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-install") + 1]));
+            return;
+        }
+        await DownloadChecks.RunAsync();
         var rows = AprilFoolsVersions.Ids.Select(id => new { id, type = "snapshot", releaseTime = "2026-04-01T12:00:00Z" })
             .Concat(new[] {
                 new { id = "normal-april", type = "release", releaseTime = "2026-04-01T11:00:00Z" },

@@ -21,6 +21,8 @@
     <Content Include="Assets\*.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\*.png" CopyToOutputDirectory="PreserveNewest" />
     <Manifest Include="$(ApplicationManifest)" />
+    <PackageReference Include="CmlLib.Core" Version="4.1.0" />
+    <PackageReference Include="CmlLib.Core.Installer.Forge" Version="2.0.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.4" />
   </ItemGroup>

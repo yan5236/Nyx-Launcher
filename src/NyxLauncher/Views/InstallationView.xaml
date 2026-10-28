@@ -20,14 +20,20 @@
                          AutomationProperties.Name="版本名称" />
                 <Button x:Name="InstallButton" Grid.Column="2" MinWidth="96" Padding="20,12"
                         VerticalAlignment="Center" AutomationProperties.Name="安装"
-                        AutomationProperties.HelpText="游戏安装尚未接入"
-                        ToolTipService.ToolTip="游戏安装尚未接入">
+                        Style="{StaticResource DeepButtonStyle}" Click="Install_Click">
+                    <Button.Resources>
+                        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#346C4B" />
+                        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#20452F" />
+                        <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White" />
+                        <SolidColorBrush x:Key="ButtonForegroundPressed" Color="White" />
+                    </Button.Resources>
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE896;" FontSize="16" />
-                        <TextBlock Text="安装" />
+                        <FontIcon Glyph="&#xE896;" FontSize="16" Foreground="White" />
+                        <TextBlock Text="安装" Foreground="White" />
                     </StackPanel>
                 </Button>
             </Grid>
+            <InfoBar x:Name="InstallError" IsClosable="False" Severity="Error" />
             <StackPanel Spacing="10">
                 <Button x:Name="ForgeButton" Tag="Forge" Click="Loader_Click" IsEnabled="False"
                         HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"

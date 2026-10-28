@@ -9,6 +9,16 @@
   </SelectorBar>
   <StackPanel x:Name="GeneralPanel" Spacing="16">
    <Border Style="{StaticResource CardStyle}">
+    <ComboBox x:Name="Isolation" Header="版本隔离" HorizontalAlignment="Stretch"
+              SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="版本隔离">
+     <ComboBoxItem Content="关闭" />
+     <ComboBoxItem Content="隔离可安装 Mod 的版本" />
+     <ComboBoxItem Content="隔离非正式版" />
+     <ComboBoxItem Content="隔离可安装 Mod 的版本与非正式版" />
+     <ComboBoxItem Content="隔离所有版本" />
+    </ComboBox>
+   </Border>
+   <Border Style="{StaticResource CardStyle}">
     <Grid>
      <TextBlock Text="外观" VerticalAlignment="Center" />
      <ComboBox SelectedIndex="0" IsEnabled="False" Width="180" HorizontalAlignment="Right" AutomationProperties.Name="外观">
@@ -39,7 +49,7 @@
      <TextBlock x:Name="SpeedLabel" />
      <Slider x:Name="Speed" Minimum="0" Maximum="100" StepFrequency="1"
        ValueChanged="Limit_ValueChanged" AutomationProperties.Name="下载速率限制，零为不限速" />
-     <TextBlock Text="文件下载源、线程数与限速已预留并保存，将在接入文件下载后生效。" TextWrapping="Wrap" Foreground="#6B7A70" />
+     <TextBlock Text="线程数和限速由文件与游戏资源下载共用；修改后在下一批任务生效。" TextWrapping="Wrap" Foreground="#6B7A70" />
     </StackPanel>
    </Border>
   </StackPanel>

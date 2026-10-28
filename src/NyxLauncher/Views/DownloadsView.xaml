@@ -12,6 +12,8 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <SelectorBar x:Name="ContentSelector" SelectionChanged="ContentSelector_SelectionChanged"
                      AutomationProperties.Name="下载内容分类">
             <SelectorBarItem Text="游戏" Tag="game" IsSelected="True" />
@@ -21,8 +23,16 @@
             <SelectorBarItem Text="数据包" Tag="datapack" />
             <SelectorBarItem Text="光影" Tag="shader" />
         </SelectorBar>
+        <Grid Grid.Column="1">
+            <SelectorBar x:Name="TaskSelector" SelectionChanged="TaskSelector_SelectionChanged" AutomationProperties.Name="下载任务分类">
+                <SelectorBarItem Text="下载任务" />
+            </SelectorBar>
+            <InfoBadge x:Name="TaskBadge" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top"
+                       Margin="0,2,2,0" IsHitTestVisible="False" AutomationProperties.Name="有新下载任务" />
+        </Grid>
+        </Grid>
 
-        <Grid Grid.Row="1" ColumnSpacing="12">
+        <Grid x:Name="SearchControls" Grid.Row="1" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -43,7 +53,7 @@
             </ComboBox>
         </Grid>
 
-        <Grid Grid.Row="2">
+        <Grid x:Name="ContentGrid" Grid.Row="2">
             <views:VersionLoadStatus x:Name="LoadStatus" Visibility="Collapsed" />
             <!-- 将滚动条移入页面右侧留白，等量内边距保持卡片与搜索栏对齐。 -->
             <ListView x:Name="EntryList" SelectionMode="Single" IsItemClickEnabled="True" ItemClick="EntryList_ItemClick"
@@ -94,6 +104,7 @@
         <TextBlock x:Name="DemoHint" Grid.Row="3" Text="此分类暂为演示数据" Foreground="#6B7A70"
                    VerticalAlignment="Bottom" HorizontalAlignment="Right" Visibility="Collapsed"
                    IsHitTestVisible="False" />
+        <views:DownloadTasksView x:Name="TasksContent" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" />
     </Grid>
     <views:InstallationView x:Name="InstallationContent" Visibility="Collapsed" />
     </Grid>

@@ -14,8 +14,29 @@ public sealed partial class InstallationView : UserControl
     private CancellationTokenSource? _request;
     private LoaderVersionDialog? _dialog;
     private bool _active;
+    private string _game = "";
+    private DownloadTaskManager? _tasks;
+    private GameFolderStore? _folders;
     public LoaderVersion? SelectedLoader { get; private set; }
     public event EventHandler? BackRequested;
+    public event EventHandler? TaskCreated;
+
+    /// <summary>注入共享任务及游戏目录，点击安装时锁定当前目录，不随之后切换目录改变目标。</summary>
+    public void Configure(DownloadTaskManager tasks, GameFolderStore folders) { _tasks = tasks; _folders = folders; }
+
+    /// <summary>创建真实后台任务；成功立即请求返回列表，输入或目录错误留在当前页明确显示。</summary>
+    private void Install_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_active || _tasks is null) return;
+        InstallButton.IsEnabled = false;
+        try
+        {
+            _tasks.AddGame(_folders?.Selected ?? "", VersionName.Text.Trim(), _game, SelectedLoader);
+            TaskCreated?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex) { InstallError.Message = ex.Message; InstallError.IsOpen = true; }
+        finally { InstallButton.IsEnabled = true; }
+    }
 
     /// <summary>创建页面；卸载时取消请求和关闭弹窗，避免旧结果更新已离开的页面。</summary>
     public InstallationView()
@@ -33,6 +54,8 @@ public sealed partial class InstallationView : UserControl
         _versions.Clear();
         _status.Clear();
         VersionName.Text = entry.Title;
+        _game = entry.Title;
+        InstallError.IsOpen = false;
         _ = DetectAsync(entry.Title, strategy);
     }
 

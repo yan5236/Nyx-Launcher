@@ -146,10 +146,10 @@ $name = $install.SelectSingleNode("//ui:TextBox[@x:Name='VersionName']", $ins)
 $installButton = $install.SelectSingleNode("//ui:Button[@x:Name='InstallButton']", $ins)
 if (-not $name -or $name.IsReadOnly -eq 'True' -or $name.GetAttribute('Grid.Column') -ne '1' -or
     $installButton.GetAttribute('Grid.Column') -ne '2' -or $installButton.IsEnabled -eq 'False' -or
-    $installButton.HasAttribute('Click') -or $installButton.HasAttribute('Command') -or
+    $installButton.GetAttribute('Click') -ne 'Install_Click' -or $installButton.GetAttribute('Style') -ne '{StaticResource DeepButtonStyle}' -or
     -not $installButton.SelectSingleNode('.//ui:FontIcon', $ins) -or
     -not $installButton.SelectSingleNode('.//ui:TextBlock[@Text="安装"]', $ins)) {
-    throw '版本名称必须可编辑，右侧安装按钮可点击且有图标，但不绑定安装操作。'
+    throw '版本名称必须可编辑，右侧深色安装按钮应绑定实际安装操作。'
 }
 if ($install.SelectSingleNode("//ui:Button[@x:Name='RetryButton' or @Click='Retry_Click']", $ins)) {
     throw '安装配置页不应再显示重新检测按钮。'
