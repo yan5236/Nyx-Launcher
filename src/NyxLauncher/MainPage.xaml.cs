@@ -40,10 +40,10 @@ public sealed partial class MainPage : Page
     /// <param name="page">由本页导航提供的 home、versions、downloads、account 或 settings 标签。</param>
     private void ShowPage(string page)
     {
-        HomeContent.Visibility = page == "home" ? Visibility.Visible : Visibility.Collapsed;
-        VersionsContent.Visibility = page == "versions" ? Visibility.Visible : Visibility.Collapsed;
+        HomeScroll.Visibility = page == "home" ? Visibility.Visible : Visibility.Collapsed;
+        VersionsScroll.Visibility = page == "versions" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent.Visibility = page == "downloads" ? Visibility.Visible : Visibility.Collapsed;
-        AccountContent.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
-        SettingsContent.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
+        AccountScroll.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
     }
 }

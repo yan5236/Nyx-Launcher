@@ -3,10 +3,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel Spacing="20">
-        <Grid>
-            <TextBlock Text="版本管理" Style="{StaticResource PageTitleStyle}" VerticalAlignment="Center" />
-            <Button Content="导入版本" IsEnabled="False" HorizontalAlignment="Right" />
-        </Grid>
+        <Button Content="导入版本" IsEnabled="False" HorizontalAlignment="Right" />
         <ListView SelectionMode="Single" SelectedIndex="0" AutomationProperties.Name="已安装版本示例">
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">

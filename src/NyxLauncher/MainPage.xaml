@@ -57,13 +57,19 @@
                 </Button.Flyout>
             </Button>
         </NavigationView.PaneFooter>
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <Grid Padding="28,20,28,28" MaxWidth="1280" HorizontalAlignment="Stretch">
+        <Grid Padding="28,20,28,28" MaxWidth="1280" HorizontalAlignment="Stretch">
+            <ScrollViewer x:Name="HomeScroll" HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
                 <views:HomeView x:Name="HomeContent" />
-                <views:VersionsView x:Name="VersionsContent" Visibility="Collapsed" />
-                <views:DownloadsView x:Name="DownloadsContent" Visibility="Collapsed" />
-                <StackPanel x:Name="AccountContent" Visibility="Collapsed" Spacing="20">
-                    <TextBlock Text="账户" Style="{StaticResource PageTitleStyle}" />
+            </ScrollViewer>
+            <ScrollViewer x:Name="VersionsScroll" HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <views:VersionsView x:Name="VersionsContent" />
+            </ScrollViewer>
+            <views:DownloadsView x:Name="DownloadsContent" Visibility="Collapsed" />
+            <ScrollViewer x:Name="AccountScroll" HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel x:Name="AccountContent" Spacing="20">
                     <Border Style="{StaticResource CardStyle}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -76,8 +82,10 @@
                     </Border>
                     <Button Content="添加账户" IsEnabled="False" />
                 </StackPanel>
-                <StackPanel x:Name="SettingsContent" Visibility="Collapsed" Spacing="20">
-                    <TextBlock Text="设置" Style="{StaticResource PageTitleStyle}" />
+            </ScrollViewer>
+            <ScrollViewer x:Name="SettingsScroll" HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel x:Name="SettingsContent" Spacing="20">
                     <Border Style="{StaticResource CardStyle}">
                         <Grid>
                             <TextBlock Text="外观" FontSize="16" VerticalAlignment="Center" />
@@ -94,7 +102,7 @@
                         </Grid>
                     </Border>
                 </StackPanel>
-            </Grid>
-        </ScrollViewer>
+            </ScrollViewer>
+        </Grid>
     </NavigationView>
 </Page>

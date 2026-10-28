@@ -1,42 +1,90 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <UserControl x:Class="NyxLauncher.Views.DownloadsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <StackPanel Spacing="20">
-        <TextBlock Text="下载" Style="{StaticResource PageTitleStyle}" />
-        <Border Style="{StaticResource CardStyle}" Background="#EDF2E6" Padding="20">
-            <Grid RowSpacing="20">
-                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                <TextBlock Text="Minecraft Java" FontSize="22" FontWeight="SemiBold" />
-                <Grid Grid.Row="1" ColumnSpacing="16">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <ComboBox FontSize="16" SelectedIndex="0" HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                              AutomationProperties.Name="下载版本">
-                        <ComboBoxItem Content="1.21.4" />
-                        <ComboBoxItem Content="1.21.1" />
-                        <ComboBoxItem Content="1.20.1" />
-                    </ComboBox>
-                    <Button Grid.Column="1" Content="下载" IsEnabled="False" MinWidth="100" />
-                </Grid>
-            </Grid>
-        </Border>
-        <TextBlock Text="模组加载器" FontSize="18" FontWeight="SemiBold" />
-        <Grid ColumnSpacing="16">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <Border Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="16">
-                    <FontIcon Glyph="&#xE8A5;" FontSize="24" Foreground="#8A713C" HorizontalAlignment="Left" />
-                    <TextBlock Text="Fabric" FontSize="20" FontWeight="SemiBold" />
-                    <Button Content="选择版本" IsEnabled="False" HorizontalAlignment="Stretch" />
-                </StackPanel>
-            </Border>
-            <Border Grid.Column="1" Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="16">
-                    <FontIcon Glyph="&#xE90F;" FontSize="24" Foreground="#696C90" HorizontalAlignment="Left" />
-                    <TextBlock Text="Forge" FontSize="20" FontWeight="SemiBold" />
-                    <Button Content="选择版本" IsEnabled="False" HorizontalAlignment="Stretch" />
-                </StackPanel>
-            </Border>
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:NyxLauncher.Views">
+    <Grid RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <SelectorBar x:Name="ContentSelector" SelectionChanged="ContentSelector_SelectionChanged"
+                     AutomationProperties.Name="下载内容分类">
+            <SelectorBarItem Text="游戏" Tag="game" IsSelected="True" />
+            <SelectorBarItem Text="模组" Tag="mod" />
+            <SelectorBarItem Text="整合包" Tag="modpack" />
+            <SelectorBarItem Text="资源包" Tag="resourcepack" />
+            <SelectorBarItem Text="数据包" Tag="datapack" />
+            <SelectorBarItem Text="光影" Tag="shader" />
+        </SelectorBar>
+
+        <Grid Grid.Row="1" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <AutoSuggestBox x:Name="SearchBox" PlaceholderText="搜索游戏版本" QueryIcon="Find"
+                            FontSize="15" VerticalAlignment="Center"
+                            TextChanged="SearchBox_TextChanged"
+                            AutomationProperties.Name="搜索下载内容" />
+            <ComboBox x:Name="TypeFilter" Grid.Column="1" MinWidth="140" SelectedIndex="0"
+                      FontSize="15" VerticalAlignment="Center"
+                      SelectionChanged="TypeFilter_SelectionChanged"
+                      AutomationProperties.Name="版本类型筛选">
+                <ComboBoxItem Content="全部类型" />
+                <ComboBoxItem Content="正式版" />
+                <ComboBoxItem Content="快照版" />
+                <ComboBoxItem Content="远古版" />
+                <ComboBoxItem Content="愚人节版" />
+            </ComboBox>
         </Grid>
-    </StackPanel>
+
+        <Grid Grid.Row="2">
+            <ListView x:Name="EntryList" SelectionMode="Single"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                      AutomationProperties.Name="下载内容列表">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="14" />
+                        <Setter Property="Margin" Value="0,0,0,8" />
+                        <Setter Property="MinHeight" Value="64" />
+                        <Setter Property="Background" Value="White" />
+                        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="CornerRadius" Value="6" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="views:DownloadEntry">
+                        <Grid ColumnSpacing="14" AutomationProperties.Name="{x:Bind Title}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="40" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Background="#E0EBD6" Width="40" Height="40" CornerRadius="6"
+                                    VerticalAlignment="Center">
+                                <FontIcon Glyph="{x:Bind Glyph}" FontSize="20" Foreground="#397450" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Title}" FontSize="18" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{x:Bind ReleaseDate}" FontSize="13" Foreground="#6B7A70" />
+                            </StackPanel>
+                            <Border Grid.Column="2" Background="#F0F3EC" CornerRadius="4"
+                                    Padding="8,3" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Kind}" FontSize="12" Foreground="#5B6B60" />
+                            </Border>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <TextBlock x:Name="EmptyHint" Text="没有匹配的内容" FontSize="15" Foreground="#6B7A70"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsHitTestVisible="False" Visibility="Collapsed" />
+        </Grid>
+    </Grid>
 </UserControl>
