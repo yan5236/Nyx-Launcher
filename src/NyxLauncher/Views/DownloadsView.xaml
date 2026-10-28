@@ -30,7 +30,7 @@
                             FontSize="15" VerticalAlignment="Center"
                             TextChanged="SearchBox_TextChanged"
                             AutomationProperties.Name="搜索下载内容" />
-            <ComboBox x:Name="TypeFilter" Grid.Column="1" MinWidth="140" SelectedIndex="0"
+            <ComboBox x:Name="TypeFilter" Grid.Column="1" MinWidth="140" SelectedIndex="1"
                       FontSize="15" VerticalAlignment="Center"
                       SelectionChanged="TypeFilter_SelectionChanged"
                       AutomationProperties.Name="版本类型筛选">
@@ -44,7 +44,8 @@
 
         <Grid Grid.Row="2">
             <views:VersionLoadStatus x:Name="LoadStatus" Visibility="Collapsed" />
-            <ListView x:Name="EntryList" SelectionMode="Single"
+            <!-- 将滚动条移入页面右侧留白，等量内边距保持卡片与搜索栏对齐。 -->
+            <ListView x:Name="EntryList" SelectionMode="Single" Margin="0,0,-20,0" Padding="0,0,20,10"
                       ScrollViewer.VerticalScrollBarVisibility="Auto"
                       AutomationProperties.Name="下载内容列表">
                 <ListView.ItemContainerStyle>

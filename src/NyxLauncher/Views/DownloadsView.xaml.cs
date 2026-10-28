@@ -43,14 +43,14 @@ public sealed partial class DownloadsView : UserControl
     /// <summary>失败后按当前设置重新请求，并从旋转状态重新开始。</summary>
     private void RetryRequested(object? sender, EventArgs e) => _ = LoadCategoryAsync();
 
-    /// <summary>切换分类，重置过滤条件并取消旧分类请求。</summary>
+    /// <summary>切换分类时清空搜索、默认筛选正式版，并取消旧分类请求。</summary>
     private void ContentSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (LoadStatus is null || sender.SelectedItem?.Tag is not string category) return;
         _category = category;
         SearchBox.PlaceholderText = DownloadCatalog.GetSearchHint(category);
         SearchBox.Text = "";
-        TypeFilter.SelectedIndex = 0;
+        TypeFilter.SelectedIndex = 1;
         if (_active) _ = LoadCategoryAsync();
     }
 
@@ -133,12 +133,12 @@ public sealed partial class DownloadsView : UserControl
         _transition.Begin();
     }
 
-    /// <summary>按标题和类型筛选；加载与失败期间不展示“没有匹配内容”。</summary>
+    /// <summary>按标题和类型筛选，未选中类型时默认正式版；加载与失败期间不展示空结果提示。</summary>
     private void ApplyFilter()
     {
         if (EntryList is null || EmptyHint is null || SearchBox is null || TypeFilter is null || _busy) return;
         string query = SearchBox.Text.Trim();
-        string type = (TypeFilter.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "全部类型";
+        string type = (TypeFilter.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "正式版";
         var filtered = _entries.Where(entry =>
             (type == "全部类型" || entry.Kind == type) &&
             (query.Length == 0 || entry.Title.Contains(query, StringComparison.OrdinalIgnoreCase))).ToList();
