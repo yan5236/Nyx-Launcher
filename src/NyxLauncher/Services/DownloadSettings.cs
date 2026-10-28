@@ -4,13 +4,14 @@ namespace NyxLauncher.Services;
 
 public enum SourceStrategy { MirrorFirst, OfficialWithFallback, OfficialFirst }
 
-/// <summary>下载与隔离偏好；线程和限速在新一批下载任务启动时应用。</summary>
+/// <summary>下载与隔离偏好；并行文件数、线程数和限速在新一批下载任务启动时应用。</summary>
 public sealed record DownloadSettings(
     SourceStrategy FileSource = SourceStrategy.OfficialWithFallback,
     SourceStrategy VersionSource = SourceStrategy.OfficialWithFallback,
     int MaxConnections = 16,
     int SpeedLimitMiB = 0,
-    IsolationMode Isolation = IsolationMode.All);
+    IsolationMode Isolation = IsolationMode.All,
+    int MaxParallelDownloads = 16);
 
 /// <summary>独立保存下载偏好，不读取或修改游戏目录。</summary>
 public sealed class DownloadSettingsStore
@@ -40,7 +41,8 @@ public sealed class DownloadSettingsStore
     private static DownloadSettings Validate(DownloadSettings settings)
     {
         if (!Enum.IsDefined(settings.FileSource) || !Enum.IsDefined(settings.VersionSource) ||
-            settings.MaxConnections is < 1 or > 64 || settings.SpeedLimitMiB is < 0 or > 100 || !Enum.IsDefined(settings.Isolation))
+            settings.MaxConnections is < 1 or > 64 || settings.MaxParallelDownloads is < 1 or > 64 ||
+            settings.SpeedLimitMiB is < 0 or > 100 || !Enum.IsDefined(settings.Isolation))
             throw new ArgumentException("下载设置超出有效范围。");
         return settings;
     }

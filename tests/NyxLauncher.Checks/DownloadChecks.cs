@@ -77,7 +77,7 @@ internal static class DownloadChecks
             var finished = new DownloadTaskItem { Name = "empty", Destination = empty, State = DownloadState.Completed };
             manager.Tasks.Add(finished);
             Check(finished.CanDismiss && finished.DismissLabel == "删除下载记录" && finished.DismissGlyph == "\uE74D", "完成状态切换为删除记录图标");
-            manager.RemoveCompleted(finished);
+            manager.RemoveFinished(finished);
             Check(manager.Tasks.Count == 0 && File.Exists(empty), "移除完成记录保留实际文件");
             Check(settings.Save(new(Isolation: IsolationMode.ModdedOrNonRelease)) is null &&
                 new DownloadSettingsStore(Path.Combine(root, "settings.json")).Current.Isolation == IsolationMode.ModdedOrNonRelease, "隔离配置持久化");

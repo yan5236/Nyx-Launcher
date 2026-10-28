@@ -10,15 +10,18 @@ public sealed class DownloadTransport : IDisposable
 {
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _connections;
+    private readonly SemaphoreSlim _files;
     private readonly DownloadSettings _settings;
     private readonly object _rateLock = new();
     private long _nextByteTime;
+    public int MaxParallelDownloads => _settings.MaxParallelDownloads;
 
     /// <summary>固定本批次设置；可注入 HTTP 客户端进行真实协议测试，默认保留系统代理和证书校验。</summary>
     public DownloadTransport(DownloadSettings settings, HttpClient? http = null)
     {
         _settings = settings;
         _connections = new(settings.MaxConnections);
+        _files = new(settings.MaxParallelDownloads);
         _http = http ?? new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
     }
 
@@ -44,7 +47,7 @@ public sealed class DownloadTransport : IDisposable
         _ => null
     };
 
-    /// <summary>下载至独立临时文件并校验后原子发布；失败、暂停或取消删除本次临时文件，不破坏已有目标。游戏文件可在校验通过后替换损坏副本。</summary>
+    /// <summary>普通文件与游戏资源共用并行文件额度；等待可取消，下载校验后原子发布，失败释放额度并清理临时文件，不破坏已有目标。</summary>
     public async Task DownloadAsync(Uri url, string destination, string? sha1, long size,
         bool gameFile, bool segmented, Action<long, long>? progress, CancellationToken token)
     {
@@ -56,19 +59,24 @@ public sealed class DownloadTransport : IDisposable
         var strategy = _settings.FileSource;
         var first = strategy == SourceStrategy.MirrorFirst && mirror is not null ? mirror : url;
         var second = first == url ? mirror : url;
-        for (int attempt = 0; ; attempt++)
+        await _files.WaitAsync(token);
+        try
         {
-            try
+            for (int attempt = 0; ; attempt++)
             {
-                Uri source = attempt == 1 && second is not null ? second : first;
-                await TransferAsync(source, destination, sha1, size, gameFile, segmented, progress, token,
-                    attempt == 0 && strategy == SourceStrategy.OfficialWithFallback && second is not null ? TimeSpan.FromSeconds(3) : null);
-                return;
+                try
+                {
+                    Uri source = attempt == 1 && second is not null ? second : first;
+                    await TransferAsync(source, destination, sha1, size, gameFile, segmented, progress, token,
+                        attempt == 0 && strategy == SourceStrategy.OfficialWithFallback && second is not null ? TimeSpan.FromSeconds(3) : null);
+                    return;
+                }
+                catch (Exception ex) when (attempt < 2 && !token.IsCancellationRequested &&
+                    ex is HttpRequestException or IOException or OperationCanceledException)
+                { await Task.Delay(300 * (attempt + 1), token); }
             }
-            catch (Exception ex) when (attempt < 2 && !token.IsCancellationRequested &&
-                ex is HttpRequestException or IOException or OperationCanceledException)
-            { await Task.Delay(300 * (attempt + 1), token); }
         }
+        finally { _files.Release(); }
     }
 
     /// <summary>验证存在文件的实际长度与 SHA-1；允许哈希明确匹配的合法空文件，缺少哈希的缓存仍要求非空。</summary>
@@ -196,5 +204,5 @@ public sealed class DownloadTransport : IDisposable
     }
 
     /// <summary>任务管理器退出后释放连接池和 HTTP 资源；调用前应等待所有下载结束。</summary>
-    public void Dispose() { _http.Dispose(); _connections.Dispose(); }
+    public void Dispose() { _http.Dispose(); _connections.Dispose(); _files.Dispose(); }
 }

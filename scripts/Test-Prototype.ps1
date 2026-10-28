@@ -128,10 +128,15 @@ foreach ($name in @('FileSource', 'VersionSource')) {
     }
 }
 $connections = $settings.SelectSingleNode("//ui:Slider[@x:Name='Connections']", $sns)
+$parallel = $settings.SelectSingleNode("//ui:StackPanel[@x:Name='DownloadPanel']//ui:Slider[@x:Name='ParallelDownloads']", $sns)
 $speed = $settings.SelectSingleNode("//ui:Slider[@x:Name='Speed']", $sns)
 if ($connections.Minimum -ne '1' -or $connections.Maximum -ne '64' -or
+    $parallel.Minimum -ne '1' -or $parallel.Maximum -ne '64' -or $parallel.StepFrequency -ne '1' -or
     $speed.Minimum -ne '0' -or $speed.Maximum -ne '100') {
     throw '下载限制滑块范围与存储契约不一致。'
+}
+if ((Get-Content (Join-Path $project 'Views/DownloadTasksView.xaml') -Raw -Encoding utf8).Contains('ParallelDownloads')) {
+    throw '并行下载滑块应位于设置的下载分组，不能放在下载任务列表。'
 }
 if ($settings.OuterXml.Contains('目标文件夹') -or $settings.OuterXml.Contains('选择文件夹')) {
     throw '设置页不应添加文件夹选项。'

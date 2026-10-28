@@ -43,7 +43,7 @@ public sealed class GameInstallationService
                 throw new IOException("安装路径不能包含符号链接或目录联接：" + current);
     }
 
-    /// <summary>按已选择的确切版本完成安装；取消保持已验证资源供继续使用，失败不发布版本，已存在的目标绝不覆盖。</summary>
+    /// <summary>按所选版本安装，资源并发采用共享传输器的当前批次限制；取消保留已验证资源，失败不发布版本，已有目标绝不覆盖。</summary>
     public async Task InstallAsync(string name, string game, LoaderVersion? loader, DownloadTransport transport,
         Action<double, string> report, CancellationToken token)
     {
@@ -64,7 +64,7 @@ public sealed class GameInstallationService
             Directory.CreateDirectory(path.Versions);
             using var http = new HttpClient(new InstallMetadataHandler(_settings.VersionSource));
             var parameters = MinecraftLauncherParameters.CreateDefault(path, http);
-            parameters.GameInstaller = new GameDownloadInstaller(transport, _settings.MaxConnections, _root);
+            parameters.GameInstaller = new GameDownloadInstaller(transport, _root);
             var launcher = new MinecraftLauncher(parameters);
             var vanillaProgress = new InlineProgress<InstallerProgressChangedEventArgs>(p =>
                 report(5 + 60d * p.ProgressedTasks / Math.Max(1, p.TotalTasks), "安装游戏资源 · " + p.Name));

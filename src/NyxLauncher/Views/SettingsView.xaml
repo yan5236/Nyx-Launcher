@@ -43,13 +43,16 @@
    </Border>
    <Border Style="{StaticResource CardStyle}">
     <StackPanel Spacing="12">
+     <TextBlock x:Name="ParallelLabel" />
+     <Slider x:Name="ParallelDownloads" Minimum="1" Maximum="64" StepFrequency="1"
+       ValueChanged="Limit_ValueChanged" AutomationProperties.Name="并行下载文件数" />
      <TextBlock x:Name="ConnectionsLabel" />
      <Slider x:Name="Connections" Minimum="1" Maximum="64" StepFrequency="1"
        ValueChanged="Limit_ValueChanged" AutomationProperties.Name="最大下载线程数" />
      <TextBlock x:Name="SpeedLabel" />
      <Slider x:Name="Speed" Minimum="0" Maximum="100" StepFrequency="1"
        ValueChanged="Limit_ValueChanged" AutomationProperties.Name="下载速率限制，零为不限速" />
-     <TextBlock Text="线程数和限速由文件与游戏资源下载共用；修改后在下一批任务生效。" TextWrapping="Wrap" Foreground="#6B7A70" />
+     <TextBlock Text="并行文件数、线程数和限速由普通文件与 Minecraft 资源共用；修改后在下一批下载或空闲后继续任务时生效。" TextWrapping="Wrap" Foreground="#6B7A70" />
     </StackPanel>
    </Border>
   </StackPanel>

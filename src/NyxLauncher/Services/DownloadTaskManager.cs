@@ -20,9 +20,10 @@ public sealed class DownloadTaskItem : INotifyPropertyChanged
     public string PauseGlyph => State is DownloadState.Paused or DownloadState.Failed ? "\uE768" : "\uE769";
     public bool CanPause => State is DownloadState.Running or DownloadState.Queued or DownloadState.Paused or DownloadState.Failed;
     public bool CanCancel => State is DownloadState.Running or DownloadState.Queued or DownloadState.Paused or DownloadState.Failed;
-    public bool CanDismiss => CanCancel || State == DownloadState.Completed;
-    public string DismissLabel => State == DownloadState.Completed ? "删除下载记录" : "取消下载";
-    public string DismissGlyph => State == DownloadState.Completed ? "\uE74D" : "\uE711";
+    public bool CanRemove => (State is DownloadState.Completed or DownloadState.Cancelled) && Cancellation is null;
+    public bool CanDismiss => CanCancel || CanRemove;
+    public string DismissLabel => State is DownloadState.Completed or DownloadState.Cancelled ? "删除下载记录" : "取消下载";
+    public string DismissGlyph => State is DownloadState.Completed or DownloadState.Cancelled ? "\uE74D" : "\uE711";
     public bool IsBusy => State is DownloadState.Running or DownloadState.Queued or DownloadState.Pausing or DownloadState.Cancelling;
     internal CancellationTokenSource? Cancellation;
     internal Func<DownloadTransport, CancellationToken, Task>? Work;
@@ -87,21 +88,21 @@ public sealed class DownloadTaskManager
         return item;
     }
 
-    /// <summary>阻止同目标的重复任务；空闲时采纳最新连接/限速设置，活跃批次共用单一传输预算。</summary>
+    /// <summary>阻止同目标的重复任务，加入列表并通知新任务提示，再交给启动入口应用传输预算。</summary>
     private void Add(DownloadTaskItem item)
     {
         if (Tasks.Any(x => x.State is not (DownloadState.Completed or DownloadState.Cancelled) &&
             string.Equals(x.Destination, item.Destination, StringComparison.OrdinalIgnoreCase)))
             throw new IOException("相同目标已经有下载任务。");
-        if (!Tasks.Any(x => x.IsBusy)) { _transport?.Dispose(); _transport = new(_settings.Current); }
         Tasks.Insert(0, item);
         TaskAdded?.Invoke(this, EventArgs.Empty);
         Start(item);
     }
 
-    /// <summary>启动或继续任务；所有异常归入任务状态，后台不会因页面退出而失去所有权。</summary>
+    /// <summary>启动或继续任务；没有其他活跃任务时采用最新并行、连接和限速设置，否则沿用当前批次预算。</summary>
     private void Start(DownloadTaskItem item)
     {
+        if (!Tasks.Any(x => x != item && x.IsBusy)) { _transport?.Dispose(); _transport = new(_settings.Current); }
         item.Cancellation = new();
         item.State = DownloadState.Queued;
         item.Detail = "等待下载";
@@ -138,12 +139,12 @@ public sealed class DownloadTaskManager
         finally
         {
             cancellation.Dispose();
-            item.Cancellation = null;
             if (item.State is DownloadState.Cancelled or DownloadState.Completed)
             {
                 try { item.Cleanup?.Invoke(); }
                 catch (Exception ex) { item.Detail += "；暂存清理失败：" + ex.Message; }
             }
+            item.Cancellation = null;
             Notify(item);
         }
     }
@@ -174,10 +175,10 @@ public sealed class DownloadTaskManager
         Notify(item);
     }
 
-    /// <summary>只移除已完成任务的列表记录；不调用清理函数、不删除下载目标，其他状态不能通过此入口移除。</summary>
-    public void RemoveCompleted(DownloadTaskItem item)
+    /// <summary>移除已完成或取消清理结束的任务记录；不重复清理、不删除下载目标及共享资源，活跃任务不可移除。</summary>
+    public void RemoveFinished(DownloadTaskItem item)
     {
-        if (item.State != DownloadState.Completed) return;
+        if (!item.CanRemove) return;
         Tasks.Remove(item);
         Changed?.Invoke(this, EventArgs.Empty);
     }

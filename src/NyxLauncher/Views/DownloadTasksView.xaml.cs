@@ -56,11 +56,11 @@ public sealed partial class DownloadTasksView : UserControl
     /// <summary>暂停或继续按钮只作用于所在卡片；任务管理器负责取消和重试的并发边界。</summary>
     private void Pause_Click(object sender, RoutedEventArgs e) { if (sender is Button { Tag: DownloadTaskItem item }) _tasks?.PauseOrResume(item); }
 
-    /// <summary>下载中取消任务；完成后同一位置改为删除记录，只从列表移除，保留已下载文件。</summary>
+    /// <summary>下载中取消任务；完成或取消清理结束后删除列表记录，保留磁盘文件与共享游戏资源。</summary>
     private void Dismiss_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: DownloadTaskItem item }) return;
-        if (item.State == DownloadState.Completed) _tasks?.RemoveCompleted(item);
+        if (item.CanRemove) _tasks?.RemoveFinished(item);
         else _tasks?.Cancel(item);
     }
 

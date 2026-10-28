@@ -5,9 +5,9 @@ using CmlLib.Core.Installers;
 namespace NyxLauncher.Services;
 
 /// <summary>将游戏资源及加载器处理器依赖接到启动器的统一下载引擎。</summary>
-internal sealed class GameDownloadInstaller(DownloadTransport transport, int parallelism, string root) : IGameInstaller
+internal sealed class GameDownloadInstaller(DownloadTransport transport, string root) : IGameInstaller
 {
-    /// <summary>按文件路径去重并发下载，逐一校验后执行运行库解压等后处理；任一失败会取消同批工作并向任务页报告。</summary>
+    /// <summary>按路径去重，使用本批传输器的并行文件上限下载资源，校验后执行后处理；任一失败取消同批工作并保留错误原因。</summary>
     public async ValueTask Install(IEnumerable<GameFile> gameFiles, IProgress<InstallerProgressChangedEventArgs>? fileProgress,
         IProgress<ByteProgress>? byteProgress, CancellationToken cancellationToken)
     {
@@ -16,7 +16,7 @@ internal sealed class GameDownloadInstaller(DownloadTransport transport, int par
         int completed = 0;
         Exception? failure = null;
         using var pending = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        try { await Parallel.ForEachAsync(files, new ParallelOptions { MaxDegreeOfParallelism = parallelism, CancellationToken = pending.Token },
+        try { await Parallel.ForEachAsync(files, new ParallelOptions { MaxDegreeOfParallelism = transport.MaxParallelDownloads, CancellationToken = pending.Token },
             async (file, token) =>
             {
                 try
