@@ -4,17 +4,26 @@ using NyxLauncher.Services;
 
 namespace NyxLauncher;
 
-/// <summary>承载原型导航、三个主页面以及账户菜单；不访问游戏文件或账户服务。</summary>
+/// <summary>承载主导航、真实版本目录管理、下载配置及账户菜单。</summary>
 public sealed partial class MainPage : Page
 {
-    /// <summary>加载页面，共用下载设置存储并选中首页。</summary>
+    /// <summary>加载页面，共用下载设置并初始化游戏目录，连接安装新版本导航后选中首页。</summary>
     public MainPage()
     {
         InitializeComponent();
         var settings = new DownloadSettingsStore();
         DownloadsContent.Configure(settings);
         SettingsContent.Configure(settings);
+        VersionsContent.Configure(new GameFolderStore());
+        VersionsContent.InstallRequested += Versions_InstallRequested;
         Navigation.SelectedItem = HomeItem;
+    }
+
+    /// <summary>从版本管理进入游戏下载列表，更新主导航选中态并重置下载分类。</summary>
+    private void Versions_InstallRequested(object? sender, EventArgs e)
+    {
+        DownloadsContent.ShowGames();
+        Navigation.SelectedItem = DownloadsItem;
     }
 
     /// <summary>根据选中导航项的标签切换可见页面；清除选择时保留当前内容。</summary>
@@ -40,7 +49,7 @@ public sealed partial class MainPage : Page
         ShowPage("settings");
     }
 
-    /// <summary>显示指定页面；进入下载页时加载清单，离开时取消在途请求。</summary>
+    /// <summary>显示指定页面；版本管理重新扫描本地目录，下载页加载清单，离开时取消各自在途工作。</summary>
     /// <param name="page">由本页导航提供的 home、versions、downloads、account 或 settings 标签。</param>
     private void ShowPage(string page)
     {
@@ -50,5 +59,6 @@ public sealed partial class MainPage : Page
         AccountScroll.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
         SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent.SetActive(page == "downloads");
+        VersionsContent.SetActive(page == "versions");
     }
 }

@@ -32,6 +32,9 @@ public sealed partial class DownloadsView : UserControl
     /// <summary>注入主页面共用设置，使重新进入下载页立即采用最新源策略。</summary>
     public void Configure(DownloadSettingsStore settings) => _settings = settings;
 
+    /// <summary>安装新版本入口使用游戏分类；分类切换时沿用现有筛选重置与加载流程。</summary>
+    public void ShowGames() => ContentSelector.SelectedItem = ContentSelector.Items[0];
+
     /// <summary>页面显示时获取当前分类；离开时取消清单、探测与双向转场，并恢复列表层级和交互。</summary>
     public void SetActive(bool active)
     {

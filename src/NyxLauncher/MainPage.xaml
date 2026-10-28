@@ -26,7 +26,7 @@
             <NavigationViewItem Content="版本管理" Tag="versions">
                 <NavigationViewItem.Icon><FontIcon Glyph="&#xE8F1;" /></NavigationViewItem.Icon>
             </NavigationViewItem>
-            <NavigationViewItem Content="下载" Tag="downloads">
+            <NavigationViewItem x:Name="DownloadsItem" Content="下载" Tag="downloads">
                 <NavigationViewItem.Icon><FontIcon Glyph="&#xE896;" /></NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>
@@ -62,10 +62,9 @@
                           VerticalScrollBarVisibility="Auto">
                 <views:HomeView x:Name="HomeContent" />
             </ScrollViewer>
-            <ScrollViewer x:Name="VersionsScroll" HorizontalScrollBarVisibility="Disabled"
-                          VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+            <Grid x:Name="VersionsScroll" Visibility="Collapsed">
                 <views:VersionsView x:Name="VersionsContent" />
-            </ScrollViewer>
+            </Grid>
             <views:DownloadsView x:Name="DownloadsContent" Visibility="Collapsed" />
             <ScrollViewer x:Name="AccountScroll" HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
