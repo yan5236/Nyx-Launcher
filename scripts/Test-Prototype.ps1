@@ -137,6 +137,44 @@ if ($settings.OuterXml.Contains('目标文件夹') -or $settings.OuterXml.Contai
     throw '设置页不应添加文件夹选项。'
 }
 
+# 安装配置页：编辑名称、右侧安装按钮、三个加载器图标及同一行灰色状态。
+[xml]$install = Get-Content (Join-Path $project 'Views/InstallationView.xaml') -Raw -Encoding utf8
+$ins = [System.Xml.XmlNamespaceManager]::new($install.NameTable)
+$ins.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$ins.AddNamespace('x', $xns)
+$name = $install.SelectSingleNode("//ui:TextBox[@x:Name='VersionName']", $ins)
+$installButton = $install.SelectSingleNode("//ui:Button[@x:Name='InstallButton']", $ins)
+if (-not $name -or $name.IsReadOnly -eq 'True' -or $name.GetAttribute('Grid.Column') -ne '1' -or
+    $installButton.GetAttribute('Grid.Column') -ne '2' -or $installButton.IsEnabled -eq 'False' -or
+    $installButton.HasAttribute('Click') -or $installButton.HasAttribute('Command') -or
+    -not $installButton.SelectSingleNode('.//ui:FontIcon', $ins) -or
+    -not $installButton.SelectSingleNode('.//ui:TextBlock[@Text="安装"]', $ins)) {
+    throw '版本名称必须可编辑，右侧安装按钮可点击且有图标，但不绑定安装操作。'
+}
+if ($install.SelectSingleNode("//ui:Button[@x:Name='RetryButton' or @Click='Retry_Click']", $ins)) {
+    throw '安装配置页不应再显示重新检测按钮。'
+}
+foreach ($loader in @('Forge', 'Fabric', 'NeoForge')) {
+    $title = $install.SelectSingleNode("//ui:TextBlock[@Text='$loader']", $ins)
+    $status = $install.SelectSingleNode("//ui:TextBlock[@x:Name='${loader}Status']", $ins)
+    if (-not $title -or -not $status -or -not [object]::ReferenceEquals($title.ParentNode, $status.ParentNode) -or
+        $status.FontSize -ne '13' -or $status.Foreground -ne '#6B7A70' -or
+        -not $title.ParentNode.SelectSingleNode('ui:FontIcon[@Grid.Column="3"]', $ins)) {
+        throw "$loader 必须有同一行的灰色状态和右箭头。"
+    }
+    $asset = "ms-appx:///Assets/$($loader.ToLowerInvariant()).png"
+    $image = $title.ParentNode.SelectSingleNode("ui:Image[@Source='$asset']", $ins)
+    $card = $title.ParentNode.ParentNode
+    if (-not $image -or $image.Width -ne '32' -or $image.Height -ne '32' -or
+        $card.LocalName -ne 'Border' -or $card.MinHeight -ne '56') {
+        throw "$loader 图标必须合并进紧凑列表卡片。"
+    }
+}
+if ($list.IsItemClickEnabled -ne 'True' -or $list.ItemClick -ne 'EntryList_ItemClick' -or
+    -not $install.SelectSingleNode("//ui:Button[@Click='Back_Click']", $ins)) {
+    throw '安装配置页必须提供游戏条目进入和返回入口。'
+}
+
 # 检查 XAML 引用的本地图片资源是否存在。
 foreach ($file in $xamlFiles) {
     [xml]$document = Get-Content $file.FullName -Raw -Encoding utf8
@@ -149,4 +187,4 @@ foreach ($file in $xamlFiles) {
         }
     }
 }
-Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、设置 Tab/源策略/滑块范围及图片资源。'
+Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、设置 Tab/源策略/滑块范围及图片资源。'

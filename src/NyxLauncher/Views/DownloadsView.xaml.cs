@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using NyxLauncher.Services;
 
@@ -13,28 +14,132 @@ public sealed partial class DownloadsView : UserControl
     private DownloadSettingsStore? _settings;
     private CancellationTokenSource? _request;
     private Storyboard? _transition;
+    private Storyboard? _pageTransition;
+    private CancellationTokenSource? _pageRequest;
     private string _category = "game";
     private bool _active;
     private bool _busy;
 
-    /// <summary>创建下载页并注册重试和卸载清理；尚未打开下载页时不发网络请求。</summary>
+    /// <summary>创建下载页并注册重试、安装配置返回和卸载清理；尚未打开下载页时不发网络请求。</summary>
     public DownloadsView()
     {
         InitializeComponent();
         LoadStatus.RetryRequested += RetryRequested;
+        InstallationContent.BackRequested += Installation_BackRequested;
         Unloaded += View_Unloaded;
     }
 
     /// <summary>注入主页面共用设置，使重新进入下载页立即采用最新源策略。</summary>
     public void Configure(DownloadSettingsStore settings) => _settings = settings;
 
-    /// <summary>页面显示时获取当前分类；离开时取消请求与动画，避免后台结果污染界面。</summary>
+    /// <summary>页面显示时获取当前分类；离开时取消清单、探测与双向转场，并恢复列表层级和交互。</summary>
     public void SetActive(bool active)
     {
         if (_active == active) return;
         _active = active;
         if (active) _ = LoadCategoryAsync();
-        else CancelLoad();
+        else
+        {
+            CancelLoad();
+            _pageRequest?.Cancel();
+            _pageRequest = null;
+            _pageTransition?.Stop();
+            ResetPage(CatalogPanel);
+            ResetPage(InstallationContent);
+            InstallationContent.Close();
+            InstallationContent.Visibility = Visibility.Collapsed;
+            CatalogPanel.Visibility = Visibility.Visible;
+        }
+    }
+
+    /// <summary>点击真实游戏条目开始探测并向左转场；忽略演示条目和转场期间的重复输入。</summary>
+    private async void EntryList_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (!_active || _busy || _pageRequest is not null || _category != "game" || e.ClickedItem is not DownloadEntry entry) return;
+        InstallationContent.Open(entry);
+        await SwitchPageAsync(true);
+    }
+
+    /// <summary>向右转场回已有列表，保留搜索、筛选和滚动位置；完成后恢复键盘焦点。</summary>
+    private async void Installation_BackRequested(object? sender, EventArgs e)
+    {
+        if (_pageRequest is not null) return;
+        InstallationContent.Close();
+        await SwitchPageAsync(false);
+        if (_active && CatalogPanel.Visibility == Visibility.Visible) EntryList.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>按进入/返回方向同时平移并淡入淡出两个页面；遵循系统动画开关，取消后不覆盖新页面状态。</summary>
+    private async Task SwitchPageAsync(bool entering)
+    {
+        using var request = new CancellationTokenSource();
+        _pageRequest = request;
+        FrameworkElement outgoing = entering ? CatalogPanel : InstallationContent;
+        FrameworkElement incoming = entering ? InstallationContent : CatalogPanel;
+        outgoing.IsHitTestVisible = incoming.IsHitTestVisible = false;
+        incoming.Visibility = Visibility.Visible;
+        try
+        {
+            if (new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
+            {
+                double distance = entering ? 32 : -32;
+                _pageTransition = new Storyboard();
+                AddPageAnimation(_pageTransition, outgoing, 1, 0, 0, -distance);
+                AddPageAnimation(_pageTransition, incoming, 0, 1, distance, 0);
+                var completed = new TaskCompletionSource();
+                _pageTransition.Completed += (_, _) => completed.TrySetResult();
+                using var cancellation = request.Token.Register(() => completed.TrySetCanceled(request.Token));
+                _pageTransition.Begin();
+                await completed.Task;
+                request.Token.ThrowIfCancellationRequested();
+            }
+            outgoing.Visibility = Visibility.Collapsed;
+        }
+        catch (OperationCanceledException) when (request.IsCancellationRequested) { }
+        finally
+        {
+            if (ReferenceEquals(_pageRequest, request))
+            {
+                _pageTransition?.Stop();
+                _pageTransition = null;
+                ResetPage(outgoing);
+                ResetPage(incoming);
+                _pageRequest = null;
+            }
+        }
+    }
+
+    /// <summary>将页面透明度和水平位移加入同一个 220 毫秒缓出动画，进入与返回共用相同节奏。</summary>
+    private static void AddPageAnimation(Storyboard storyboard, FrameworkElement page,
+        double fromOpacity, double toOpacity, double fromX, double toX)
+    {
+        page.Opacity = fromOpacity;
+        var transform = new TranslateTransform { X = fromX };
+        page.RenderTransform = transform;
+        var opacity = new DoubleAnimation
+        {
+            From = fromOpacity, To = toOpacity, Duration = TimeSpan.FromMilliseconds(220),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        var translation = new DoubleAnimation
+        {
+            From = fromX, To = toX, Duration = TimeSpan.FromMilliseconds(220),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(opacity, page);
+        Storyboard.SetTargetProperty(opacity, "Opacity");
+        Storyboard.SetTarget(translation, transform);
+        Storyboard.SetTargetProperty(translation, "X");
+        storyboard.Children.Add(opacity);
+        storyboard.Children.Add(translation);
+    }
+
+    /// <summary>清除转场的临时位移和透明度并恢复交互，用于完成转场或离开下载模块。</summary>
+    private static void ResetPage(FrameworkElement page)
+    {
+        page.Opacity = 1;
+        page.RenderTransform = null;
+        page.IsHitTestVisible = true;
     }
 
     /// <summary>页面卸载时取消在途请求，停止无限循环动画。</summary>
