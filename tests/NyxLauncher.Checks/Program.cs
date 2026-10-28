@@ -8,7 +8,7 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行离线断言；--live 验证游戏清单，--live-loaders 验证加载器，--live-fabric 仅实测 Fabric 26.3，均不下载游戏文件。</summary>
+    /// <summary>运行离线断言；--live 验证游戏清单，--live-loaders 验证加载器，--live-fabric 仅验证 Fabric 26.3，--live-loader-lists 分源验证完整清单，均不下载游戏文件。</summary>
     private static async Task Main(string[] args)
     {
         var rows = AprilFoolsVersions.Ids.Select(id => new { id, type = "snapshot", releaseTime = "2026-04-01T12:00:00Z" })
@@ -109,6 +109,7 @@ internal static class Program
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
 
         await LoaderChecks.RunAsync(args.Contains("--live-loaders"), args.Contains("--live-fabric"));
+        await LoaderVersionChecks.RunAsync(args.Contains("--live-loader-lists"));
         if (args.Contains("--live"))
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };

@@ -56,7 +56,7 @@ public sealed partial class DownloadsView : UserControl
     private async void EntryList_ItemClick(object sender, ItemClickEventArgs e)
     {
         if (!_active || _busy || _pageRequest is not null || _category != "game" || e.ClickedItem is not DownloadEntry entry) return;
-        InstallationContent.Open(entry);
+        InstallationContent.Open(entry, _settings?.Current.VersionSource ?? SourceStrategy.OfficialWithFallback);
         await SwitchPageAsync(true);
     }
 

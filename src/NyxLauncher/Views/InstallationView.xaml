@@ -29,33 +29,42 @@
                 </Button>
             </Grid>
             <StackPanel Spacing="10">
-                <Border Style="{StaticResource CardStyle}" Padding="12,10" MinHeight="56">
+                <Button x:Name="ForgeButton" Tag="Forge" Click="Loader_Click" IsEnabled="False"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}"
+                        BorderThickness="1" Padding="12,10" MinHeight="56">
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <Image Source="ms-appx:///Assets/forge.png" Width="32" Height="32" Stretch="Uniform" AutomationProperties.Name="Forge 图标" />
                         <TextBlock Grid.Column="1" Text="Forge" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock x:Name="ForgeStatus" Grid.Column="2" FontSize="13" Foreground="#6B7A70" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                        <FontIcon Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
+                        <FontIcon x:Name="ForgeAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
                     </Grid>
-                </Border>
-                <Border Style="{StaticResource CardStyle}" Padding="12,10" MinHeight="56">
+                </Button>
+                <Button x:Name="FabricButton" Tag="Fabric" Click="Loader_Click" IsEnabled="False"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}"
+                        BorderThickness="1" Padding="12,10" MinHeight="56">
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <Image Source="ms-appx:///Assets/fabric.png" Width="32" Height="32" Stretch="Uniform" AutomationProperties.Name="Fabric 图标" />
                         <TextBlock Grid.Column="1" Text="Fabric" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock x:Name="FabricStatus" Grid.Column="2" FontSize="13" Foreground="#6B7A70" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                        <FontIcon Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
+                        <FontIcon x:Name="FabricAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
                     </Grid>
-                </Border>
-                <Border Style="{StaticResource CardStyle}" Padding="12,10" MinHeight="56">
+                </Button>
+                <Button x:Name="NeoForgeButton" Tag="NeoForge" Click="Loader_Click" IsEnabled="False"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}"
+                        BorderThickness="1" Padding="12,10" MinHeight="56">
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <Image Source="ms-appx:///Assets/neoforge.png" Width="32" Height="32" Stretch="Uniform" AutomationProperties.Name="NeoForge 图标" />
                         <TextBlock Grid.Column="1" Text="NeoForge" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock x:Name="NeoForgeStatus" Grid.Column="2" FontSize="13" Foreground="#6B7A70" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                        <FontIcon Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
+                        <FontIcon x:Name="NeoForgeAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
                     </Grid>
-                </Border>
+                </Button>
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

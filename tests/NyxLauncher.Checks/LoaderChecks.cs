@@ -26,10 +26,10 @@ internal static class LoaderChecks
             Check(!LoaderAvailabilityService.Parse(LoaderKind.NeoForge, version, neo), "NeoForge 不误报 " + version);
         byte[] legacy = Maven("net.neoforged", "forge", "1.20.1-47.1.106");
         Check(LoaderAvailabilityService.Parse(LoaderKind.NeoForge, "1.20.1", legacy), "NeoForge 1.20.1 旧坐标");
-        const string fabric = """[{"loader":{"version":"0.16.0"},"intermediary":{"version":"1.21.1"}}]""";
+        const string fabric = """[{"loader":{"version":"0.16.0","stable":true},"intermediary":{"version":"1.21.1"}}]""";
         Check(LoaderAvailabilityService.Parse(LoaderKind.Fabric, "1.21.1", Encoding.UTF8.GetBytes(fabric)), "Fabric 返回可用构建");
         Check(!LoaderAvailabilityService.Parse(LoaderKind.Fabric, "1.21", Encoding.UTF8.GetBytes(fabric)), "Fabric 校验游戏 ID");
-        const string unobfuscated = """[{"loader":{"version":"0.20.1"},"intermediary":{"maven":"net.fabricmc:intermediary:0.0.0","version":"0.0.0"}}]""";
+        const string unobfuscated = """[{"loader":{"version":"0.20.1","stable":true},"intermediary":{"maven":"net.fabricmc:intermediary:0.0.0","version":"0.0.0"}}]""";
         Check(LoaderAvailabilityService.Parse(LoaderKind.Fabric, "26.3", Encoding.UTF8.GetBytes(unobfuscated)),
             "Fabric 26.3 的 0.0.0 映射不是游戏版本，不应误报不支持");
         using (var client = new HttpClient(new Handler((request, token) => Task.FromResult(

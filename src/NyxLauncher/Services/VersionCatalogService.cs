@@ -27,51 +27,9 @@ public sealed class VersionCatalogService
     }
 
     /// <summary>按优先策略获取首个有效清单；混合策略在官方缓慢时并行尝试镜像，成功后取消另一请求。</summary>
-    public async Task<IReadOnlyList<DownloadEntry>> FetchAsync(SourceStrategy strategy, CancellationToken cancellationToken)
-    {
-        using var pending = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        string firstUrl = strategy == SourceStrategy.MirrorFirst ? MirrorUrl : OfficialUrl;
-        string secondUrl = strategy == SourceStrategy.MirrorFirst ? OfficialUrl : MirrorUrl;
-        var tasks = new List<Task<IReadOnlyList<DownloadEntry>>> { FetchSourceAsync(firstUrl, pending.Token) };
-        var errors = new List<string>();
-        bool secondStarted = false;
-        try
-        {
-            if (strategy == SourceStrategy.OfficialWithFallback &&
-                await Task.WhenAny(tasks[0], Task.Delay(_fallbackDelay, pending.Token)) != tasks[0])
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                tasks.Add(FetchSourceAsync(secondUrl, pending.Token));
-                secondStarted = true;
-            }
-            while (tasks.Count > 0)
-            {
-                var finished = await Task.WhenAny(tasks);
-                tasks.Remove(finished);
-                try { return await finished; }
-                catch (Exception ex) when (ex is HttpRequestException or JsonException or IOException or OperationCanceledException)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    errors.Add(ex.Message);
-                    if (!secondStarted)
-                    {
-                        tasks.Add(FetchSourceAsync(secondUrl, pending.Token));
-                        secondStarted = true;
-                    }
-                }
-            }
-            throw new HttpRequestException("官方源与镜像源均无法加载。\n" + string.Join("\n", errors));
-        }
-        finally
-        {
-            pending.Cancel();
-            foreach (var task in tasks)
-            {
-                try { await task; }
-                catch (Exception ex) when (ex is HttpRequestException or JsonException or IOException or OperationCanceledException) { }
-            }
-        }
-    }
+    public Task<IReadOnlyList<DownloadEntry>> FetchAsync(SourceStrategy strategy, CancellationToken cancellationToken) =>
+        SourceFallback.FetchAsync(strategy, (mirror, token) => FetchSourceAsync(mirror ? MirrorUrl : OfficialUrl, token),
+            _fallbackDelay, cancellationToken);
 
     /// <summary>以独立超时读取最多 8 MiB 的清单，保留 TLS 校验；网络、格式和超时错误附带来源。</summary>
     private async Task<IReadOnlyList<DownloadEntry>> FetchSourceAsync(string url, CancellationToken token)

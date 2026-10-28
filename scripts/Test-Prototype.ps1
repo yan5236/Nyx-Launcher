@@ -166,9 +166,22 @@ foreach ($loader in @('Forge', 'Fabric', 'NeoForge')) {
     $image = $title.ParentNode.SelectSingleNode("ui:Image[@Source='$asset']", $ins)
     $card = $title.ParentNode.ParentNode
     if (-not $image -or $image.Width -ne '32' -or $image.Height -ne '32' -or
-        $card.LocalName -ne 'Border' -or $card.MinHeight -ne '56') {
+        $card.LocalName -ne 'Button' -or $card.MinHeight -ne '56' -or $card.Click -ne 'Loader_Click' -or $card.Tag -ne $loader) {
         throw "$loader 图标必须合并进紧凑列表卡片。"
     }
+}
+
+# 加载器弹窗采用无确认步骤的列表，主副标题分别绑定真实版本和日期/稳定性。
+[xml]$dialog = Get-Content (Join-Path $project 'Views/LoaderVersionDialog.xaml') -Raw -Encoding utf8
+$dialogNs = [System.Xml.XmlNamespaceManager]::new($dialog.NameTable)
+$dialogNs.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+if ($dialog.DocumentElement.LocalName -ne 'ContentDialog' -or
+    -not $dialog.SelectSingleNode('//ui:TextBlock[@Text="选择加载器版本"]', $dialogNs) -or
+    -not $dialog.SelectSingleNode('//ui:Button[@Click="Close_Click"]', $dialogNs) -or
+    -not $dialog.SelectSingleNode('//ui:ListView[@IsItemClickEnabled="True" and @ItemClick="Version_Click"]', $dialogNs) -or
+    -not $dialog.SelectSingleNode('//ui:TextBlock[@Text="{x:Bind Version}"]', $dialogNs) -or
+    -not $dialog.SelectSingleNode('//ui:TextBlock[@Text="{x:Bind Detail}"]', $dialogNs)) {
+    throw '加载器弹窗必须包含关闭按钮和点选即关闭的真实版本列表。'
 }
 if ($list.IsItemClickEnabled -ne 'True' -or $list.ItemClick -ne 'EntryList_ItemClick' -or
     -not $install.SelectSingleNode("//ui:Button[@Click='Back_Click']", $ins)) {

@@ -12,17 +12,17 @@
 
 ## 游戏安装配置页
 
-点击下载页“游戏”分类中的版本条目进入安装配置页。顶部可编辑版本名称，右侧“安装”按钮带安装图标、可点击，但不执行任何操作。下方依次显示 Forge、Fabric、NeoForge，每个加载器的 32×32 本地图标、名称、同一行灰色状态和右箭头合并在同一张卡片中；卡片最小高度为 56，间距为 10。目前不展开加载器版本选择，也不执行安装或保存名称到游戏目录。
+点击下载页“游戏”分类中的版本条目进入安装配置页。顶部可编辑版本名称，右侧“安装”按钮带安装图标、可点击，但不执行任何操作。下方依次显示 Forge、Fabric、NeoForge，每个加载器的 32×32 本地图标、名称、同一行灰色状态和右箭头合并在同一张卡片中；卡片最小高度为 56，间距为 10。可用行点击后弹出“选择加载器版本”列表，左侧是加载器图标，主标题为版本号；Forge 副标题为发布日期，Fabric 与 NeoForge 为“稳定版 / 测试版”。列表按版本号自然降序排列并去重，可滚动；点选后立即关闭，原行显示“已选择 + 版本号”，右箭头变为叉，其他加载器置灰且不可选择。点击已选行的叉取消后恢复其他行。右上角叉或 Esc 仅关闭弹窗，不选择；使用 WinUI ContentDialog 原生开关动画与模态焦点，遵循系统动画设置。当前选择只保存在本次安装配置中，切换游戏清空；不执行安装或保存名称到游戏目录。
 
 进入时列表向左淡出，配置页从右侧淡入；返回时反向播放，时长 220 毫秒。转场期间防止重复触发；关闭系统动画后直接切换。返回保留搜索、筛选和滚动位置，离开下载模块时取消转场与探测。
 
-三个加载器独立查询官方元数据，状态为“正在检测… / 可以添加 / 暂无可用版本 / 检测失败”。悬停失败状态可查看原因，页面不再提供重新检测按钮；返回列表后重新进入会再次探测。探测始终使用所选游戏的原始 ID，不受版本名称编辑影响：
+三个加载器独立拉取真实版本列表，状态为“正在检测… / 可以添加 / 暂无可用版本 / 检测失败”。悬停失败状态可查看原因，页面不再提供重新检测按钮；返回列表后重新进入会再次探测。探测始终使用所选游戏的原始 ID，不受版本名称编辑影响：
 
-- Forge：读取 [官方 Maven 清单](https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml)，精确匹配游戏版本前缀及后续构建号。
+- Forge：读取 [官方 Maven 清单](https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml)，精确匹配游戏版本前缀及后续构建号；日期来自官方游戏下载版本页。镜像使用 BMCLAPI `/forge/minecraft/{游戏版本}` 的版本、分支与 `modified` 日期。官方日期缺失或页面结构变化会触发镜像回退，不编造日期。
 - Fabric：先读取 [Meta 游戏支持列表](https://meta.fabricmc.net/v2/versions/game)，再查询对应游戏的 loader 列表，避免将旧版不支持导致的 HTTP 400 当成网络失败。新版去混淆游戏（例如 26.3）的 `intermediary.version` 为通用映射 `0.0.0`，不是游戏 ID；解析接受这个占位值，仍由官方支持清单及具体游戏的 loader 请求限定支持范围。
 - NeoForge：读取 [官方 Maven 清单](https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml)，按[官方编号规则](https://github.com/neoforged/documentation/blob/main/docs/gettingstarted/versioning.md)匹配 1.20.2 以后版本、26.x 及快照；1.20.1 使用 `net.neoforged:forge` 的历史清单。
 
-加载器探测使用独立官方端点，暂不套用 Mojang/BMCLAPI 的游戏清单源设置。每个加载器总超时 15 秒、单响应上限 8 MiB，失败不伪装为“不支持”；返回或离开页面取消旧请求。保留系统代理与 HTTPS 校验，不写磁盘缓存。
+加载器列表与可用状态共用同一次真实清单结果，遵循设置中的“版本列表源”：镜像优先 / 官方缓慢 3 秒后并发镜像 / 官方优先；失败回退，成功后取消另一源。Fabric 使用 BMCLAPI `/fabric-meta/v2/versions/...`，NeoForge 使用 `/maven/net/neoforged/{forge,neoforge}/maven-metadata.xml` 透传端点，映射见 [BMCLAPI 官方文档](https://bmclapidoc.bangbang93.com/)。Fabric 稳定性读取 `loader.stable`，NeoForge 根据构建号的预发布标记区分。每个加载器单源总超时 15 秒、单响应上限 8 MiB，失败不伪装为“不支持”；返回或离开页面取消旧请求。保留系统代理与 HTTPS 校验，不写磁盘缓存。
 
 ## 版本列表与下载设置
 
@@ -51,8 +51,8 @@
 - `src/NyxLauncher/Views/`：首页、版本管理、下载及安装配置界面。
 - `src/NyxLauncher/Assets/`：图标和本地 SVG 原型插图。
 - `src/NyxLauncher/Views/DownloadCatalog.cs`、`DownloadEntry.cs`：其他分类演示数据与列表显示模型。
-- `src/NyxLauncher/Services/`：双源清单获取、加载器官方可用性探测、下载设置存储及独立愚人节 ID 集合。
-- `tests/NyxLauncher.Checks/`：无额外测试依赖的业务断言；`--live` 验证真实游戏清单端点，`--live-loaders` 验证加载器官方端点，`--live-fabric` 仅实测 Fabric 26.3。
+- `src/NyxLauncher/Services/`：双源清单获取、加载器官方/BMCLAPI 清单与副标题解析、下载设置存储及独立愚人节 ID 集合。
+- `tests/NyxLauncher.Checks/`：无额外测试依赖的业务断言；`--live` 验证真实游戏清单端点，`--live-loaders` 验证加载器官方端点，`--live-fabric` 仅实测 Fabric 26.3，`--live-loader-lists` 分别限定官方/BMCLAPI 域名验证完整加载器列表。
 - `scripts/Test-Prototype.ps1`：导航、弹层顺序、页面标题移除与下载页结构的静态检查。
 
 ## 开发环境
@@ -99,6 +99,16 @@ dotnet run --project .\src\NyxLauncher\NyxLauncher.csproj -p:Platform=x64 --no-r
 当前未配置安装包、自动更新或代码签名。应用图标沿用微软官方空白模板，后续替换为项目品牌资源。
 
 ## 验证记录
+
+加载器真实版本选择（2026-10-28）：
+
+- 实现前的现有代码已提交为 `ae4246e`；本轮选择器改动单独保留在工作区。
+- 最终 Debug 构建通过，0 警告、0 错误；未增加 NuGet 依赖。静态结构检查和 Git 差异空白检查通过。
+- `--live-loader-lists` 通过 38 项原有加载器检查、30 项版本列表检查（含 10 项分源实网断言）及 21 项原有业务检查。覆盖稳定性字段、自然排序去重、Forge 日期与历史分支、错误游戏 ID、日期缺失回退、三种源策略、慢源取消、大小限制及超时。
+- 官方与 BMCLAPI 分别限定域名实测，禁止另一源成功掩盖首选源失败：Minecraft 1.21.1 的 Forge 均为 69 个版本（首项 52.1.20 / 2026-10-14）、Fabric 255 个（0.20.1 / 稳定版）、NeoForge 260 个（21.1.265 / 稳定版）；另验证两源 NeoForge 1.20.1 和 Fabric 26.3。数量会随上游变化。
+- Computer Use 两个入口因沙箱初始化失败；改用 Windows UI Automation 和窗口区域系统截图完成真实 Debug 验收：三种加载器的列表与点选、立即关闭、已选择文本和叉号、其他行禁用及置灰、取消恢复、Enter 选择、Esc/关闭按钮不选择、长列表滚动、切换到 26.3 后清空旧选择。
+- 开关动画连续帧证据位于 `.local/screenshots/loader-open-*.png`、`loader-close-*.png`，捕获到淡入淡出和缩放；布局与状态截图位于同目录的 `loader-*-dialog.png`、`loader-fabric-selected-final.png`。上述证据与临时 UI 驱动脚本仅留本地。
+- 未执行游戏/加载器安装、Release 或安装包构建；未验证其他 Windows 版本、DPI 或系统关闭动画的实机表现。
 
 安装配置页紧凑布局与 Fabric 26.3 修复（2026-10-28）：
 

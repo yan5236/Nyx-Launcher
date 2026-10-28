@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentDialog x:Class="NyxLauncher.Views.LoaderVersionDialog"
+               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:services="using:NyxLauncher.Services"
+               HorizontalContentAlignment="Stretch" RequestedTheme="Light"
+               AutomationProperties.Name="选择加载器版本">
+    <Grid x:Name="DialogContent" RowSpacing="20">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <TextBlock Text="选择加载器版本" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Click="Close_Click" Background="Transparent" BorderThickness="0" Padding="10"
+                    AutomationProperties.Name="关闭加载器版本选择" ToolTipService.ToolTip="关闭">
+                <FontIcon Glyph="&#xE711;" FontSize="18" />
+            </Button>
+        </Grid>
+        <ListView x:Name="Versions" Grid.Row="1" SelectionMode="None" IsItemClickEnabled="True"
+                  ItemClick="Version_Click" HorizontalContentAlignment="Stretch"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  AutomationProperties.Name="加载器版本列表">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,0,4,8" />
+                    <Setter Property="CornerRadius" Value="6" />
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="services:LoaderVersion">
+                    <Border Style="{StaticResource CardStyle}" Padding="14,12" Background="Transparent"
+                            AutomationProperties.Name="{x:Bind AccessibleName}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="36" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Image Source="{x:Bind Icon}" Width="36" Height="36" Stretch="Uniform" />
+                            <StackPanel Grid.Column="1" Spacing="3">
+                                <TextBlock Text="{x:Bind Version}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Text="{x:Bind Detail}" FontSize="13" Foreground="#6B7A70" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</ContentDialog>
