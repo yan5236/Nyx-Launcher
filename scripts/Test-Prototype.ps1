@@ -104,12 +104,37 @@ if (-not $icon) { throw '列表条目左侧必须包含图标。' }
 $typeBadge = $template.SelectSingleNode('.//ui:TextBlock[@Text="{x:Bind Kind}"]', $dns)
 if (-not $typeBadge) { throw '列表条目应显示版本类型标签。' }
 
-# 每个 Tab 标签都必须在演示数据中拥有条目。
+# 每个 Tab 标签都必须在分类映射中存在；游戏分类的真实数据由服务获取。
 $catalog = Get-Content (Join-Path $project 'Views/DownloadCatalog.cs') -Raw -Encoding utf8
 foreach ($tag in ($tabs | ForEach-Object { $_.Tag })) {
     if (-not $catalog.Contains("[""$tag""]")) {
         throw "演示数据缺少分类：$tag"
     }
+}
+
+# 设置页复用相同 Tab 控件，源策略独立，滑块范围明确，不加入目标文件夹。
+[xml]$settings = Get-Content (Join-Path $project 'Views/SettingsView.xaml') -Raw -Encoding utf8
+$sns = [System.Xml.XmlNamespaceManager]::new($settings.NameTable)
+$sns.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$sns.AddNamespace('x', $xns)
+$settingTabs = $settings.SelectNodes('//ui:SelectorBar/ui:SelectorBarItem', $sns)
+if (($settingTabs | ForEach-Object { $_.Text }) -join ',' -cne '通用,下载') {
+    throw '设置页必须使用通用、下载两个 Tab。'
+}
+foreach ($name in @('FileSource', 'VersionSource')) {
+    $source = $settings.SelectSingleNode("//ui:ComboBox[@x:Name='$name']", $sns)
+    if ($source.SelectNodes('ui:ComboBoxItem', $sns).Count -ne 3) {
+        throw "源策略必须提供三个选项：$name"
+    }
+}
+$connections = $settings.SelectSingleNode("//ui:Slider[@x:Name='Connections']", $sns)
+$speed = $settings.SelectSingleNode("//ui:Slider[@x:Name='Speed']", $sns)
+if ($connections.Minimum -ne '1' -or $connections.Maximum -ne '64' -or
+    $speed.Minimum -ne '0' -or $speed.Maximum -ne '100') {
+    throw '下载限制滑块范围与存储契约不一致。'
+}
+if ($settings.OuterXml.Contains('目标文件夹') -or $settings.OuterXml.Contains('选择文件夹')) {
+    throw '设置页不应添加文件夹选项。'
 }
 
 # 检查 XAML 引用的本地图片资源是否存在。
@@ -124,4 +149,4 @@ foreach ($file in $xamlFiles) {
         }
     }
 }
-Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页 Tab/搜索/筛选/列表结构及图片资源。'
+Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、设置 Tab/源策略/滑块范围及图片资源。'

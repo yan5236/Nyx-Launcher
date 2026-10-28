@@ -1,0 +1,51 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Windows.UI;
+
+namespace NyxLauncher.Views;
+
+public sealed partial class VersionLoadStatus : UserControl
+{
+    public event EventHandler? RetryRequested;
+
+    /// <summary>创建加载状态控件；由下载页控制动画生命周期。</summary>
+    public VersionLoadStatus()
+    {
+        InitializeComponent();
+        Failure.Completed += Failure_Completed;
+    }
+
+    /// <summary>交叉图标出现后停止已不可见的循环旋转，避免失败页持续消耗动画资源。</summary>
+    private void Failure_Completed(object? sender, object e) => Spin.Stop();
+
+    /// <summary>清除上次错误并开始循环旋转，用于首次加载及重试。</summary>
+    public void Start()
+    {
+        Stop();
+        RingBrush.Color = Color.FromArgb(255, 57, 116, 80);
+        Arc.Opacity = 1;
+        Cross.Opacity = 0;
+        ErrorDetails.Visibility = Visibility.Collapsed;
+        StatusText.Text = "正在加载版本";
+        Spin.Begin();
+    }
+
+    /// <summary>先将旋转弧线变红，再淡出为交叉，并渐显错误信息与重试按钮。</summary>
+    public void ShowError(string message)
+    {
+        StatusText.Text = "版本加载失败";
+        ErrorText.Text = message;
+        ErrorDetails.Visibility = Visibility.Visible;
+        Failure.Begin();
+    }
+
+    /// <summary>停止隐藏页面的动画并清除动画持有的属性值。</summary>
+    public void Stop()
+    {
+        Spin.Stop();
+        Failure.Stop();
+    }
+
+    /// <summary>将用户重试请求交给下载页，不在状态控件中访问网络。</summary>
+    private void Retry_Click(object sender, RoutedEventArgs e) => RetryRequested?.Invoke(this, EventArgs.Empty);
+}

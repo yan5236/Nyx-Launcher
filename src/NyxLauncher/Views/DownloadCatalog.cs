@@ -6,7 +6,6 @@ namespace NyxLauncher.Views;
 /// <summary>下载页各分类的静态演示数据；不访问网络或本机游戏目录。</summary>
 internal static class DownloadCatalog
 {
-    private const string GameGlyph = "\uE7FC";
     private const string ModGlyph = "\uE8A5";
     private const string ModPackGlyph = "\uE7B8";
     private const string ResourcePackGlyph = "\uE8B9";
@@ -16,16 +15,7 @@ internal static class DownloadCatalog
     private static readonly Dictionary<string, (string SearchHint, DownloadEntry[] Entries)> Categories =
         new(StringComparer.Ordinal)
         {
-            ["game"] = ("搜索游戏版本", new[]
-            {
-                new DownloadEntry("1.21.4", "2024-12-03", "正式版", GameGlyph),
-                new DownloadEntry("1.21.3", "2024-10-23", "正式版", GameGlyph),
-                new DownloadEntry("1.21.2", "2024-10-22", "正式版", GameGlyph),
-                new DownloadEntry("25w45a", "2025-11-06", "快照版", GameGlyph),
-                new DownloadEntry("24w14potato", "2024-04-01", "愚人节版", GameGlyph),
-                new DownloadEntry("b1.7.3", "2011-07-08", "远古版", GameGlyph),
-                new DownloadEntry("a1.2.6", "2010-12-03", "远古版", GameGlyph),
-            }),
+            ["game"] = ("搜索游戏版本", Array.Empty<DownloadEntry>()),
             ["mod"] = ("搜索模组", new[]
             {
                 new DownloadEntry("Fabric API 0.115.1", "2025-03-18", "正式版", ModGlyph),

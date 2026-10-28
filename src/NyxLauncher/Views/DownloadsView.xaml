@@ -8,6 +8,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <SelectorBar x:Name="ContentSelector" SelectionChanged="ContentSelector_SelectionChanged"
@@ -42,6 +43,7 @@
         </Grid>
 
         <Grid Grid.Row="2">
+            <views:VersionLoadStatus x:Name="LoadStatus" Visibility="Collapsed" />
             <ListView x:Name="EntryList" SelectionMode="Single"
                       ScrollViewer.VerticalScrollBarVisibility="Auto"
                       AutomationProperties.Name="下载内容列表">
@@ -86,5 +88,8 @@
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        IsHitTestVisible="False" Visibility="Collapsed" />
         </Grid>
+        <TextBlock x:Name="DemoHint" Grid.Row="3" Text="此分类暂为演示数据" Foreground="#6B7A70"
+                   VerticalAlignment="Bottom" HorizontalAlignment="Right" Visibility="Collapsed"
+                   IsHitTestVisible="False" />
     </Grid>
 </UserControl>

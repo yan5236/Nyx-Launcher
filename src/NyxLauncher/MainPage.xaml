@@ -85,23 +85,7 @@
             </ScrollViewer>
             <ScrollViewer x:Name="SettingsScroll" HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                <StackPanel x:Name="SettingsContent" Spacing="20">
-                    <Border Style="{StaticResource CardStyle}">
-                        <Grid>
-                            <TextBlock Text="外观" FontSize="16" VerticalAlignment="Center" />
-                            <ComboBox SelectedIndex="0" IsEnabled="False" FontSize="15" Width="180"
-                                      HorizontalAlignment="Right" AutomationProperties.Name="外观">
-                                <ComboBoxItem Content="浅色" />
-                            </ComboBox>
-                        </Grid>
-                    </Border>
-                    <Border Style="{StaticResource CardStyle}">
-                        <Grid>
-                            <TextBlock Text="游戏目录" FontSize="16" VerticalAlignment="Center" />
-                            <Button Content="选择文件夹" IsEnabled="False" HorizontalAlignment="Right" />
-                        </Grid>
-                    </Border>
-                </StackPanel>
+                <views:SettingsView x:Name="SettingsContent" />
             </ScrollViewer>
         </Grid>
     </NavigationView>

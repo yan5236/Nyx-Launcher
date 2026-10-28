@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl x:Class="NyxLauncher.Views.SettingsView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <StackPanel Spacing="16">
+  <SelectorBar SelectionChanged="Tabs_SelectionChanged" AutomationProperties.Name="设置分类">
+   <SelectorBarItem Text="通用" Tag="general" IsSelected="True" />
+   <SelectorBarItem Text="下载" Tag="download" />
+  </SelectorBar>
+  <StackPanel x:Name="GeneralPanel" Spacing="16">
+   <Border Style="{StaticResource CardStyle}">
+    <Grid>
+     <TextBlock Text="外观" VerticalAlignment="Center" />
+     <ComboBox SelectedIndex="0" IsEnabled="False" Width="180" HorizontalAlignment="Right" AutomationProperties.Name="外观">
+      <ComboBoxItem Content="浅色" />
+     </ComboBox>
+    </Grid>
+   </Border>
+  </StackPanel>
+  <StackPanel x:Name="DownloadPanel" Spacing="16" Visibility="Collapsed">
+   <Border Style="{StaticResource CardStyle}">
+    <StackPanel Spacing="16">
+     <ComboBox x:Name="FileSource" Header="文件下载源" HorizontalAlignment="Stretch"
+       SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="文件下载源">
+      <ComboBoxItem Content="尽量使用镜像源" /><ComboBoxItem Content="优先使用官方源，在加载缓慢时换用镜像源" /><ComboBoxItem Content="尽量使用官方源" />
+     </ComboBox>
+     <ComboBox x:Name="VersionSource" Header="版本列表源" HorizontalAlignment="Stretch"
+       SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="版本列表源">
+      <ComboBoxItem Content="尽量使用镜像源" /><ComboBoxItem Content="优先使用官方源，在加载缓慢时换用镜像源" /><ComboBoxItem Content="尽量使用官方源" />
+     </ComboBox>
+     <TextBlock Text="优先源失败时自动尝试另一来源；混合策略在官方加载超过 3 秒时同时尝试镜像。" TextWrapping="Wrap" Foreground="#6B7A70" />
+    </StackPanel>
+   </Border>
+   <Border Style="{StaticResource CardStyle}">
+    <StackPanel Spacing="12">
+     <TextBlock x:Name="ConnectionsLabel" />
+     <Slider x:Name="Connections" Minimum="1" Maximum="64" StepFrequency="1"
+       ValueChanged="Limit_ValueChanged" AutomationProperties.Name="最大下载线程数" />
+     <TextBlock x:Name="SpeedLabel" />
+     <Slider x:Name="Speed" Minimum="0" Maximum="100" StepFrequency="1"
+       ValueChanged="Limit_ValueChanged" AutomationProperties.Name="下载速率限制，零为不限速" />
+     <TextBlock Text="文件下载源、线程数与限速已预留并保存，将在接入文件下载后生效。" TextWrapping="Wrap" Foreground="#6B7A70" />
+    </StackPanel>
+   </Border>
+  </StackPanel>
+  <InfoBar x:Name="SaveError" Severity="Error" IsClosable="False" />
+ </StackPanel>
+</UserControl>
