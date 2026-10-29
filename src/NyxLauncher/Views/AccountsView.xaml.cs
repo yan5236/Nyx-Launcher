@@ -121,7 +121,6 @@ public sealed class AccountRow(GameAccount account) : INotifyPropertyChanged
 {
     public GameAccount Account { get; } = account;
     public string Name => Account.Name;
-    public string Avatar => Account.Avatar;
     public string TypeLabel => Account.TypeLabel;
     public string RetryLabel => "重试登录 " + Name;
     public string DeleteLabel => "删除账户 " + Name;

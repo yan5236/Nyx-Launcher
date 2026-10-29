@@ -14,7 +14,9 @@
 
 离线 UUID 使用 Java `UUID.nameUUIDFromBytes(UTF8("OfflinePlayer:" + name))` 的 MD5 / RFC 4122 v3 规则，与 [HMCL 的离线账户工厂](https://github.com/HMCL-dev/HMCL/blob/f1c9b77df5f267e9eb3d09ce8881b73ed4ae0c4f/HMCLCore/src/main/java/org/jackhuang/hmcl/auth/offline/OfflineAccountFactory.java)一致。显式传入 CmlLib 会话，避免该库离线会话的随机 UUID 导致同名账户身份漂移。名称大小写会影响离线 UUID，不自动改写；微软 UUID 使用服务器档案原值。
 
-当前按用户提供的 Steve / Alex 两张素材采用传统双皮肤规则：Java UUID 哈希的最低位为 0 时显示 Steve，为 1 时显示 Alex，参考 [PCL 的 McSkinSex](https://github.com/Meloong-Git/PCL/blob/93ede5d9e638c99fcec853a9ba1eecd91ceee7f5/Plain%20Craft%20Launcher%202/Modules/Minecraft/ModMinecraft.vb)。名称恰为 Steve 不代表头像一定是 Steve。现代 Minecraft / HMCL 已扩展默认皮肤集合，本启动器的双头像不承诺与所有新版游戏内部默认皮肤一致，也不注入皮肤模组。
+微软账户页与侧栏共用真实皮肤头像控件：按真实 UUID 查询 Mojang 公开档案，从官方 `textures.minecraft.net` 下载皮肤，裁出正脸并叠加帽子层，以最近邻生成 64×64 头像：正脸绘制在内缩 4 像素的 56×56 区域，帽子层覆盖完整画布，保留透明外角并输出预乘 BGRA，避免方形底角及半透明黑边。层比例参考 [HMCL 的头像绘制](https://github.com/HMCL-dev/HMCL/blob/main/HMCL/src/main/java/org/jackhuang/hmcl/game/TexturesLoader.java)。已有微软账户不需要重新登录；不读取或向皮肤请求附带令牌。每次启动查询一次，同一进程的侧栏和卡片共享结果；换皮肤后重启启动器更新。头像像素原子缓存到 `%LOCALAPPDATA%/NyxLauncher/avatars/<UUID>-head-v2.bgra`，启动优先显示缓存，网络或解码失败保留旧头像，无缓存时使用默认头像。切换账户或控件卸载后的迟到结果不会覆盖新身份。
+
+离线账户及没有可用皮肤的回退头像按用户提供的 Steve / Alex 两张素材采用传统双皮肤规则：Java UUID 哈希的最低位为 0 时显示 Steve，为 1 时显示 Alex，参考 [PCL 的 McSkinSex](https://github.com/Meloong-Git/PCL/blob/93ede5d9e638c99fcec853a9ba1eecd91ceee7f5/Plain%20Craft%20Launcher%202/Modules/Minecraft/ModMinecraft.vb)。名称恰为 Steve 不代表头像一定是 Steve。现代 Minecraft / HMCL 已扩展默认皮肤集合，本启动器的双默认头像不承诺与所有新版游戏内部默认皮肤一致，也不注入皮肤模组。
 
 `scripts/Generate-Avatars.ps1` 从完整皮肤的 `(8,8,8,8)` 裁出正脸，并叠加 `(40,8,8,8)` 的透明帽子层，以最近邻放大生成头像；坐标随皮肤分辨率缩放。裁剪位置参考 [HMCL 的头像绘制](https://github.com/HMCL-dev/HMCL/blob/ac378ad46aa07c5d683dd0d82fea2cd4f88e99bc/HMCL/src/main/java/org/jackhuang/hmcl/game/TexturesLoader.java)，原始皮肤保持完整。
 
@@ -50,3 +52,7 @@ Java 元数据保存在游戏目录 `.nyx-launch/metadata`；首次获取需要�
 2026-10-29 UI 调整验收：x64 Debug 构建与 XAML 检查通过，269 项业务断言通过（其中账户与启动 48 项）。实机验证添加弹窗的图标、输入校验、返回保留输入、按钮顺序、动画、新增/重试/删除测试账户及居中空状态；原账户保留，空状态验收后原配置逐字节恢复。截图位于 `.local/screenshots/ui-polish-*.png`。该次 UI 验收未重跑游戏安装/启动全流程、其他 DPI 或 Release 构建；当时微软与外置认证尚未接入。此后微软登录实现及验证范围见 [微软登录](microsoft-login.md)。
 
 同日悬停补验：前述静止颜色检查遗漏了 WinUI 状态资源回落到系统蓝色的问题。按钮资源现集中在 `Themes/AccentButtonResources.xaml`，由应用、页面和独立弹窗显式合并。真实鼠标移动/按住后采样确认、添加账户、启动、安装、下载按钮，三种状态均分别为 `#28563B` / `#346C4B` / `#20452F`；验收在按钮外松开鼠标，没有触发实际启动、安装或下载。
+
+2026-10-29 微软皮肤头像修复：356 项业务断言通过，其中新增 34 项覆盖公开档案、官方 HTTPS 纹理限制、独立层比例、透明四角、预乘合成、旧版皮肤和尺寸限制。Debug 构建无警告，页面检查通过。实机验证已登录账户在侧栏及账户卡片显示相同的真实皮肤头像，切换离线账户后恢复默认头像，再切回微软账户恢复真实头像；最终保留原微软选择。截图位于 `.local/screenshots/microsoft-real-avatar-*.png`。用户另确认此前微软账户能够启动游戏；本次未重复启动游戏或构建 Release。
+
+同日头像轮廓补验：修正之前正脸和帽子同尺寸铺满、强制不透明造成的方角。实机截图 .local/screenshots/microsoft-avatar-layered-corners.png 确认账户页和侧栏均恢复透明轮廓，四角缓存 alpha 均为 0。缓存名称包含合成版本，旧方形缓存不会继续显示。

@@ -46,7 +46,7 @@
                         <ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Grid Width="32" Height="32">
-                        <Image x:Name="AccountAvatar" Width="32" Height="32" Visibility="Collapsed" />
+                        <views:AccountAvatar x:Name="AccountAvatar" Width="32" Height="32" Visibility="Collapsed" />
                         <FontIcon x:Name="EmptyAccountIcon" Glyph="&#xE77B;" FontSize="24" />
                     </Grid>
                     <TextBlock x:Name="AccountName" Grid.Column="1" Text="未添加账户" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />

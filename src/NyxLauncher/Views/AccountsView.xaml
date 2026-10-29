@@ -31,7 +31,7 @@
      <Grid ColumnSpacing="14" MinHeight="64" Padding="0,10,14,10">
       <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="40"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <Border Width="3" Height="26" CornerRadius="2" Background="#397450" Visibility="{x:Bind SelectedVisibility, Mode=OneWay}"/>
-      <Image Grid.Column="1" Source="{x:Bind Avatar}" Width="40" Height="40"/>
+      <views:AccountAvatar Grid.Column="1" Account="{x:Bind Account}" Width="40" Height="40"/>
       <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
        <TextBlock Text="{x:Bind Name}" FontSize="17"/>
        <TextBlock Text="{x:Bind TypeLabel}" FontSize="12" Foreground="#6B7A70"/>

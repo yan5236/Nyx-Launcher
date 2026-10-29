@@ -37,12 +37,12 @@ public sealed partial class MainPage : Page
         Navigation.SelectedItem = HomeItem;
     }
 
-    /// <summary>账户保存成功后同步侧栏名称及裁剪头像；空账户显示中性图标，不虚构 Steve 身份。</summary>
+    /// <summary>账户保存后同步侧栏名称与共用头像控件；微软真实皮肤异步加载，空账户显示中性图标。</summary>
     private void RefreshAccount()
     {
         var account = _accounts.Selected;
         AccountName.Text = account?.Name ?? "未添加账户";
-        AccountAvatar.Source = account is null ? null : new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(account.Avatar));
+        AccountAvatar.Account = account;
         AccountAvatar.Visibility = account is null ? Visibility.Collapsed : Visibility.Visible;
         EmptyAccountIcon.Visibility = account is null ? Visibility.Visible : Visibility.Collapsed;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(AccountMenuButton, AccountName.Text + "，打开账户菜单");
