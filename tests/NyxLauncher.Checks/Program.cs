@@ -8,9 +8,19 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行账户、启动和下载断言；--live-fabric-api 验证 API 真实安装及启动，其他 --live 系列保留原有验收入口。</summary>
+    /// <summary>运行微软认证、账户、启动和下载断言；--live 系列显式执行真实安装或启动验收。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--microsoft-callback"))
+        {
+            await MicrosoftCallbackChecks.RunAsync();
+            return;
+        }
+        if (args.Contains("--microsoft-launch-arguments"))
+        {
+            await MicrosoftAccountChecks.VerifyLaunchArgumentsAsync(Path.GetFullPath(args[Array.IndexOf(args, "--microsoft-launch-arguments") + 1]));
+            return;
+        }
         if (args.Contains("--live-fabric-api"))
         {
             await FabricApiChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-fabric-api") + 1]));
@@ -23,6 +33,7 @@ internal static class Program
             return;
         }
         await AccountLaunchChecks.RunAsync();
+        await MicrosoftAccountChecks.RunAsync();
         await FabricApiChecks.RunAsync();
         if (args.Contains("--live-install"))
         {

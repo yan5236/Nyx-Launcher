@@ -10,8 +10,8 @@ public sealed partial class MainPage : Page
     private readonly DownloadTaskManager _tasks;
     private readonly AccountStore _accounts;
 
-    /// <summary>窗口关闭时停止本会话下载及游戏，等待处理器和游戏进程退出，不删除已完成版本。</summary>
-    public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync());
+    /// <summary>窗口关闭时停止下载、游戏及账户认证，等待进程与本机登录回调回收，不删除已完成版本。</summary>
+    public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(), AccountContent.StopAsync());
     /// <summary>加载页面，共用下载设置并初始化游戏目录，连接安装新版本导航后选中首页。</summary>
     public MainPage()
     {

@@ -130,7 +130,7 @@ internal static class FabricApiChecks
             Console.WriteLine(mode + " installed " + jar);
             if (mode != IsolationMode.All) continue;
             var session = new GameLaunchSession();
-            var running = Task.Run(() => session.RunAsync(root, version, settings, new OfflineAccount("ApiTest")));
+            var running = Task.Run(() => session.RunAsync(root, version, settings, new GameAccount("ApiTest")));
             try
             {
                 using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));

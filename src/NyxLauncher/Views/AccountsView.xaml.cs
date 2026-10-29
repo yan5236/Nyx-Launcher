@@ -11,6 +11,8 @@ public sealed partial class AccountsView : UserControl
     private AccountStore? _accounts;
     private bool _refreshing;
     private AccountRow[] _rows = [];
+    private AddAccountDialog? _dialog;
+    private bool _closing;
 
     /// <summary>初始化账户列表；持久化服务由主页面提供。</summary>
     public AccountsView() => InitializeComponent();
@@ -54,7 +56,7 @@ public sealed partial class AccountsView : UserControl
     { if (e.ClickedItem is AccountRow row) Select(row.Account); }
 
     /// <summary>集中处理选择写入异常；服务只有保存成功才会发布新身份。</summary>
-    private void Select(OfflineAccount account)
+    private void Select(GameAccount account)
     {
         Error.IsOpen = false;
         Error.Severity = InfoBarSeverity.Error;
@@ -62,10 +64,11 @@ public sealed partial class AccountsView : UserControl
         catch (Exception ex) { Refresh(); Error.Message = ex.Message; Error.IsOpen = true; }
     }
 
-    /// <summary>重新创建离线登录会话并选中该账户；成功明确提示离线身份已就绪，校验或保存失败显示原因。</summary>
-    private void RetryLogin_Click(object sender, RoutedEventArgs e)
+    /// <summary>离线账户重新校验，微软账户在可取消弹窗中重新授权；只接受与原游戏 UUID 一致的身份。</summary>
+    private async void RetryLogin_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: OfflineAccount account }) return;
+        if (sender is not Button { Tag: GameAccount account }) return;
+        if (account.IsMicrosoft) { await ShowAccountDialogAsync(account); return; }
         try
         {
             _ = GameLaunchService.CreateSession(account);
@@ -80,7 +83,7 @@ public sealed partial class AccountsView : UserControl
     /// <summary>仅删除卡片对应的本地账户记录；共享存储同步选择与空状态，保存失败不改变列表。</summary>
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: OfflineAccount account }) return;
+        if (sender is not Button { Tag: GameAccount account }) return;
         Error.IsOpen = false;
         Error.Severity = InfoBarSeverity.Error;
         try { _accounts!.Remove(account); }
@@ -89,20 +92,34 @@ public sealed partial class AccountsView : UserControl
 
     /// <summary>打开 WinUI 两步账户弹窗；模态期间禁用入口，关闭后恢复。</summary>
     private async void Add_Click(object sender, RoutedEventArgs e)
+        => await ShowAccountDialogAsync(null);
+
+    /// <summary>共用添加和重登弹窗，防止重复打开；异常仍留在账户页，窗口关闭后不接受新的登录。</summary>
+    private async Task ShowAccountDialogAsync(GameAccount? previous)
     {
+        if (_closing || _dialog is not null) return;
         Error.IsOpen = false;
         Error.Severity = InfoBarSeverity.Error;
         AddButton.IsEnabled = false;
-        try { await new AddAccountDialog(_accounts!) { XamlRoot = XamlRoot }.ShowAsync(); }
+        try
+        {
+            _dialog = new AddAccountDialog(_accounts!, previous) { XamlRoot = XamlRoot };
+            await _dialog.ShowAsync();
+            await _dialog.StopAsync();
+        }
         catch (Exception ex) { Error.Message = ex.Message; Error.IsOpen = true; }
-        finally { AddButton.IsEnabled = true; }
+        finally { _dialog = null; AddButton.IsEnabled = !_closing; }
     }
+
+    /// <summary>关闭启动器时取消账户交互并等待在途认证结束，避免保存迟到结果或遗留监听端口。</summary>
+    public async Task StopAsync()
+    { _closing = true; if (_dialog is not null) await _dialog.StopAsync(); }
 }
 
 /// <summary>账户卡片的显示状态；选中标记属于界面，不写入身份模型或游戏参数。</summary>
-public sealed class AccountRow(OfflineAccount account) : INotifyPropertyChanged
+public sealed class AccountRow(GameAccount account) : INotifyPropertyChanged
 {
-    public OfflineAccount Account { get; } = account;
+    public GameAccount Account { get; } = account;
     public string Name => Account.Name;
     public string Avatar => Account.Avatar;
     public string TypeLabel => Account.TypeLabel;

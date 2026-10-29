@@ -202,6 +202,11 @@ if ($accountDialog.DocumentElement.PrimaryButtonText -ne '取消' -or
     -not $accountDialog.SelectSingleNode('//ui:ContentDialog.Title//ui:Button[@Click="Back_Click"]', $accountNs)) {
     throw '账户弹窗必须左取消、右确认，返回按钮在标题左侧。'
 }
+# 微软入口可触发真实授权，并提供取消期间的阶段展示；外置登录仍保留不可用状态。
+if (-not $accountDialog.SelectSingleNode('//ui:Button[@Click="Microsoft_Click" and not(@IsEnabled="False")]', $accountNs) -or
+    -not $accountDialog.SelectSingleNode('//ui:ProgressRing[@IsActive="False"]', $accountNs)) {
+    throw '微软账户必须具有可用入口及认证进度区域。'
+}
 if ($install.SelectSingleNode('//ui:Button[@x:Name="ApiButton"]', $ins).GetAttribute('Margin') -notin @('', '0')) {
     throw 'Fabric API 卡片必须与加载器卡片左侧对齐。'
 }

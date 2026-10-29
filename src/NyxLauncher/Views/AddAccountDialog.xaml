@@ -22,7 +22,7 @@
  <StackPanel x:Name="StepContent" Spacing="16" MinWidth="340" MinHeight="210">
   <StackPanel.RenderTransform><TranslateTransform x:Name="StepTranslation"/></StackPanel.RenderTransform>
   <StackPanel x:Name="Types" Spacing="10">
-   <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsEnabled="False" AutomationProperties.Name="微软账号，暂不可用">
+   <Button x:Name="MicrosoftButton" Click="Microsoft_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="微软登录">
     <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
      <Grid Width="24" Height="24" RowSpacing="3" ColumnSpacing="3">
       <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
@@ -30,7 +30,7 @@
       <Rectangle Fill="#397450"/><Rectangle Grid.Column="1" Fill="#397450"/>
       <Rectangle Grid.Row="1" Fill="#397450"/><Rectangle Grid.Row="1" Grid.Column="1" Fill="#397450"/>
      </Grid>
-     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="微软登录"/><TextBlock Text="等待微软 API 申请完成" FontSize="12" Foreground="#6B7A70"/></StackPanel>
+     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="微软登录"/><TextBlock x:Name="MicrosoftHint" Text="在系统浏览器中登录" FontSize="12" Foreground="#6B7A70"/></StackPanel>
     </Grid>
    </Button>
    <Button x:Name="OfflineButton" Click="Offline_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="离线账号">
@@ -47,6 +47,10 @@
    </Button>
   </StackPanel>
   <TextBox x:Name="AccountName" Visibility="Collapsed" Header="请输入账户名称" PlaceholderText="1–16 个英文字母、数字或下划线" MaxLength="16" AutomationProperties.Name="账户名称"/>
+  <StackPanel x:Name="LoginProgress" Spacing="16" Visibility="Collapsed">
+   <ProgressRing x:Name="LoginRing" IsActive="False" Width="32" Height="32"/>
+   <TextBlock x:Name="LoginStatus" TextWrapping="Wrap" MaxWidth="380"/>
+  </StackPanel>
   <InfoBar x:Name="Error" Severity="Error" IsClosable="False"/>
  </StackPanel>
 </ContentDialog>

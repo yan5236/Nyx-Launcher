@@ -55,12 +55,12 @@ public sealed partial class HomeView : UserControl
     /// <summary>刷新版本选择对应的启动可用性，不创建进程。</summary>
     private void Version_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateControls();
 
-    /// <summary>捕获版本、目录和账户启动后台会话；再次点击取消准备或结束本次游戏，禁止重复启动。</summary>
+    /// <summary>锁定版本和身份启动会话；资源检查在后台运行，认证保存留在 UI 上下文，再次点击停止。</summary>
     private async void Launch_Click(object sender, RoutedEventArgs e)
     {
         if (_session is not null) { _session.Stop(); UpdateControls(); return; }
         if (_closing || _scanning || VersionList.SelectedItem is not InstalledVersion version ||
-            _folders?.Selected is not string root || _accounts?.Selected is not OfflineAccount account) return;
+            _folders?.Selected is not string root || _accounts?.Selected is not GameAccount account) return;
         var session = new GameLaunchSession();
         _session = session;
         session.Changed += Session_Changed;
@@ -68,7 +68,7 @@ public sealed partial class HomeView : UserControl
         var settings = _settings!.Current;
         try
         {
-            _running = Task.Run(() => session.RunAsync(root, version, settings, account));
+            _running = session.RunAsync(root, version, settings, account, AuthenticateAsync);
             await _running;
             ShowStatus(session.Status);
         }
@@ -78,6 +78,16 @@ public sealed partial class HomeView : UserControl
             _session = null; _running = null;
             UpdateControls(); Refresh();
         }
+    }
+
+    /// <summary>离线身份直接创建会话，微软身份静默刷新并原子保存；失败明确终止启动，不自动弹浏览器。</summary>
+    private async Task<CmlLib.Core.Auth.MSession> AuthenticateAsync(GameAccount account, CancellationToken token)
+    {
+        if (!account.IsMicrosoft) return GameLaunchService.CreateSession(account);
+        var result = await MicrosoftLoginService.AuthenticateAsync(account, false, null, token);
+        token.ThrowIfCancellationRequested();
+        _accounts!.SaveMicrosoft(result.Account, account, select: false);
+        return result.Session;
     }
 
     /// <summary>后台通知排队刷新当前会话最新快照，迟到回调不能覆盖新会话。</summary>
@@ -114,7 +124,7 @@ public sealed partial class HomeView : UserControl
         }
         LaunchButton.IsEnabled = !_closing && (busy ? !stopping : !_scanning && _accounts?.Selected is not null && VersionList.SelectedItem is InstalledVersion);
         VersionList.IsEnabled = !busy && !_closing;
-        CurrentAccount.Text = _accounts?.Selected is { } account ? "当前账户：" + account.Name + "（离线）" : "请先添加账户";
+        CurrentAccount.Text = _accounts?.Selected is { } account ? "当前账户：" + account.Name + "（" + account.TypeLabel + "）" : "请先添加账户";
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(LaunchButton, label);
     }
 

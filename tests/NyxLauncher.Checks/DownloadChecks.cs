@@ -123,7 +123,7 @@ internal static class DownloadChecks
             var version = InstalledVersionService.Scan(root).Single(x => x.Name == name);
             Check(version.Error is null && version.GameVersion == "1.21.1", name + "真实元数据");
             Check(kind is null ? version.Loader == "" : version.Loader.StartsWith(kind.ToString()!), name + "真实加载器");
-            using var process = await GameLaunchService.BuildAsync(root, version, IsolationMode.All, new OfflineAccount("Steve"));
+            using var process = await GameLaunchService.BuildAsync(root, version, IsolationMode.All, new GameAccount("Steve"));
             Check(process.StartInfo.WorkingDirectory == version.DirectoryPath && process.StartInfo.Arguments.Contains(version.DirectoryPath), name + "隔离启动参数");
             await File.WriteAllTextAsync(Path.Combine(root, name + "-launch.txt"), process.StartInfo.FileName + "\n" + process.StartInfo.Arguments);
             Console.WriteLine($"已验证 {name}：{version.Detail}，Java={process.StartInfo.FileName}");

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CmlLib.Core.Auth;
 
 namespace NyxLauncher.Services;
 
@@ -14,6 +15,7 @@ public sealed class GameLaunchSession
     private volatile LaunchStatus _status = new(LaunchStage.Idle, "");
     private readonly object _stateLock = new();
     private long _lastProgress;
+    private string? _accessToken;
     public LaunchStatus Status => _status;
     public event EventHandler? Changed;
 
@@ -28,8 +30,9 @@ public sealed class GameLaunchSession
         }
     }
 
-    /// <summary>在后台检查资源并用启动时选中的身份创建游戏，监听可见窗口及退出；任何结果都回收本次进程句柄。</summary>
-    public async Task RunAsync(string folder, InstalledVersion version, DownloadSettings settings, OfflineAccount account)
+    /// <summary>后台检查资源后在调用上下文认证并保存账户，用锁定身份启动；取消覆盖网络与进程，最终回收句柄。</summary>
+    public async Task RunAsync(string folder, InstalledVersion version, DownloadSettings settings, GameAccount account,
+        Func<GameAccount, CancellationToken, Task<MSession>>? authenticate = null)
     {
         if (Interlocked.Exchange(ref _started, 1) != 0) throw new InvalidOperationException("启动会话不能重复运行。");
         Process? process = null;
@@ -38,10 +41,13 @@ public sealed class GameLaunchSession
         var token = _cancellation.Token;
         try
         {
-            await GameLaunchService.PrepareAsync(folder, version, settings, Report, token);
+            await Task.Run(() => GameLaunchService.PrepareAsync(folder, version, settings, Report, token), token);
             token.ThrowIfCancellationRequested();
-            Report(LaunchStage.LoggingIn, "登录账户 · " + account.Name + "（离线）");
-            process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token);
+            Report(LaunchStage.LoggingIn, "登录账户 · " + account.Name + "（" + account.TypeLabel + "）");
+            var identity = authenticate is null ? GameLaunchService.CreateSession(account) : await authenticate(account, token);
+            _accessToken = identity.AccessToken;
+            token.ThrowIfCancellationRequested();
+            process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token, identity);
             token.ThrowIfCancellationRequested();
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
@@ -57,7 +63,7 @@ public sealed class GameLaunchSession
                 if (!appeared && GameWindow.HasVisibleWindow(process.Id))
                 {
                     appeared = true;
-                    Report(LaunchStage.Running, "正在运行 · " + version.Name + " · " + account.Name);
+                    Report(LaunchStage.Running, "正在运行 · " + version.Name + " · " + identity.Username);
                 }
                 await Task.Delay(200, token);
             }
@@ -77,12 +83,12 @@ public sealed class GameLaunchSession
         }
         catch (Exception ex)
         {
-            string message = ex.Message;
+            string message = Redact(ex.Message, _accessToken);
             try { if (started) await EndProcessAsync(process!, false); }
             catch (Exception stop) { message += "\n停止游戏失败：" + stop.Message; }
             Set(LaunchStage.Failed, message);
         }
-        finally { process?.Dispose(); _cancellation.Dispose(); }
+        finally { process?.Dispose(); _cancellation.Dispose(); _accessToken = null; }
     }
 
     /// <summary>先向运行窗口发送正常关闭，三秒后仍未退出才结束整个子进程树；准备阶段直接终止，完成后等待系统确认退出。</summary>
@@ -95,12 +101,17 @@ public sealed class GameLaunchSession
         await process.WaitForExitAsync();
     }
 
-    /// <summary>保留末尾少量输出以说明 JVM 早期失败；持续排空两个管道，避免日志写满导致游戏挂起。</summary>
+    /// <summary>先删除游戏访问令牌再保留末尾输出，避免错误面板泄露身份；持续排空两个管道防止游戏挂起。</summary>
     private void CaptureOutput(object sender, DataReceivedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(e.Data)) return;
-        lock (_output) { _output.Enqueue(e.Data.Length > 1000 ? e.Data[..1000] : e.Data); while (_output.Count > 12) _output.Dequeue(); }
+        string text = Redact(e.Data, _accessToken);
+        lock (_output) { _output.Enqueue(text.Length > 1000 ? text[..1000] : text); while (_output.Count > 12) _output.Dequeue(); }
     }
+
+    /// <summary>在截断或展示日志前抹除本次会话令牌；空令牌不执行替换。</summary>
+    internal static string Redact(string text, string? accessToken) =>
+        string.IsNullOrEmpty(accessToken) ? text : text.Replace(accessToken, "[已隐藏令牌]", StringComparison.Ordinal);
 
     /// <summary>在锁内快照最近日志，避免 UI 读取时与输出回调竞争。</summary>
     private string RecentOutput() { lock (_output) return string.Join('\n', _output); }

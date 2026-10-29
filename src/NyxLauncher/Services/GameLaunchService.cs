@@ -12,9 +12,13 @@ namespace NyxLauncher.Services;
 /// <summary>从真实本地清单生成启动进程，将隔离策略用于 gameDir 与进程工作目录。</summary>
 public static class GameLaunchService
 {
-    /// <summary>为指定离线身份构造进程；按隔离策略设置存档目录，仅构造参数，不启动游戏或下载资源。</summary>
-    public static async Task<Process> BuildAsync(string folder, InstalledVersion version, IsolationMode isolation, OfflineAccount account, CancellationToken token = default)
+    /// <summary>用离线身份或已认证微软会话构造进程；校验身份一致性并设置隔离目录，不启动游戏或下载资源。</summary>
+    public static async Task<Process> BuildAsync(string folder, InstalledVersion version, IsolationMode isolation, GameAccount account,
+        CancellationToken token = default, MSession? authenticatedSession = null)
     {
+        var session = authenticatedSession ?? CreateSession(account);
+        if (session.UUID != account.Uuid || account.IsMicrosoft && (session.UserType != "msa" || string.IsNullOrEmpty(session.AccessToken)))
+            throw new InvalidOperationException("启动会话与所选账户不一致。");
         string gameDirectory = VersionIsolation.Resolve(folder, version, isolation);
         var path = new MinecraftPath(folder);
         var parameters = MinecraftLauncherParameters.CreateDefault(path);
@@ -23,7 +27,8 @@ public static class GameLaunchService
         Directory.CreateDirectory(gameDirectory);
         var process = await launcher.BuildProcessAsync(version.Name, new MLaunchOption
         {
-            Session = CreateSession(account),
+            Session = session,
+            ClientId = account.ClientId,
             GameLauncherName = "NyxLauncher",
             ArgumentDictionary = new Dictionary<string, string> { ["game_directory"] = gameDirectory }
         }, token);
@@ -34,9 +39,10 @@ public static class GameLaunchService
     }
 
     /// <summary>创建名称与标准离线 UUID 一致的会话；不使用库的随机/其他 UUID 默认值，也不声明正版认证。</summary>
-    internal static MSession CreateSession(OfflineAccount account)
+    internal static MSession CreateSession(GameAccount account)
     {
-        OfflineAccount.ValidateName(account.Name);
+        if (account.IsMicrosoft) throw new InvalidOperationException("微软账户必须先通过在线认证，不能使用离线会话。");
+        GameAccount.ValidateName(account.Name);
         var session = MSession.CreateOfflineSession(account.Name);
         session.UUID = account.Uuid;
         return session;

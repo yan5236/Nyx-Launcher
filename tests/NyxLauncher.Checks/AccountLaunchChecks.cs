@@ -134,7 +134,7 @@ internal static class AccountLaunchChecks
         foreach (string name in new[] { "qa-vanilla", "qa-Fabric", "qa-Forge", "qa-NeoForge" })
         {
             var version = versions.Single(x => x.Name == name && x.Error is null);
-            var account = new OfflineAccount(name is "qa-Fabric" or "qa-NeoForge" ? "Alex" : "Steve");
+            var account = new GameAccount(name is "qa-Fabric" or "qa-NeoForge" ? "Alex" : "Steve");
             using (var process = await GameLaunchService.BuildAsync(root, version, settings.Isolation, account))
                 Check(process.StartInfo.Arguments.Contains(account.Name) && process.StartInfo.Arguments.Contains(account.Uuid), name + "实际账户参数");
             var session = new GameLaunchSession();
