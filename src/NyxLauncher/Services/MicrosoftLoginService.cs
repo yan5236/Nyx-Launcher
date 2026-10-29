@@ -12,9 +12,9 @@ public static class MicrosoftLoginService
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly string[] Scopes = ["XboxLive.signin"];
 
-    /// <summary>新增或刷新微软账户并返回正版会话；仅显式交互请求打开浏览器，失败或取消不修改账户文件。</summary>
+    /// <summary>新增或刷新微软账户并返回正版会话；交互时可由 browserAuthorization 接收并打开授权链接，空值通知链接失效；失败或取消不修改账户文件。</summary>
     public static async Task<(GameAccount Account, MSession Session)> AuthenticateAsync(GameAccount? previous,
-        bool interactive, IProgress<string>? progress, CancellationToken token)
+        bool interactive, IProgress<string>? progress, CancellationToken token, IProgress<Uri?>? browserAuthorization = null)
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
         deadline.CancelAfter(TimeSpan.FromMinutes(5));
@@ -42,7 +42,7 @@ public static class MicrosoftLoginService
             progress?.Report(interactive ? "请在系统浏览器中完成微软登录…" : "正在刷新微软登录…");
             AuthenticationResult result;
             if (interactive)
-                result = await app.AcquireTokenInteractive(Scopes).WithCustomWebUi(new MicrosoftLoopbackBrowser())
+                result = await app.AcquireTokenInteractive(Scopes).WithCustomWebUi(new MicrosoftLoopbackBrowser(authorization: browserAuthorization))
                     .WithPrompt(Prompt.SelectAccount).ExecuteAsync(deadline.Token);
             else
             {

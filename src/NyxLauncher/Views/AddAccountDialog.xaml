@@ -2,7 +2,7 @@
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:views="using:NyxLauncher.Views"
- AllowDrop="True" DragOver="External_DragOver" Drop="External_Drop" PrimaryButtonText="取消" SecondaryButtonClick="Confirm_Click"
+ AllowDrop="True" DragOver="External_DragOver" Drop="External_Drop" PrimaryButtonText="取消" PrimaryButtonClick="Primary_Click" SecondaryButtonClick="Confirm_Click"
  SecondaryButtonStyle="{StaticResource DeepButtonStyle}" AutomationProperties.Name="添加账户">
  <ContentDialog.Resources>
   <ResourceDictionary>
@@ -48,10 +48,14 @@
    </Button>
   </StackPanel>
   <TextBox x:Name="AccountName" Visibility="Collapsed" Header="请输入账户名称" PlaceholderText="1–16 个英文字母、数字或下划线" MaxLength="16" AutomationProperties.Name="账户名称"/>
-  <StackPanel x:Name="LoginProgress" Spacing="16" Visibility="Collapsed">
-   <ProgressRing x:Name="LoginRing" IsActive="False" Width="32" Height="32"/>
-   <TextBlock x:Name="LoginStatus" TextWrapping="Wrap" MaxWidth="380"/>
-  </StackPanel>
+  <Grid x:Name="LoginProgress" MinHeight="210" Visibility="Collapsed">
+   <StackPanel Spacing="16" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="340">
+    <ProgressRing x:Name="LoginRing" IsActive="False" Width="32" Height="32" HorizontalAlignment="Center"/>
+    <TextBlock x:Name="LoginStatus" TextWrapping="Wrap" TextAlignment="Center"/>
+    <TextBlock x:Name="BrowserHint" Text="若浏览器未打开，请通过下面的按钮重试打开；也可复制链接，在本机浏览器中继续验证。"
+               FontSize="12" Foreground="#6B7A70" TextWrapping="Wrap" TextAlignment="Center"/>
+   </StackPanel>
+  </Grid>
   <ContentControl x:Name="ExternalPanel" Visibility="Collapsed" HorizontalContentAlignment="Stretch" MaxWidth="460"><StackPanel Spacing="12">
    <Grid x:Name="ServerHeader">
     <TextBlock Text="认证服务器" VerticalAlignment="Center"/>

@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using NyxLauncher.Services;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace NyxLauncher.Views;
 
@@ -14,6 +15,8 @@ public sealed partial class AddAccountDialog : ContentDialog
     private CancellationTokenSource? _loginCancellation;
     private Task? _loginTask;
     private bool _closed;
+    private Uri? _authorizationUri;
+    private bool _openingBrowser;
 
     /// <summary>注入账户存储和可选重登身份；显示测试配置提示，配置失败仅禁用微软入口，关闭会取消登录。</summary>
     public AddAccountDialog(AccountStore accounts, GameAccount? previous = null)
@@ -21,7 +24,7 @@ public sealed partial class AddAccountDialog : ContentDialog
         InitializeComponent(); _accounts = accounts; _previous = previous;
         try { MicrosoftHint.Text = MicrosoftLoginSettings.Load().IsTest ? "测试应用 · 仅供开发验证" : "在系统浏览器中登录"; }
         catch (Exception ex) { MicrosoftButton.IsEnabled = false; Error.Message = ex.Message; Error.IsOpen = true; }
-        Closed += (_, _) => { _externalTokens = null; ExternalPassword.Password = ""; _closed = true; _transition?.Stop(); _loginCancellation?.Cancel(); };
+        Closed += (_, _) => { _authorizationUri = null; _externalTokens = null; ExternalPassword.Password = ""; _closed = true; _transition?.Stop(); _loginCancellation?.Cancel(); };
         if (previous?.IsExternal == true)
         {
             Loaded += (_, _) => ShowCredentials(new ExternalServer(previous.AuthServerName!, previous.AuthServer!));
@@ -37,17 +40,30 @@ public sealed partial class AddAccountDialog : ContentDialog
     private void Microsoft_Click(object sender, RoutedEventArgs e)
     { if (_loginCancellation is null) _loginTask = LoginAsync(); }
 
-    /// <summary>展示认证阶段并在完成全部认证后保存账户；取消、错误及关闭均保留原账户且释放回调监听。</summary>
+    /// <summary>展示认证阶段和可重试的浏览器操作，链接仅在回调等待期间可用；全部认证成功才保存账户，取消及关闭释放监听。</summary>
     private async Task LoginAsync()
     {
         using var cancellation = new CancellationTokenSource();
         _loginCancellation = cancellation;
         Types.Visibility = Visibility.Collapsed; LoginProgress.Visibility = Visibility.Visible; LoginRing.IsActive = true;
         Error.IsOpen = false; DialogTitle.Text = _previous is null ? "微软登录" : "重新登录微软账户";
+        PrimaryButtonText = "打开浏览器"; SecondaryButtonText = "复制链接"; CloseButtonText = "取消";
+        IsPrimaryButtonEnabled = false; IsSecondaryButtonEnabled = false;
+        LoginStatus.Text = "正在准备微软登录…"; BrowserHint.Visibility = Visibility.Visible;
         var progress = new Progress<string>(text => { if (!_closed && _loginCancellation == cancellation) LoginStatus.Text = text; });
+        var authorization = new Progress<Uri?>(uri =>
+        {
+            if (_closed || _loginCancellation != cancellation) return;
+            _authorizationUri = uri;
+            IsPrimaryButtonEnabled = uri is not null && !_openingBrowser;
+            IsSecondaryButtonEnabled = uri is not null;
+            BrowserHint.Visibility = uri is null ? Visibility.Collapsed : Visibility.Visible;
+            if (uri is not null) _ = OpenLoginBrowserAsync();
+            else Error.IsOpen = false;
+        });
         try
         {
-            var result = await MicrosoftLoginService.AuthenticateAsync(_previous, true, progress, cancellation.Token);
+            var result = await MicrosoftLoginService.AuthenticateAsync(_previous, true, progress, cancellation.Token, authorization);
             cancellation.Token.ThrowIfCancellationRequested();
             if (_closed) return;
             _accounts.SaveMicrosoft(result.Account, _previous);
@@ -59,12 +75,54 @@ public sealed partial class AddAccountDialog : ContentDialog
         finally
         {
             _loginCancellation = null;
+            _authorizationUri = null;
             if (!_closed)
             {
                 LoginRing.IsActive = false; LoginProgress.Visibility = Visibility.Collapsed; Types.Visibility = Visibility.Visible;
                 DialogTitle.Text = _previous is null ? "添加账户" : "重新登录微软账户";
+                PrimaryButtonText = "取消"; SecondaryButtonText = ""; CloseButtonText = "";
+                IsPrimaryButtonEnabled = true; IsSecondaryButtonEnabled = true;
             }
         }
+    }
+
+    /// <summary>微软等待步骤点击主按钮只重开本次授权链接并保留弹窗；其他步骤仍由原生主按钮执行取消。</summary>
+    private void Primary_Click(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        if (_loginCancellation is null) return;
+        args.Cancel = true;
+        _ = OpenLoginBrowserAsync();
+    }
+
+    /// <summary>尝试用系统浏览器打开当前授权链接；失败保留回调和复制入口，完成后恢复重试，忽略关闭或过期链接的迟到结果。</summary>
+    private async Task OpenLoginBrowserAsync()
+    {
+        if (_closed || _authorizationUri is not { } uri || _openingBrowser) return;
+        _openingBrowser = true; IsPrimaryButtonEnabled = false;
+        bool opened;
+        try { opened = await Windows.System.Launcher.LaunchUriAsync(uri); }
+        catch (Exception) { opened = false; }
+        finally
+        {
+            _openingBrowser = false;
+            if (!_closed) IsPrimaryButtonEnabled = _loginCancellation is null || _authorizationUri is not null;
+        }
+        if (_closed || _authorizationUri != uri) return;
+        Error.IsOpen = !opened;
+        if (!opened) Error.Message = "无法打开系统浏览器，请再次点击“打开浏览器”，或复制链接到本机浏览器继续验证。";
+    }
+
+    /// <summary>将当前有效授权链接复制为文本；剪贴板失败只提示重试，不中断认证，不写入日志或账户文件。</summary>
+    private void CopyLoginLink()
+    {
+        if (_closed || _authorizationUri is not { } uri) return;
+        try
+        {
+            var content = new DataPackage(); content.SetText(uri.AbsoluteUri); Clipboard.SetContent(content);
+            Error.IsOpen = false;
+            LoginStatus.Text = "链接已复制，请在本机浏览器中打开并完成微软登录…";
+        }
+        catch (Exception) { Error.Message = "无法复制链接，请重试或点击“打开浏览器”。"; Error.IsOpen = true; }
     }
 
     /// <summary>窗口关闭时取消浏览器认证并等待回收；禁止迟到认证结果保存到本地账户。</summary>
@@ -115,9 +173,10 @@ public sealed partial class AddAccountDialog : ContentDialog
         _transition.Begin();
     }
 
-    /// <summary>外置步骤转交异步确认且保持弹窗；离线账户成功写入后关闭，名称或 I/O 错误留在当前步骤。</summary>
+    /// <summary>微软步骤复制链接并保持弹窗，外置步骤转交异步确认；离线账户成功写入后关闭，名称或 I/O 错误留在当前步骤。</summary>
     private void Confirm_Click(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
+        if (_loginCancellation is not null) { args.Cancel = true; CopyLoginLink(); return; }
         if (ExternalPanel.Visibility == Visibility.Visible)
         {
             args.Cancel = true;
