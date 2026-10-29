@@ -118,6 +118,12 @@ public sealed partial class VersionsView : UserControl
     private void Version_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: InstalledVersion version }) return;
+        OpenDetails(version);
+    }
+
+    /// <summary>供首页和列表共用的详情入口，展示传入版本的真实元数据与目录。</summary>
+    public void OpenDetails(InstalledVersion version)
+    {
         Details.Open(version);
         Catalog.Visibility = Visibility.Collapsed;
         Details.Visibility = Visibility.Visible;

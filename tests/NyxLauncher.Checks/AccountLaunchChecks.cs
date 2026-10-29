@@ -14,6 +14,7 @@ internal static class AccountLaunchChecks
         Directory.CreateDirectory(root);
         try
         {
+            VerifyLaunchFeedback(root);
             await VerifyAssetCopiesAsync(root);
             VerifyAccountRemoval(root);
             string path = Path.Combine(root, "accounts.json");
@@ -58,11 +59,37 @@ internal static class AccountLaunchChecks
             var missing = new GameLaunchSession();
             await missing.RunAsync(root, new("missing", root, "", "", "", null), new(), new("Test"));
             Check(missing.Status.Stage == LaunchStage.Failed && missing.Status.Message.Contains("不存在"), "缺失版本明确失败");
+            Check(missing.LogPath is not null && File.ReadAllText(missing.LogPath).Contains(missing.Status.Message), "准备失败也保存原因日志");
+            using (File.Open(missing.LogPath!, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+            Check(cancelled.LogPath is null, "准备前取消不创建日志");
             Console.WriteLine($"通过 {_checks} 项账户与启动检查。");
         }
         finally { Directory.Delete(root, true); }
     }
 
+    /// <summary>验证阶段进度在窗口出现前不满、日志独立且脱敏、关闭后不再写入，以及日志目录不可写时保留原因。</summary>
+    private static void VerifyLaunchFeedback(string root)
+    {
+        double previous = 0;
+        foreach (var stage in new[] { LaunchStage.CheckingAssets, LaunchStage.CheckingDependencies, LaunchStage.LoggingIn, LaunchStage.WaitingForWindow })
+        {
+            double value = new LaunchStatus(stage, "").Progress;
+            Check(value > previous && value < 100, stage + "递增且未完成"); previous = value;
+        }
+        Check(new LaunchStatus(LaunchStage.Running, "").Progress == 100, "仅窗口出现后完成进度");
+        using var first = new GameLaunchLog(root);
+        using var second = new GameLaunchLog(root);
+        first.Write(GameLaunchSession.Redact("令牌 secret-value，中文输出", "secret-value"));
+        first.Dispose(); first.Write("不能写入");
+        string content = File.ReadAllText(first.FilePath!);
+        Check(content.Contains("[已隐藏令牌]，中文输出") && !content.Contains("secret-value") && !content.Contains("不能写入"), "日志脱敏、UTF-8 和关闭行为");
+        Check(first.FilePath != second.FilePath && File.Exists(second.FilePath), "每次启动日志独立");
+        string blocked = Path.Combine(root, "blocked-log");
+        Directory.CreateDirectory(blocked); File.WriteAllText(Path.Combine(blocked, ".nyx-launch"), "blocked");
+        using var unavailable = new GameLaunchLog(blocked);
+        unavailable.Write("写入失败不阻断游戏");
+        Check(unavailable.FilePath is null && unavailable.Error is not null, "日志不可写明确提示");
+    }
     /// <summary>验证账户删除的选择回退、清空与重启恢复；模拟磁盘发布失败，确保账户和事件均不提前变化。</summary>
     private static void VerifyAccountRemoval(string root)
     {

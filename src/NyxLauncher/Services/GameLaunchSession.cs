@@ -4,7 +4,15 @@ using CmlLib.Core.Auth;
 namespace NyxLauncher.Services;
 
 public enum LaunchStage { Idle, CheckingAssets, CheckingDependencies, LoggingIn, WaitingForWindow, Running, Stopping, Exited, Failed }
-public sealed record LaunchStatus(LaunchStage Stage, string Message);
+public sealed record LaunchStatus(LaunchStage Stage, string Message)
+{
+    // 阶段里程碑不代表下载字节比例；窗口出现前始终保留最后一段。
+    public double Progress => Stage switch
+    {
+        LaunchStage.CheckingAssets => 10, LaunchStage.CheckingDependencies => 45,
+        LaunchStage.LoggingIn => 75, LaunchStage.WaitingForWindow => 94, LaunchStage.Running => 100, _ => 0
+    };
+}
 
 /// <summary>拥有一次完整启动及游戏进程生命周期；取消覆盖准备、进程创建竞态、等待窗口和运行阶段。</summary>
 public sealed class GameLaunchSession
@@ -16,6 +24,9 @@ public sealed class GameLaunchSession
     private readonly object _stateLock = new();
     private long _lastProgress;
     private string? _accessToken;
+    private GameLaunchLog? _log;
+    public string? LogPath => _log?.FilePath;
+    public string? LogError => _log?.Error;
     public LaunchStatus Status => _status;
     public event EventHandler? Changed;
 
@@ -30,7 +41,7 @@ public sealed class GameLaunchSession
         }
     }
 
-    /// <summary>后台检查资源后在调用上下文认证并保存账户，用锁定身份启动；取消覆盖网络与进程，最终回收句柄。</summary>
+    /// <summary>创建独立日志并后台检查资源，在调用上下文认证及保存账户；取消覆盖网络与进程，最终关闭日志及回收句柄。</summary>
     public async Task RunAsync(string folder, InstalledVersion version, DownloadSettings settings, GameAccount account,
         Func<GameAccount, CancellationToken, Task<MSession>>? authenticate = null)
     {
@@ -41,6 +52,9 @@ public sealed class GameLaunchSession
         var token = _cancellation.Token;
         try
         {
+            token.ThrowIfCancellationRequested();
+            _log = new GameLaunchLog(folder);
+            _log.Write("启动版本：" + version.Name);
             await Task.Run(() => GameLaunchService.PrepareAsync(folder, version, settings, Report, token), token);
             token.ThrowIfCancellationRequested();
             Report(LaunchStage.LoggingIn, "登录账户 · " + account.Name + "（" + account.TypeLabel + "）");
@@ -88,7 +102,7 @@ public sealed class GameLaunchSession
             catch (Exception stop) { message += "\n停止游戏失败：" + stop.Message; }
             Set(LaunchStage.Failed, message);
         }
-        finally { process?.Dispose(); _cancellation.Dispose(); _accessToken = null; }
+        finally { process?.Dispose(); _log?.Dispose(); _cancellation.Dispose(); _accessToken = null; }
     }
 
     /// <summary>先向运行窗口发送正常关闭，三秒后仍未退出才结束整个子进程树；准备阶段直接终止，完成后等待系统确认退出。</summary>
@@ -101,11 +115,12 @@ public sealed class GameLaunchSession
         await process.WaitForExitAsync();
     }
 
-    /// <summary>先删除游戏访问令牌再保留末尾输出，避免错误面板泄露身份；持续排空两个管道防止游戏挂起。</summary>
+    /// <summary>先删除游戏访问令牌，再保存完整输出及内存中的末尾摘要；持续排空两个管道防止游戏挂起。</summary>
     private void CaptureOutput(object sender, DataReceivedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(e.Data)) return;
         string text = Redact(e.Data, _accessToken);
+        _log?.Write(text);
         lock (_output) { _output.Enqueue(text.Length > 1000 ? text[..1000] : text); while (_output.Count > 12) _output.Dequeue(); }
     }
 
@@ -129,10 +144,11 @@ public sealed class GameLaunchSession
         }
     }
 
-    /// <summary>串行发布不可变状态，防止退出和停止竞争时留下停止中状态；界面订阅者负责线程调度。</summary>
+    /// <summary>发布不可变状态并写入脱敏日志，防止退出和停止竞争时留下停止中状态；界面订阅者负责线程调度。</summary>
     private void Set(LaunchStage stage, string message)
     {
         lock (_stateLock) _status = new(stage, message);
+        _log?.Write(Redact(message, _accessToken));
         Changed?.Invoke(this, EventArgs.Empty);
     }
 }

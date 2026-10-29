@@ -30,7 +30,7 @@
             <NavigationViewItem x:Name="HomeItem" Content="首页" Tag="home">
                 <NavigationViewItem.Icon><FontIcon Glyph="&#xE80F;" /></NavigationViewItem.Icon>
             </NavigationViewItem>
-            <NavigationViewItem Content="版本管理" Tag="versions">
+            <NavigationViewItem x:Name="VersionsItem" Content="版本管理" Tag="versions">
                 <NavigationViewItem.Icon><FontIcon Glyph="&#xE8F1;" /></NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="DownloadsItem" Content="下载" Tag="downloads">
@@ -65,8 +65,8 @@
                 </Button.Flyout>
             </Button>
         </NavigationView.PaneFooter>
-        <Grid Padding="28,20,28,28" MaxWidth="1280" HorizontalAlignment="Stretch">
-            <ScrollViewer x:Name="HomeScroll" HorizontalScrollBarVisibility="Disabled"
+        <Grid x:Name="ContentHost" Padding="28,20,28,28" MaxWidth="1280" HorizontalAlignment="Stretch">
+            <ScrollViewer x:Name="HomeScroll" SizeChanged="Home_SizeChanged" HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
                 <views:HomeView x:Name="HomeContent" />
             </ScrollViewer>

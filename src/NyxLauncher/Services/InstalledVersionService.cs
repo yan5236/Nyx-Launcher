@@ -8,6 +8,8 @@ public sealed record InstalledVersion(string Name, string DirectoryPath, string 
 {
     public string Detail => Error is not null ? "版本信息读取失败" :
         string.Join(" · ", new[] { GameVersion, Kind, Loader }.Where(x => !string.IsNullOrEmpty(x)));
+    public string LaunchDetail => Error is not null ? "版本信息读取失败" :
+        string.Join(" · ", new[] { "Minecraft " + GameVersion, Loader }.Where(x => !string.IsNullOrEmpty(x)));
     public string AccessibleName => Name + "，" + Detail;
 
     /// <summary>让列表容器和辅助技术使用可读版本信息，避免朗读记录的内部字段。</summary>
@@ -48,7 +50,7 @@ public static class InstalledVersionService
             throw new ArgumentException("无效的版本目录名。");
     }
 
-    /// <summary>递归合并最多 16 层继承，子版本优先；从库坐标及现代 FML 启动参数识别加载器，限制清单为 8 MiB并报告循环或坏格式。</summary>
+    /// <summary>递归合并最多 16 层继承，子版本优先；优先读取 clientVersion，并从库坐标及现代 FML 启动参数识别加载器，限制清单为 8 MiB并报告循环或坏格式。</summary>
     private static (string Game, string Kind, string Loader) ReadMetadata(string versions, string name, HashSet<string> seen)
     {
         ValidateName(name);
@@ -66,7 +68,8 @@ public static class InstalledVersionService
         string type = Text(root, "type");
         string kind = type switch { "release" => "正式版", "snapshot" => "快照版", "old_alpha" or "old_beta" => "远古版", _ => inherited.Kind };
         string loader = "";
-        string game = inherited.Game;
+        string clientVersion = Text(root, "clientVersion");
+        string game = clientVersion.Length > 0 ? clientVersion : inherited.Game;
         if (root.TryGetProperty("libraries", out var libraries))
         {
             if (libraries.ValueKind != JsonValueKind.Array) throw new JsonException("libraries 必须为列表。");

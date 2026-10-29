@@ -66,6 +66,9 @@ internal static class InstalledVersionChecks
             WriteVersion(defaultFolder, "ModernNeo", """{"id":"custom","type":"release","libraries":[{"name":"net.neoforged.fancymodloader:loader:4.0.45"}],"arguments":{"game":["--fml.neoForgeVersion","21.1.265","--fml.mcVersion","1.21.1"]}}""");
             var modernNeo = InstalledVersionService.Scan(defaultFolder).Single(x => x.Name == "ModernNeo");
             Check(modernNeo.Loader == "NeoForge: 21.1.265" && modernNeo.GameVersion == "1.21.1", "真实 NeoForge 清单通过 FML 参数识别");
+            WriteVersion(defaultFolder, "RenamedFabric", """{"id":"自定义名称","clientVersion":"1.20.1","type":"release","libraries":[{"name":"net.fabricmc:fabric-loader:0.16.14"}]}""");
+            var renamed = InstalledVersionService.Scan(defaultFolder).Single(x => x.Name == "RenamedFabric");
+            Check(renamed.GameVersion == "1.20.1" && renamed.LaunchDetail == "Minecraft 1.20.1 · Fabric: 0.16.14", "独立清单使用真实客户端版本，首页不重复自定义名称");
             Check(versions.Count(x => x.Error is not null) == 4, "坏清单、循环、越界继承和父版本缺失独立报错");
             Check(InstalledVersionService.Scan(Path.Combine(root, "中文 游戏-moved")).Count == 0, "无 versions 的真实文件夹为空");
             Throws<DirectoryNotFoundException>(() => InstalledVersionService.Scan(Path.Combine(root, "absent")), "失效根目录报告错误");

@@ -20,6 +20,7 @@
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\*.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\*.jpg" CopyToOutputDirectory="PreserveNewest" />
     <Manifest Include="$(ApplicationManifest)" />
     <PackageReference Include="CmlLib.Core" Version="4.1.0" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.92.0" />

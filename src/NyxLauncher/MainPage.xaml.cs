@@ -12,7 +12,7 @@ public sealed partial class MainPage : Page
 
     /// <summary>窗口关闭时停止下载、游戏及账户认证，等待进程与本机登录回调回收，不删除已完成版本。</summary>
     public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(), AccountContent.StopAsync());
-    /// <summary>加载页面，共用下载设置并初始化游戏目录，连接安装新版本导航后选中首页。</summary>
+    /// <summary>加载页面，共用下载设置并初始化游戏目录，连接安装新版本和首页详情导航后选中首页。</summary>
     public MainPage()
     {
         InitializeComponent();
@@ -25,6 +25,7 @@ public sealed partial class MainPage : Page
         SettingsContent.Configure(settings);
         VersionsContent.Configure(folders);
         HomeContent.Configure(folders, settings, _accounts);
+        HomeContent.ManageRequested += Home_ManageRequested;
         AccountContent.Configure(_accounts);
         _accounts.Changed += (_, _) => RefreshAccount();
         RefreshAccount();
@@ -35,6 +36,17 @@ public sealed partial class MainPage : Page
         };
         VersionsContent.InstallRequested += Versions_InstallRequested;
         Navigation.SelectedItem = HomeItem;
+    }
+
+    /// <summary>把首页视口尺寸交给首页布局，窗口缩放时同步调整图片和启动控件，不影响其他页面。</summary>
+    private void Home_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        HomeContent?.ResizeLayout(e.NewSize.Width, e.NewSize.Height);
+
+    /// <summary>从首页切换到版本管理并直接打开所选版本详情，保持主导航选中态一致。</summary>
+    private void Home_ManageRequested(object? sender, InstalledVersion version)
+    {
+        Navigation.SelectedItem = VersionsItem;
+        VersionsContent.OpenDetails(version);
     }
 
     /// <summary>账户保存后同步侧栏名称与共用头像控件；微软真实皮肤异步加载，空账户显示中性图标。</summary>
@@ -82,6 +94,7 @@ public sealed partial class MainPage : Page
     /// <param name="page">由本页导航提供的 home、versions、downloads、account 或 settings 标签。</param>
     private void ShowPage(string page)
     {
+        ContentHost.MaxWidth = page == "home" ? double.PositiveInfinity : 1280;
         HomeScroll.Visibility = page == "home" ? Visibility.Visible : Visibility.Collapsed;
         VersionsScroll.Visibility = page == "versions" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent.Visibility = page == "downloads" ? Visibility.Visible : Visibility.Collapsed;
