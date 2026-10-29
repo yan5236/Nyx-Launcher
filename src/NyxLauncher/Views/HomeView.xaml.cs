@@ -126,9 +126,17 @@ public sealed partial class HomeView : UserControl
         if (!_closing) await new LaunchFailureDialog(XamlRoot, session).ShowAsync();
     }
 
-    /// <summary>离线身份直接创建会话，微软身份静默刷新并原子保存；失败明确终止启动，不自动弹浏览器。</summary>
+    /// <summary>离线身份直接创建会话，微软或外置身份验证及刷新后原子保存；失败明确终止启动，不自动弹浏览器。</summary>
     private async Task<CmlLib.Core.Auth.MSession> AuthenticateAsync(GameAccount account, CancellationToken token)
     {
+        if (account.IsExternal)
+        {
+            using var login = new ExternalLoginService();
+            var external = await login.RefreshAsync(account, token);
+            token.ThrowIfCancellationRequested();
+            _accounts!.SaveExternal(external.Account, account, select: false);
+            return external.Session;
+        }
         if (!account.IsMicrosoft) return GameLaunchService.CreateSession(account);
         var result = await MicrosoftLoginService.AuthenticateAsync(account, false, null, token);
         token.ThrowIfCancellationRequested();

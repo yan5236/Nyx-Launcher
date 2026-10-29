@@ -26,9 +26,9 @@ public sealed class AccountStore
                 if (account is null) throw new JsonException("账户为空。");
                 account.Validate();
             }
-            if (saved.Accounts.Select(x => x.Key).Distinct(StringComparer.OrdinalIgnoreCase).Count() != saved.Accounts.Length)
+            if (saved.Accounts.Select(x => x.IsExternal ? x.Key : x.Key.ToUpperInvariant()).Distinct(StringComparer.Ordinal).Count() != saved.Accounts.Length)
                 throw new JsonException("账户身份重复。");
-            var selected = saved.Accounts.SingleOrDefault(x => x.Key == saved.Selected || !x.IsMicrosoft && x.Name == saved.Selected);
+            var selected = saved.Accounts.SingleOrDefault(x => x.Key == saved.Selected || !x.IsMicrosoft && !x.IsExternal && x.Name == saved.Selected);
             if (saved.Accounts.Length > 0 && selected is null || saved.Accounts.Length == 0 && saved.Selected is not null)
                 throw new JsonException("当前账户不在账户列表中。");
             Accounts = saved.Accounts;
@@ -42,7 +42,7 @@ public sealed class AccountStore
     public void Add(string name)
     {
         GameAccount.ValidateName(name);
-        if (Accounts.Any(x => !x.IsMicrosoft && string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)))
+        if (Accounts.Any(x => !x.IsMicrosoft && !x.IsExternal && string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)))
             throw new ArgumentException("该离线账户已存在。");
         var account = new GameAccount(name);
         Save(Accounts.Append(account).ToArray(), account);
@@ -55,6 +55,18 @@ public sealed class AccountStore
         if (!account.IsMicrosoft) throw new ArgumentException("需要微软账户。");
         if (previous is not null && (!Accounts.Contains(previous) || previous.Key != account.Key))
             throw new InvalidOperationException("账户已改变或移除，请重新选择后登录。");
+        var existing = Accounts.SingleOrDefault(x => x.Key == account.Key);
+        var updated = existing is null ? Accounts.Append(account).ToArray() : Accounts.Select(x => x == existing ? account : x).ToArray();
+        Save(updated, select || Selected == existing ? account : Selected);
+    }
+
+    /// <summary>保存外置角色并保留原账户选择；刷新时拒绝复活已删除账户或替换服务器身份。</summary>
+    public void SaveExternal(GameAccount account, GameAccount? previous = null, bool select = true)
+    {
+        account.Validate();
+        if (!account.IsExternal) throw new ArgumentException("需要外置账户。");
+        if (previous is not null && (!Accounts.Contains(previous) || previous.Key != account.Key))
+            throw new InvalidOperationException("账户已改变或移除，请重新登录。");
         var existing = Accounts.SingleOrDefault(x => x.Key == account.Key);
         var updated = existing is null ? Accounts.Append(account).ToArray() : Accounts.Select(x => x == existing ? account : x).ToArray();
         Save(updated, select || Selected == existing ? account : Selected);

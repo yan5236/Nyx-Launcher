@@ -21,8 +21,12 @@ public sealed partial class AddAccountDialog : ContentDialog
         InitializeComponent(); _accounts = accounts; _previous = previous;
         try { MicrosoftHint.Text = MicrosoftLoginSettings.Load().IsTest ? "测试应用 · 仅供开发验证" : "在系统浏览器中登录"; }
         catch (Exception ex) { MicrosoftButton.IsEnabled = false; Error.Message = ex.Message; Error.IsOpen = true; }
-        Closed += (_, _) => { _closed = true; _transition?.Stop(); _loginCancellation?.Cancel(); };
-        if (previous is not null)
+        Closed += (_, _) => { _externalTokens = null; ExternalPassword.Password = ""; _closed = true; _transition?.Stop(); _loginCancellation?.Cancel(); };
+        if (previous?.IsExternal == true)
+        {
+            Loaded += (_, _) => ShowCredentials(new ExternalServer(previous.AuthServerName!, previous.AuthServer!));
+        }
+        else if (previous is not null)
         {
             OfflineButton.IsEnabled = false;
             Loaded += (_, _) => { if (MicrosoftButton.IsEnabled && _loginTask is null) _loginTask = LoginAsync(); };
@@ -83,6 +87,9 @@ public sealed partial class AddAccountDialog : ContentDialog
     /// <summary>返回类型列表而不关闭弹窗，保留已输入名称但清除旧错误。</summary>
     private void Back_Click(object sender, RoutedEventArgs args)
     {
+        if (_loginCancellation is not null) return;
+        if (ExternalPanel.Visibility == Visibility.Visible && BackExternal()) return;
+        ExternalPanel.Visibility = Visibility.Collapsed; ExternalPassword.Password = ""; _externalTokens = null;
         DialogTitle.Text = "添加账户"; Types.Visibility = Visibility.Visible; AccountName.Visibility = Visibility.Collapsed;
         BackButton.Visibility = Visibility.Collapsed;
         SecondaryButtonText = ""; DefaultButton = ContentDialogButton.None; Error.IsOpen = false;
@@ -108,9 +115,15 @@ public sealed partial class AddAccountDialog : ContentDialog
         _transition.Begin();
     }
 
-    /// <summary>只有账户成功写入后才关闭；名称或 I/O 错误留在当前输入步骤。</summary>
+    /// <summary>外置步骤转交异步确认且保持弹窗；离线账户成功写入后关闭，名称或 I/O 错误留在当前步骤。</summary>
     private void Confirm_Click(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
+        if (ExternalPanel.Visibility == Visibility.Visible)
+        {
+            args.Cancel = true;
+            ConfirmExternal();
+            return;
+        }
         try { _accounts.Add(AccountName.Text); }
         catch (Exception ex) { args.Cancel = true; Error.Message = ex.Message; Error.IsOpen = true; }
     }

@@ -7,16 +7,26 @@ namespace NyxLauncher.Services;
 /// <summary>按真实 UUID 查询 Mojang 公开皮肤档案，只从官方纹理域下载，不读取或发送登录令牌。</summary>
 internal static class MinecraftSkinService
 {
-    /// <summary>获取完整 PNG 皮肤；无皮肤返回 null，网络或格式错误向调用方传播，由显示层保留缓存。</summary>
-    internal static async Task<byte[]?> FetchAsync(HttpClient http, string uuid, CancellationToken token)
+    /// <summary>按可选外置服务器查询公开角色档案和声明的纹理域，所有请求不带凭据；获取完整 PNG 皮肤；无皮肤返回 null，网络或格式错误向调用方传播，由显示层保留缓存。</summary>
+    internal static async Task<byte[]?> FetchAsync(HttpClient http, string uuid, CancellationToken token, string? authServer = null)
     {
         ValidateUuid(uuid);
-        using var profileResponse = await http.GetAsync("https://sessionserver.mojang.com/session/minecraft/profile/" + uuid,
+        IReadOnlyCollection<string>? domains = null;
+        string profileUrl = "https://sessionserver.mojang.com/session/minecraft/profile/" + uuid;
+        if (authServer is not null)
+        {
+            using var login = new ExternalLoginService();
+            var found = await login.DiscoverAsync(authServer, token);
+            using var metadata = JsonDocument.Parse(found.Metadata);
+            domains = metadata.RootElement.GetProperty("skinDomains").EnumerateArray().Select(d => d.GetString()!).Append(new Uri(authServer).Host).ToArray();
+            profileUrl = ExternalServerStore.Normalize(authServer) + "sessionserver/session/minecraft/profile/" + uuid;
+        }
+        using var profileResponse = await http.GetAsync(profileUrl,
             HttpCompletionOption.ResponseHeadersRead, token);
         if (profileResponse.StatusCode == HttpStatusCode.NoContent) return null;
         profileResponse.EnsureSuccessStatusCode();
         await profileResponse.Content.LoadIntoBufferAsync(128 * 1024, token);
-        var url = ParseSkinUrl(await profileResponse.Content.ReadAsByteArrayAsync(token), uuid);
+        var url = ParseSkinUrl(await profileResponse.Content.ReadAsByteArrayAsync(token), uuid, domains);
         if (url is null) return null;
         using var skinResponse = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
         skinResponse.EnsureSuccessStatusCode();
@@ -27,8 +37,8 @@ internal static class MinecraftSkinService
         return skin;
     }
 
-    /// <summary>校验档案属于请求的 UUID，解码 textures 属性并限制官方纹理 URL；历史 HTTP 地址升级为 HTTPS。</summary>
-    internal static Uri? ParseSkinUrl(byte[] data, string uuid)
+    /// <summary>校验档案 UUID 并解码 textures；默认只允许官方纹理，外置模式只允许元数据声明的 HTTPS 域，拒绝凭据、IP 和本机地址。</summary>
+    internal static Uri? ParseSkinUrl(byte[] data, string uuid, IReadOnlyCollection<string>? domains = null)
     {
         ValidateUuid(uuid);
         using var profile = JsonDocument.Parse(data);
@@ -40,6 +50,15 @@ internal static class MinecraftSkinService
             if (property.GetProperty("name").GetString() != "textures") continue;
             using var textures = JsonDocument.Parse(Convert.FromBase64String(property.GetProperty("value").GetString()!));
             if (!textures.RootElement.GetProperty("textures").TryGetProperty("SKIN", out var skin)) return null;
+            if (domains is not null)
+            {
+                if (!Uri.TryCreate(skin.GetProperty("url").GetString(), UriKind.Absolute, out var external) ||
+                    external.Scheme != "https" || !external.IsDefaultPort || external.IsLoopback || IPAddress.TryParse(external.Host, out _) ||
+                    external.UserInfo.Length != 0 || external.Query.Length != 0 || external.Fragment.Length != 0 ||
+                    !domains.Any(d => d.StartsWith('.') ? external.Host.EndsWith(d, StringComparison.OrdinalIgnoreCase) || external.Host.Equals(d[1..], StringComparison.OrdinalIgnoreCase) : external.Host.Equals(d, StringComparison.OrdinalIgnoreCase)))
+                    throw new InvalidDataException("皮肤地址不属于认证服务器声明的 HTTPS 纹理域。");
+                return external;
+            }
             if (!Uri.TryCreate(skin.GetProperty("url").GetString(), UriKind.Absolute, out var url) ||
                 url.Scheme is not ("http" or "https") || url.Host != "textures.minecraft.net" || !url.IsDefaultPort ||
                 url.UserInfo.Length != 0 || url.Query.Length != 0 || url.Fragment.Length != 0 ||

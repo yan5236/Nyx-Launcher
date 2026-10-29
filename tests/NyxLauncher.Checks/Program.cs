@@ -8,9 +8,20 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行微软认证、皮肤头像、账户、启动和下载断言；--live 系列显式执行真实安装或启动验收。</summary>
+    /// <summary>运行微软及外置认证、皮肤头像、账户、启动和下载断言；--live 系列显式执行真实安装或启动验收。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--external-avatar"))
+        {
+            await ExternalLoginChecks.AvatarLiveAsync();
+            return;
+        }
+        if (args.Contains("--external-live"))
+        {
+            await ExternalLoginChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--external-live") + 1]));
+            return;
+        }
+        await ExternalLoginChecks.RunAsync();
         if (args.Contains("--microsoft-callback"))
         {
             await MicrosoftCallbackChecks.RunAsync();

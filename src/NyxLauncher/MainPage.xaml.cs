@@ -38,6 +38,37 @@ public sealed partial class MainPage : Page
         Navigation.SelectedItem = HomeItem;
     }
 
+    /// <summary>主窗口接受浏览器文本卡片的复制拖拽，具体格式在放下后校验。</summary>
+    private void AuthServer_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text))
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+    }
+
+    /// <summary>读取卡片后立即结束系统拖放，再打开登录弹窗；拖放延迟不覆盖网络请求或弹窗生命周期，读取失败同样释放。</summary>
+    private async void AuthServer_Drop(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        try
+        {
+            string text;
+            var deferral = e.GetDeferral();
+            try
+            {
+                if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text)) return;
+                text = await e.DataView.GetTextAsync();
+            }
+            finally { deferral.Complete(); }
+            if (!text.StartsWith("authlib-injector:yggdrasil-server:", StringComparison.OrdinalIgnoreCase)) return;
+            Navigation.SelectedItem = null; ShowPage("account");
+            await AccountContent.ImportServerAsync(text);
+        }
+        catch (Exception ex)
+        {
+            await new ContentDialog { XamlRoot = XamlRoot, Title = "无法读取认证卡片", Content = ex.Message, CloseButtonText = "确定" }.ShowAsync();
+        }
+    }
+
     /// <summary>把首页视口尺寸交给首页布局，窗口缩放时同步调整图片和启动控件，不影响其他页面。</summary>
     private void Home_SizeChanged(object sender, SizeChangedEventArgs e) =>
         HomeContent?.ResizeLayout(e.NewSize.Width, e.NewSize.Height);

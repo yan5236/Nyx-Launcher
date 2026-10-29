@@ -5,14 +5,16 @@ using System.Text.Json.Serialization;
 
 namespace NyxLauncher.Services;
 
-/// <summary>保存离线或微软游戏身份；微软缓存只允许存放当前 Windows 用户加密后的数据。</summary>
+/// <summary>保存离线、微软或外置游戏身份；认证缓存只允许存放当前 Windows 用户加密后的数据。</summary>
 public sealed record GameAccount(string Name, string? ProfileId = null, string? MicrosoftAccountId = null,
-    string? ClientId = null, string? ProtectedTokenCache = null)
+    string? ClientId = null, string? ProtectedTokenCache = null,
+    string? AuthServer = null, string? AuthServerName = null, string? ExternalUsername = null)
 {
-    [JsonIgnore] public bool IsMicrosoft => ProfileId is not null;
+    [JsonIgnore] public bool IsExternal => AuthServer is not null;
+    [JsonIgnore] public bool IsMicrosoft => ProfileId is not null && !IsExternal;
     [JsonIgnore] public string Uuid => ProfileId ?? GetUuid(Name);
-    [JsonIgnore] public string Key => IsMicrosoft ? "microsoft:" + Uuid : "offline:" + Name;
-    [JsonIgnore] public string TypeLabel => IsMicrosoft ? "微软账户" : "离线账户";
+    [JsonIgnore] public string Key => IsExternal ? "external:" + AuthServer + ":" + Uri.EscapeDataString(ExternalUsername!) + ":" + Uuid : IsMicrosoft ? "microsoft:" + Uuid : "offline:" + Name;
+    [JsonIgnore] public string TypeLabel => IsExternal ? "外置账户 · " + AuthServerName : IsMicrosoft ? "微软账户" : "离线账户";
     [JsonIgnore] public string Avatar => "ms-appx:///Assets/" + (IsAlex ? "alex" : "steve") + "-avatar.png";
     [JsonIgnore] public bool IsAlex
     {
@@ -23,10 +25,21 @@ public sealed record GameAccount(string Name, string? ProfileId = null, string? 
         }
     }
 
-    /// <summary>校验完整身份结构；拒绝缺失或混合认证字段，防止损坏的微软身份被当作离线账户。</summary>
+    /// <summary>校验完整身份结构；拒绝缺失或混合认证字段，防止损坏的在线身份被当作离线账户。</summary>
     public void Validate()
     {
         ValidateName(Name);
+        if (IsExternal)
+        {
+            if (AuthServer != ExternalServerStore.Normalize(AuthServer!) || string.IsNullOrWhiteSpace(AuthServerName) ||
+                string.IsNullOrWhiteSpace(ExternalUsername) || ProfileId is null || !Regex.IsMatch(ProfileId, @"\A[0-9a-f]{32}\z") ||
+                MicrosoftAccountId is not null || ClientId is not null || string.IsNullOrWhiteSpace(ProtectedTokenCache))
+                throw new ArgumentException("外置账户信息不完整，请重新登录。");
+            try { _ = Convert.FromBase64String(ProtectedTokenCache); }
+            catch (FormatException) { throw new ArgumentException("外置账户缓存格式无效。"); }
+            return;
+        }
+        if (AuthServerName is not null || ExternalUsername is not null) throw new ArgumentException("账户包含无效外置认证字段。");
         if (!IsMicrosoft)
         {
             if (MicrosoftAccountId is not null || ClientId is not null || ProtectedTokenCache is not null)

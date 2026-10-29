@@ -7,7 +7,7 @@ using Windows.Graphics.Imaging;
 
 namespace NyxLauncher.Views;
 
-/// <summary>账户页与侧栏共用的头像控件；离线显示默认头像，微软账户异步显示真实皮肤正脸与帽子层。</summary>
+/// <summary>账户页与侧栏共用的头像控件；离线显示默认头像，在线账户及选角预览异步显示真实皮肤正脸与帽子层。</summary>
 public sealed class AccountAvatar : UserControl
 {
     private readonly Image _image = new();
@@ -16,6 +16,11 @@ public sealed class AccountAvatar : UserControl
     public static readonly DependencyProperty AccountProperty = DependencyProperty.Register(nameof(Account), typeof(GameAccount),
         typeof(AccountAvatar), new PropertyMetadata(null, AccountChanged));
     public GameAccount? Account { get => (GameAccount?)GetValue(AccountProperty); set => SetValue(AccountProperty, value); }
+
+    public static readonly DependencyProperty ProfileIdProperty = DependencyProperty.Register(nameof(ProfileId), typeof(string), typeof(AccountAvatar), new PropertyMetadata(null, AccountChanged));
+    public static readonly DependencyProperty AuthServerProperty = DependencyProperty.Register(nameof(AuthServer), typeof(string), typeof(AccountAvatar), new PropertyMetadata(null, AccountChanged));
+    public string? ProfileId { get => (string?)GetValue(ProfileIdProperty); set => SetValue(ProfileIdProperty, value); }
+    public string? AuthServer { get => (string?)GetValue(AuthServerProperty); set => SetValue(AuthServerProperty, value); }
 
     /// <summary>创建无底色、无边框的头像，加载或切换账户时刷新；卸载使迟到请求失效。</summary>
     public AccountAvatar()
@@ -34,11 +39,15 @@ public sealed class AccountAvatar : UserControl
     {
         int generation = ++_generation;
         var account = Account;
-        _image.Source = account is null ? null : new BitmapImage(new Uri(account.Avatar));
-        if (account is not { IsMicrosoft: true }) return;
+        string? uuid = account?.Uuid ?? ProfileId;
+        string? server = account?.AuthServer ?? AuthServer;
+        string fallback = account?.Avatar ?? "ms-appx:///Assets/steve-avatar.png";
+        _image.Source = uuid is null ? null : new BitmapImage(new Uri(fallback));
+        if (uuid is null || account is { IsMicrosoft: false, IsExternal: false }) return;
+        string key = server is null ? uuid : Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(server))) + "-" + uuid;
         try
         {
-            string cachePath = CachePath(account.Uuid);
+            string cachePath = CachePath(key);
             if (File.Exists(cachePath) && new FileInfo(cachePath).Length == 64 * 64 * 4)
             {
                 byte[] cached = await File.ReadAllBytesAsync(cachePath);
@@ -51,15 +60,15 @@ public sealed class AccountAvatar : UserControl
         try
         {
             // 同一 UI 线程中的所有头像共用一次请求，避免侧栏和卡片重复查询同一个档案。
-            if (!Requests.TryGetValue(account.Uuid, out var request)) Requests[account.Uuid] = request = DownloadAsync(account.Uuid);
+            if (!Requests.TryGetValue(key, out var request)) Requests[key] = request = DownloadAsync(uuid, server, key);
             byte[]? pixels = await request;
             if (generation != _generation) return;
-            if (pixels is null) _image.Source = new BitmapImage(new Uri(account.Avatar));
+            if (pixels is null) _image.Source = new BitmapImage(new Uri(fallback));
             else SetPixels(pixels);
         }
         catch (Exception)
         {
-            Requests.Remove(account.Uuid);
+            Requests.Remove(key);
             // 皮肤加载属于可选显示，失败时保留已显示的缓存或默认头像。
         }
     }
@@ -75,20 +84,19 @@ public sealed class AccountAvatar : UserControl
         _image.Source = bitmap;
     }
 
-    /// <summary>生成带合成版本的 UUID 缓存路径，避免读取旧版不透明方形头像；缓存不包含账户凭据。</summary>
-    private static string CachePath(string uuid)
+    /// <summary>生成带合成版本和服务器摘要的缓存路径，避免读取旧版不透明方形头像；缓存不包含账户凭据。</summary>
+    private static string CachePath(string key)
     {
-        MinecraftSkinService.ValidateUuid(uuid);
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NyxLauncher", "avatars", uuid + "-head-v2.bgra");
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NyxLauncher", "avatars", key + "-head-v2.bgra");
     }
 
-    /// <summary>从官方源下载后用 Windows 解码器解码并裁剪，成功后原子缓存；磁盘写入失败仍允许本次显示。</summary>
-    private static async Task<byte[]?> DownloadAsync(string uuid)
+    /// <summary>从对应认证服务器公开档案下载后用 Windows 解码器解码并裁剪，成功后原子缓存；磁盘写入失败仍允许本次显示。</summary>
+    private static async Task<byte[]?> DownloadAsync(string uuid, string? server, string key)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
-        byte[]? png = await MinecraftSkinService.FetchAsync(http, uuid, timeout.Token);
-        string path = CachePath(uuid);
+        byte[]? png = await MinecraftSkinService.FetchAsync(http, uuid, timeout.Token, server);
+        string path = CachePath(key);
         if (png is null)
         {
             try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }

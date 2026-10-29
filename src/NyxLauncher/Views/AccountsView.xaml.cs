@@ -64,11 +64,11 @@ public sealed partial class AccountsView : UserControl
         catch (Exception ex) { Refresh(); Error.Message = ex.Message; Error.IsOpen = true; }
     }
 
-    /// <summary>离线账户重新校验，微软账户在可取消弹窗中重新授权；只接受与原游戏 UUID 一致的身份。</summary>
+    /// <summary>离线账户重新校验，微软或外置账户在可取消弹窗中重新认证；只接受与原游戏 UUID 一致的身份。</summary>
     private async void RetryLogin_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: GameAccount account }) return;
-        if (account.IsMicrosoft) { await ShowAccountDialogAsync(account); return; }
+        if (account.IsMicrosoft || account.IsExternal) { await ShowAccountDialogAsync(account); return; }
         try
         {
             _ = GameLaunchService.CreateSession(account);
@@ -95,7 +95,7 @@ public sealed partial class AccountsView : UserControl
         => await ShowAccountDialogAsync(null);
 
     /// <summary>共用添加和重登弹窗，防止重复打开；异常仍留在账户页，窗口关闭后不接受新的登录。</summary>
-    private async Task ShowAccountDialogAsync(GameAccount? previous)
+    private async Task ShowAccountDialogAsync(GameAccount? previous, string? import = null)
     {
         if (_closing || _dialog is not null) return;
         Error.IsOpen = false;
@@ -104,11 +104,19 @@ public sealed partial class AccountsView : UserControl
         try
         {
             _dialog = new AddAccountDialog(_accounts!, previous) { XamlRoot = XamlRoot };
+            if (import is not null) _dialog.Loaded += (_, _) => _dialog?.ImportServer(import);
             await _dialog.ShowAsync();
             await _dialog.StopAsync();
         }
         catch (Exception ex) { Error.Message = ex.Message; Error.IsOpen = true; }
         finally { _dialog = null; AddButton.IsEnabled = !_closing; }
+    }
+
+    /// <summary>从主窗口拖放导入服务器；已有添加弹窗时复用，避免叠加模态窗口。</summary>
+    public async Task ImportServerAsync(string text)
+    {
+        if (_dialog is not null) _dialog.ImportServer(text);
+        else await ShowAccountDialogAsync(null, text);
     }
 
     /// <summary>关闭启动器时取消账户交互并等待在途认证结束，避免保存迟到结果或遗留监听端口。</summary>

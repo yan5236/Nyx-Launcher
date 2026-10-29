@@ -12,13 +12,15 @@ namespace NyxLauncher.Services;
 /// <summary>从真实本地清单生成启动进程，将隔离策略用于 gameDir 与进程工作目录。</summary>
 public static class GameLaunchService
 {
-    /// <summary>用离线身份或已认证微软会话构造进程；校验身份一致性并设置隔离目录，不启动游戏或下载资源。</summary>
+    /// <summary>用离线或已认证在线会话构造进程；校验身份、设置隔离目录，外置账户准备注入器及元数据，但不启动游戏。</summary>
     public static async Task<Process> BuildAsync(string folder, InstalledVersion version, IsolationMode isolation, GameAccount account,
         CancellationToken token = default, MSession? authenticatedSession = null)
     {
         var session = authenticatedSession ?? CreateSession(account);
         if (session.UUID != account.Uuid || account.IsMicrosoft && (session.UserType != "msa" || string.IsNullOrEmpty(session.AccessToken)))
             throw new InvalidOperationException("启动会话与所选账户不一致。");
+        if (account.IsExternal && (session.UserType != "mojang" || string.IsNullOrWhiteSpace(session.AccessToken)))
+            throw new InvalidOperationException("外置账户必须提供有效认证会话。");
         string gameDirectory = VersionIsolation.Resolve(folder, version, isolation);
         var path = new MinecraftPath(folder);
         var parameters = MinecraftLauncherParameters.CreateDefault(path);
@@ -35,13 +37,15 @@ public static class GameLaunchService
         process.StartInfo.WorkingDirectory = gameDirectory;
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.CreateNoWindow = true;
+        try { if (account.IsExternal) await AuthlibInjector.ConfigureAsync(process, folder, account.AuthServer!, token); }
+        catch { process.Dispose(); throw; }
         return process;
     }
 
     /// <summary>创建名称与标准离线 UUID 一致的会话；不使用库的随机/其他 UUID 默认值，也不声明正版认证。</summary>
     internal static MSession CreateSession(GameAccount account)
     {
-        if (account.IsMicrosoft) throw new InvalidOperationException("微软账户必须先通过在线认证，不能使用离线会话。");
+        if (account.IsMicrosoft || account.IsExternal) throw new InvalidOperationException("在线账户必须先通过在线认证，不能使用离线会话。");
         GameAccount.ValidateName(account.Name);
         var session = MSession.CreateOfflineSession(account.Name);
         session.UUID = account.Uuid;
