@@ -12,9 +12,9 @@ namespace NyxLauncher.Services;
 /// <summary>从真实本地清单生成启动进程，将隔离策略用于 gameDir 与进程工作目录。</summary>
 public static class GameLaunchService
 {
-    /// <summary>用离线或已认证在线会话构造进程；校验身份、设置隔离目录，外置账户准备注入器及元数据，但不启动游戏。</summary>
+    /// <summary>用已验证会话和可选固定 Java 路径构造进程；设置隔离目录及外置认证注入器，但不启动游戏。</summary>
     public static async Task<Process> BuildAsync(string folder, InstalledVersion version, IsolationMode isolation, GameAccount account,
-        CancellationToken token = default, MSession? authenticatedSession = null)
+        CancellationToken token = default, MSession? authenticatedSession = null, string? javaPath = null)
     {
         var session = authenticatedSession ?? CreateSession(account);
         if (session.UUID != account.Uuid || account.IsMicrosoft && (session.UserType != "msa" || string.IsNullOrEmpty(session.AccessToken)))
@@ -30,6 +30,7 @@ public static class GameLaunchService
         var process = await launcher.BuildProcessAsync(version.Name, new MLaunchOption
         {
             Session = session,
+            JavaPath = javaPath,
             ClientId = account.ClientId,
             GameLauncherName = "NyxLauncher",
             ArgumentDictionary = new Dictionary<string, string> { ["game_directory"] = gameDirectory }
@@ -52,9 +53,9 @@ public static class GameLaunchService
         return session;
     }
 
-    /// <summary>先校验并补齐资源，再检查客户端、库与 Java；所有文件复用统一下载器的哈希验证、源策略和取消机制。</summary>
-    public static async Task PrepareAsync(string folder, InstalledVersion version, DownloadSettings settings,
-        Action<LaunchStage, string> report, CancellationToken token)
+    /// <summary>按继承清单选择 Java 并补齐资源，返回固定的启动路径；提供管理快照时缺失版本明确报错，不隐式替换手动选择。</summary>
+    public static async Task<string?> PrepareAsync(string folder, InstalledVersion version, DownloadSettings settings,
+        Action<LaunchStage, string> report, CancellationToken token, JavaSelection? java = null)
     {
         token.ThrowIfCancellationRequested();
         var current = InstalledVersionService.Scan(folder, token).SingleOrDefault(x => x.Name == version.Name);
@@ -67,6 +68,15 @@ public static class GameLaunchService
         parameters.VersionLoader = new LocalJsonVersionLoader(path);
         var launcher = new MinecraftLauncher(parameters);
         var profile = await launcher.GetVersionAsync(version.Name, token);
+        string? javaPath = null;
+        if (java is not null)
+        {
+            report(LaunchStage.CheckingDependencies, "选择兼容的 Java");
+            int required = RequiredJavaMajor(profile);
+            var bundledRoots = new[] { path.Runtime, Path.Combine(AppContext.BaseDirectory, "Java") }.Where(Directory.Exists);
+            var bundled = java.SelectedHome is null ? JavaDiscovery.Scan(bundledRoots, null, token).Runtimes : [];
+            javaPath = JavaRuntimeStore.Resolve(java, required, bundled).Executable;
+        }
         var installer = new GameDownloadInstaller(transport, folder);
         report(LaunchStage.CheckingAssets, "检查资源完整性");
         foreach (var inherited in profile.EnumerateToParent())
@@ -85,6 +95,7 @@ public static class GameLaunchService
         report(LaunchStage.CheckingDependencies, "检查依赖完整性");
         foreach (var extractor in launcher.FileExtractors.Where(x => x is not AssetFileExtractor))
         {
+            if (extractor is JavaFileExtractor && javaPath is not null) continue;
             // Java 使用有效继承属性所属清单，避免加载器子清单未声明 Java 时误装 Java 8。
             var profiles = extractor is JavaFileExtractor ?
                 new[] { profile.EnumerateToParent().FirstOrDefault(x => x.JavaVersion is not null) ?? profile } : profile.EnumerateToParent();
@@ -96,6 +107,21 @@ public static class GameLaunchService
                 await installer.Install(files, Progress(LaunchStage.CheckingDependencies, "检查依赖完整性", report), null, token);
             }
         }
+        return javaPath;
+    }
+
+    /// <summary>从最近一层 Java 声明读取主版本，包括加载器继承；老清单没有声明时按 Java 8 处理，未知声明报错。</summary>
+    internal static int RequiredJavaMajor(IVersion profile)
+    {
+        var requirement = profile.EnumerateToParent().Select(x => x.JavaVersion).FirstOrDefault(x => x is not null);
+        if (requirement is null) return 8;
+        if (int.TryParse(requirement.MajorVersion, out int major) && major > 0) return major;
+        return requirement.Component switch
+        {
+            "jre-legacy" => 8, "java-runtime-alpha" => 16, "java-runtime-beta" or "java-runtime-gamma" or "java-runtime-gamma-snapshot" => 17,
+            "java-runtime-delta" => 21, "java-runtime-epsilon" => 25,
+            _ => throw new IOException("游戏清单声明了未知 Java 版本，请检查版本清单。")
+        };
     }
 
     /// <summary>同步上报已验证文件计数；UI 统一切回调度线程，不生成虚构百分比或阶段。</summary>

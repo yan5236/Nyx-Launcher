@@ -118,8 +118,8 @@ $sns = [System.Xml.XmlNamespaceManager]::new($settings.NameTable)
 $sns.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
 $sns.AddNamespace('x', $xns)
 $settingTabs = $settings.SelectNodes('//ui:SelectorBar/ui:SelectorBarItem', $sns)
-if (($settingTabs | ForEach-Object { $_.Text }) -join ',' -cne '通用,下载') {
-    throw '设置页必须使用通用、下载两个 Tab。'
+if (($settingTabs | ForEach-Object { $_.Text }) -join ',' -cne '通用,下载,Java') {
+    throw '设置页必须使用通用、下载、Java 三个 Tab。'
 }
 foreach ($name in @('FileSource', 'VersionSource')) {
     $source = $settings.SelectSingleNode("//ui:ComboBox[@x:Name='$name']", $sns)
@@ -128,7 +128,7 @@ foreach ($name in @('FileSource', 'VersionSource')) {
     }
 }
 $connections = $settings.SelectSingleNode("//ui:Slider[@x:Name='Connections']", $sns)
-$parallel = $settings.SelectSingleNode("//ui:StackPanel[@x:Name='DownloadPanel']//ui:Slider[@x:Name='ParallelDownloads']", $sns)
+$parallel = $settings.SelectSingleNode("//*[@x:Name='DownloadPanel']//ui:Slider[@x:Name='ParallelDownloads']", $sns)
 $speed = $settings.SelectSingleNode("//ui:Slider[@x:Name='Speed']", $sns)
 if ($connections.Minimum -ne '1' -or $connections.Maximum -ne '64' -or
     $parallel.Minimum -ne '1' -or $parallel.Maximum -ne '64' -or $parallel.StepFrequency -ne '1' -or
@@ -140,6 +140,20 @@ if ((Get-Content (Join-Path $project 'Views/DownloadTasksView.xaml') -Raw -Encod
 }
 if ($settings.OuterXml.Contains('目标文件夹') -or $settings.OuterXml.Contains('选择文件夹')) {
     throw '设置页不应添加文件夹选项。'
+}
+
+# Java 主版本复用渠道页的普通按钮卡片，不保留列表选中状态，点选后直接前进。
+[xml]$javaDialog = Get-Content (Join-Path $project 'Views/InstallJavaDialog.xaml') -Raw -Encoding utf8
+$javaNs = [System.Xml.XmlNamespaceManager]::new($javaDialog.NameTable)
+$javaNs.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$javaNs.AddNamespace('x', $xns)
+$majorButtons = $javaDialog.SelectNodes('//ui:StackPanel[@x:Name="MajorPanel"]/ui:Button', $javaNs)
+if ($javaDialog.DocumentElement.SecondaryButtonText -ne '' -or
+    $javaDialog.DocumentElement.SecondaryButtonClick -ne 'Install_Click' -or
+    ($majorButtons | ForEach-Object { $_.Tag }) -join ',' -cne '8,17,21,25' -or
+    @($majorButtons | Where-Object { $_.Click -ne 'Major_Click' -or $_.HorizontalAlignment -ne 'Stretch' }).Count -ne 0 -or
+    $javaDialog.SelectSingleNode('//ui:StackPanel[@x:Name="MajorPanel"]//ui:ListView', $javaNs)) {
+    throw 'Java 主版本必须使用无选中状态的按钮卡片直接进入渠道，安装按钮只用于最终确认。'
 }
 
 # 安装配置页：编辑名称、右侧安装按钮、三个加载器图标及同一行灰色状态。

@@ -64,13 +64,13 @@ public sealed partial class DownloadTasksView : UserControl
         else _tasks?.Cancel(item);
     }
 
-    /// <summary>通过系统打开任务实际目标目录；安装未发布时打开版本父目录，失败在页面中显示。</summary>
+    /// <summary>通过系统打开文件、游戏或 Java 的实际目标目录；安装未发布时打开父目录，失败在页面中显示。</summary>
     private async void Folder_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: DownloadTaskItem item }) return;
         try
         {
-            string path = item.IsGame && Directory.Exists(item.Destination) ? item.Destination : Path.GetDirectoryName(item.Destination)!;
+            string path = (item.IsGame || item.IsJava) && Directory.Exists(item.Destination) ? item.Destination : Path.GetDirectoryName(item.Destination)!;
             var folder = await Windows.Storage.StorageFolder.GetFolderFromPathAsync(path);
             if (!await Windows.System.Launcher.LaunchFolderAsync(folder)) throw new IOException("无法打开下载目录。");
         }

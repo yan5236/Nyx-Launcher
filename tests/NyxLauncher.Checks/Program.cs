@@ -8,9 +8,21 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行微软及外置认证、皮肤头像、账户、启动和下载断言；--live 系列显式执行真实安装或启动验收。</summary>
+    /// <summary>运行 Java 管理、认证、皮肤、账户、启动和下载断言；--java-scan 显式扫描本机，--java-live/--java-catalog 及 --live 系列访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--java-scan"))
+        {
+            await JavaChecks.ScanLiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--java-scan") + 1]));
+            return;
+        }
+        if (args.Contains("--java-live") || args.Contains("--java-catalog"))
+        {
+            string flag = args.Contains("--java-live") ? "--java-live" : "--java-catalog";
+            await JavaChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, flag) + 1]), flag == "--java-live");
+            return;
+        }
+        await JavaChecks.RunAsync();
         if (args.Contains("--external-avatar"))
         {
             await ExternalLoginChecks.AvatarLiveAsync();

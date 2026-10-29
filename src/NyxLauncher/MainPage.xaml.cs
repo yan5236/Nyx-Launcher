@@ -10,9 +10,9 @@ public sealed partial class MainPage : Page
     private readonly DownloadTaskManager _tasks;
     private readonly AccountStore _accounts;
 
-    /// <summary>窗口关闭时停止下载、游戏及账户认证，等待进程与本机登录回调回收，不删除已完成版本。</summary>
-    public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(), AccountContent.StopAsync());
-    /// <summary>加载页面，共用下载设置并初始化游戏目录，连接安装新版本和首页详情导航后选中首页。</summary>
+    /// <summary>窗口关闭时停止下载、游戏、Java 扫描及账户认证，等待后台回收，不删除已完成版本。</summary>
+    public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(), AccountContent.StopAsync(), SettingsContent.StopAsync());
+    /// <summary>加载页面，共享下载和 Java 状态，初始化目录，连接安装完成与首页导航后选中首页。</summary>
     public MainPage()
     {
         InitializeComponent();
@@ -23,8 +23,10 @@ public sealed partial class MainPage : Page
         _tasks = tasks;
         DownloadsContent.Configure(settings, tasks, folders);
         SettingsContent.Configure(settings);
+        var java = new JavaRuntimeStore();
+        SettingsContent.ConfigureJava(java, tasks);
         VersionsContent.Configure(folders);
-        HomeContent.Configure(folders, settings, _accounts);
+        HomeContent.Configure(folders, settings, _accounts, java);
         HomeContent.ManageRequested += Home_ManageRequested;
         AccountContent.Configure(_accounts);
         _accounts.Changed += (_, _) => RefreshAccount();
@@ -121,7 +123,7 @@ public sealed partial class MainPage : Page
         ShowPage("settings");
     }
 
-    /// <summary>显示指定页面；版本管理重新扫描本地目录，下载页加载清单，离开时取消各自在途工作。</summary>
+    /// <summary>显示指定页面；版本管理扫描目录，下载页加载清单，设置页激活 Java 管理，首页刷新选择。</summary>
     /// <param name="page">由本页导航提供的 home、versions、downloads、account 或 settings 标签。</param>
     private void ShowPage(string page)
     {
@@ -133,6 +135,7 @@ public sealed partial class MainPage : Page
         SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent.SetActive(page == "downloads");
         VersionsContent.SetActive(page == "versions");
+        SettingsContent.SetActive(page == "settings");
         if (page == "home") HomeContent.Refresh();
     }
 }

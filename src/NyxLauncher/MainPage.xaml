@@ -75,10 +75,9 @@
             </Grid>
             <views:DownloadsView x:Name="DownloadsContent" Visibility="Collapsed" />
             <views:AccountsView x:Name="AccountContent" Visibility="Collapsed" />
-            <ScrollViewer x:Name="SettingsScroll" HorizontalScrollBarVisibility="Disabled"
-                          VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+            <Grid x:Name="SettingsScroll" Visibility="Collapsed">
                 <views:SettingsView x:Name="SettingsContent" />
-            </ScrollViewer>
+            </Grid>
         </Grid>
     </NavigationView>
 </Page>

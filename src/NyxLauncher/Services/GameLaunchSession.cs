@@ -41,9 +41,9 @@ public sealed class GameLaunchSession
         }
     }
 
-    /// <summary>创建独立日志并后台检查资源，在调用上下文认证及保存账户；取消覆盖网络与进程，最终关闭日志及回收句柄。</summary>
+    /// <summary>创建日志并按固定 Java 选择检查资源，认证后使用同一 Java 构造进程；取消覆盖网络与进程，最终回收句柄。</summary>
     public async Task RunAsync(string folder, InstalledVersion version, DownloadSettings settings, GameAccount account,
-        Func<GameAccount, CancellationToken, Task<MSession>>? authenticate = null)
+        Func<GameAccount, CancellationToken, Task<MSession>>? authenticate = null, JavaSelection? java = null)
     {
         if (Interlocked.Exchange(ref _started, 1) != 0) throw new InvalidOperationException("启动会话不能重复运行。");
         Process? process = null;
@@ -55,13 +55,14 @@ public sealed class GameLaunchSession
             token.ThrowIfCancellationRequested();
             _log = new GameLaunchLog(folder);
             _log.Write("启动版本：" + version.Name);
-            await Task.Run(() => GameLaunchService.PrepareAsync(folder, version, settings, Report, token), token);
+            string? javaPath = await Task.Run(() => GameLaunchService.PrepareAsync(folder, version, settings, Report, token, java), token);
+            if (javaPath is not null) _log.Write("Java：" + javaPath);
             token.ThrowIfCancellationRequested();
             Report(LaunchStage.LoggingIn, "登录账户 · " + account.Name + "（" + account.TypeLabel + "）");
             var identity = authenticate is null ? GameLaunchService.CreateSession(account) : await authenticate(account, token);
             _accessToken = identity.AccessToken;
             token.ThrowIfCancellationRequested();
-            process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token, identity);
+            process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token, identity, javaPath);
             token.ThrowIfCancellationRequested();
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;

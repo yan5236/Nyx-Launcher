@@ -12,6 +12,7 @@ public sealed partial class HomeView : UserControl
     private GameFolderStore? _folders;
     private DownloadSettingsStore? _settings;
     private AccountStore? _accounts;
+    private JavaRuntimeStore? _java;
     private GameLaunchSession? _session;
     private Task? _running;
     private int _refresh;
@@ -50,10 +51,10 @@ public sealed partial class HomeView : UserControl
         ((TextBlock)labels.Children[1]).FontSize = 11 * scale;
     }
 
-    /// <summary>共用目录、隔离和账户状态；切换账户只影响下一次启动。</summary>
-    public void Configure(GameFolderStore folders, DownloadSettingsStore settings, AccountStore accounts)
+    /// <summary>共用目录、隔离、账户与 Java 状态；切换选择只影响下一次启动。</summary>
+    public void Configure(GameFolderStore folders, DownloadSettingsStore settings, AccountStore accounts, JavaRuntimeStore java)
     {
-        _folders = folders; _settings = settings; _accounts = accounts;
+        _folders = folders; _settings = settings; _accounts = accounts; _java = java;
         accounts.Changed += (_, _) => UpdateControls();
         Refresh();
     }
@@ -91,7 +92,7 @@ public sealed partial class HomeView : UserControl
         if (VersionList.SelectedItem is InstalledVersion version) ManageRequested?.Invoke(this, version);
     }
 
-    /// <summary>锁定版本和身份启动会话并滑入阶段进度；再次点击停止，失败在会话回收后弹出原因与日志入口。</summary>
+    /// <summary>锁定版本、身份和 Java 快照启动会话；再次点击停止，失败在会话回收后弹出原因与日志入口。</summary>
     private async void Launch_Click(object sender, RoutedEventArgs e)
     {
         if (_session is not null) { _session.Stop(); UpdateControls(); return; }
@@ -104,7 +105,7 @@ public sealed partial class HomeView : UserControl
         var settings = _settings!.Current;
         try
         {
-            _running = session.RunAsync(root, version, settings, account, AuthenticateAsync);
+            _running = session.RunAsync(root, version, settings, account, AuthenticateAsync, _java?.Current);
             await _running;
             ShowProgress(session.Status);
         }

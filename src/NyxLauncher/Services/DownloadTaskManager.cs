@@ -11,6 +11,7 @@ public sealed class DownloadTaskItem : INotifyPropertyChanged
     public required string Name { get; init; }
     public required string Destination { get; init; }
     public bool IsGame { get; init; }
+    public bool IsJava { get; init; }
     public DownloadState State { get; internal set; } = DownloadState.Queued;
     public string Detail { get; internal set; } = "等待下载";
     public double Percent { get; internal set; }
@@ -84,6 +85,21 @@ public sealed class DownloadTaskManager
         var installation = new GameInstallationService(folder, item.Id, settings);
         item.Work = (transport, token) => installation.InstallAsync(name, game, loader, transport,
             (percent, detail) => Report(item, percent, detail), token, fabricApi);
+        item.Cleanup = installation.Cleanup;
+        Add(item);
+        return item;
+    }
+
+    /// <summary>为选定 Java 发行包创建标准下载任务，共享并行预算、进度、暂停、重试和取消，成功后由安装器登记到 Java 列表。</summary>
+    public DownloadTaskItem AddJava(JavaPackage package, JavaRuntimeStore store, string? launcherDirectory = null)
+    {
+        var item = new DownloadTaskItem
+        {
+            Name = $"Java {package.Major} · {package.Channel} · {package.Version}", IsJava = true,
+            Destination = Path.Combine(launcherDirectory ?? AppContext.BaseDirectory, "Java", package.FolderName)
+        };
+        var installation = new JavaInstallationService(launcherDirectory ?? AppContext.BaseDirectory, item.Id, package, store);
+        item.Work = (transport, token) => installation.InstallAsync(transport, (percent, detail) => Report(item, percent, detail), token);
         item.Cleanup = installation.Cleanup;
         Add(item);
         return item;
