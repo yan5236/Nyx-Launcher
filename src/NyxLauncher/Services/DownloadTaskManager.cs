@@ -71,10 +71,11 @@ public sealed class DownloadTaskManager
         return item;
     }
 
-    /// <summary>锁定创建时的游戏目录、名称和加载器选择，先验证冲突；任务创建成功立即返回，不等待网络。</summary>
-    public DownloadTaskItem AddGame(string folder, string name, string game, LoaderVersion? loader)
+    /// <summary>锁定创建时的游戏目录、隔离设置、加载器及可选 API，先验证兼容性和冲突；成功立即返回，不等待网络。</summary>
+    public DownloadTaskItem AddGame(string folder, string name, string game, LoaderVersion? loader, FabricApiVersion? fabricApi = null)
     {
         GameInstallationService.ValidateName(name);
+        FabricApiService.ValidateSelection(game, loader, fabricApi);
         if (!Directory.Exists(folder)) throw new IOException("请先在版本管理中选择有效的游戏目录。");
         string destination = Path.Combine(folder, "versions", name);
         if (Directory.Exists(destination) || File.Exists(destination)) throw new IOException("该版本名称已存在，请换一个名称。");
@@ -82,7 +83,7 @@ public sealed class DownloadTaskManager
         var settings = _settings.Current;
         var installation = new GameInstallationService(folder, item.Id, settings);
         item.Work = (transport, token) => installation.InstallAsync(name, game, loader, transport,
-            (percent, detail) => Report(item, percent, detail), token);
+            (percent, detail) => Report(item, percent, detail), token, fabricApi);
         item.Cleanup = installation.Cleanup;
         Add(item);
         return item;

@@ -19,7 +19,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Closing += Window_Closing;
     }
 
-    /// <summary>关闭窗口前取消本会话任务并等待处理器退出，防止后台继续修改游戏文件。</summary>
+    /// <summary>关闭窗口前停止本会话下载和游戏并等待进程退出，防止遗留后台工作或失去游戏停止入口。</summary>
     private async void Window_Closing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
     {
         if (_readyToClose) return;

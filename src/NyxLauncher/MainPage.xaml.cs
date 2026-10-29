@@ -8,21 +8,26 @@ namespace NyxLauncher;
 public sealed partial class MainPage : Page
 {
     private readonly DownloadTaskManager _tasks;
+    private readonly AccountStore _accounts;
 
-    /// <summary>供窗口关闭流程等待下载取消及临时资源清理，不删除已完成版本。</summary>
-    public Task StopDownloadsAsync() => _tasks.ShutdownAsync();
+    /// <summary>窗口关闭时停止本会话下载及游戏，等待处理器和游戏进程退出，不删除已完成版本。</summary>
+    public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync());
     /// <summary>加载页面，共用下载设置并初始化游戏目录，连接安装新版本导航后选中首页。</summary>
     public MainPage()
     {
         InitializeComponent();
         var settings = new DownloadSettingsStore();
         var folders = new GameFolderStore();
+        _accounts = new AccountStore();
         var tasks = new DownloadTaskManager(settings, action => DispatcherQueue.TryEnqueue(() => action()));
         _tasks = tasks;
         DownloadsContent.Configure(settings, tasks, folders);
         SettingsContent.Configure(settings);
         VersionsContent.Configure(folders);
-        HomeContent.Configure(folders, settings);
+        HomeContent.Configure(folders, settings, _accounts);
+        AccountContent.Configure(_accounts);
+        _accounts.Changed += (_, _) => RefreshAccount();
+        RefreshAccount();
         tasks.InstallationCompleted += (_, _) =>
         {
             if (VersionsScroll.Visibility == Visibility.Visible) VersionsContent.SetActive(true);
@@ -30,6 +35,17 @@ public sealed partial class MainPage : Page
         };
         VersionsContent.InstallRequested += Versions_InstallRequested;
         Navigation.SelectedItem = HomeItem;
+    }
+
+    /// <summary>账户保存成功后同步侧栏名称及裁剪头像；空账户显示中性图标，不虚构 Steve 身份。</summary>
+    private void RefreshAccount()
+    {
+        var account = _accounts.Selected;
+        AccountName.Text = account?.Name ?? "未添加账户";
+        AccountAvatar.Source = account is null ? null : new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(account.Avatar));
+        AccountAvatar.Visibility = account is null ? Visibility.Collapsed : Visibility.Visible;
+        EmptyAccountIcon.Visibility = account is null ? Visibility.Visible : Visibility.Collapsed;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(AccountMenuButton, AccountName.Text + "，打开账户菜单");
     }
 
     /// <summary>从版本管理进入游戏下载列表，更新主导航选中态并重置下载分类。</summary>
@@ -48,7 +64,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>从底部弹层打开账户原型，并清除主导航的选中状态。</summary>
+    /// <summary>从底部弹层打开账户管理，并清除主导航的选中状态。</summary>
     private void Account_Click(object sender, RoutedEventArgs e)
     {
         Navigation.SelectedItem = null;
@@ -69,7 +85,7 @@ public sealed partial class MainPage : Page
         HomeScroll.Visibility = page == "home" ? Visibility.Visible : Visibility.Collapsed;
         VersionsScroll.Visibility = page == "versions" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent.Visibility = page == "downloads" ? Visibility.Visible : Visibility.Collapsed;
-        AccountScroll.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
+        AccountContent.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
         SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent.SetActive(page == "downloads");
         VersionsContent.SetActive(page == "versions");

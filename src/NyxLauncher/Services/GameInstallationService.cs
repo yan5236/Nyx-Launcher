@@ -43,12 +43,13 @@ public sealed class GameInstallationService
                 throw new IOException("安装路径不能包含符号链接或目录联接：" + current);
     }
 
-    /// <summary>按所选版本安装，资源并发采用共享传输器的当前批次限制；取消保留已验证资源，失败不发布版本，已有目标绝不覆盖。</summary>
+    /// <summary>按所选版本和可选 Fabric API 安装；API 写入隔离策略对应的 mods，取消保留已验证共享资源，失败不发布版本，已有目标绝不覆盖。</summary>
     public async Task InstallAsync(string name, string game, LoaderVersion? loader, DownloadTransport transport,
-        Action<double, string> report, CancellationToken token)
+        Action<double, string> report, CancellationToken token, FabricApiVersion? fabricApi = null)
     {
         ValidateName(name); ValidateName(game);
         if (loader is not null) ValidateName(loader.Id);
+        FabricApiService.ValidateSelection(game, loader, fabricApi);
         var folderLock = FolderLocks.GetOrAdd(_root, _ => new(1));
         report(0, "等待游戏目录中的其他安装完成");
         await folderLock.WaitAsync(token);
@@ -99,6 +100,15 @@ public sealed class GameInstallationService
             Directory.CreateDirectory(publish);
             File.Copy(jar, Path.Combine(publish, name + ".jar"), true);
             await File.WriteAllTextAsync(Path.Combine(publish, name + ".json"), merged.ToJsonString(), token);
+            if (fabricApi is not null)
+            {
+                report(98, "下载 Fabric API · " + fabricApi.Version);
+                string kind = merged["type"]?.GetValue<string>() == "release" && !AprilFoolsVersions.Ids.Contains(game) ? "正式版" : "快照版";
+                var version = new InstalledVersion(name, destination, game, kind, "Fabric", null);
+                string gameDirectory = VersionIsolation.Resolve(_root, version, _settings.Isolation);
+                string mods = Path.Combine(gameDirectory == destination ? publish : gameDirectory, "mods");
+                await FabricApiService.InstallAsync(fabricApi, mods, transport, token);
+            }
             token.ThrowIfCancellationRequested();
             Directory.CreateDirectory(Path.Combine(_root, "versions"));
             Directory.Move(publish, destination);

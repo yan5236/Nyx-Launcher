@@ -6,14 +6,11 @@
  SecondaryButtonStyle="{StaticResource DeepButtonStyle}"
  DefaultButton="Secondary" SecondaryButtonClick="Download_Click">
  <ContentDialog.Resources>
-  <SolidColorBrush x:Key="AccentButtonBackground" Color="#28563B" />
-  <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#346C4B" />
-  <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#20452F" />
-  <SolidColorBrush x:Key="AccentButtonForeground" Color="White" />
-  <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#28563B" />
-  <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#346C4B" />
-  <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#20452F" />
-  <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="White" />
+  <ResourceDictionary>
+   <ResourceDictionary.MergedDictionaries>
+    <ResourceDictionary Source="ms-appx:///Themes/AccentButtonResources.xaml"/>
+   </ResourceDictionary.MergedDictionaries>
+  </ResourceDictionary>
  </ContentDialog.Resources>
  <StackPanel Spacing="18" MinWidth="350">
   <TextBox x:Name="DownloadUrl" Header="下载链接" PlaceholderText="https://…/文件名.zip"

@@ -143,7 +143,7 @@ public sealed partial class VersionsView : UserControl
         if (sender is Button { Tag: InstalledVersion version }) await DeleteAsync(version);
     }
 
-    /// <summary>确认后将单个版本目录送入系统回收站；取消、权限或链接校验失败均保留列表并显示原因，不回退为永久删除。</summary>
+    /// <summary>使用共享绿色交互配色的弹窗确认后，将单个版本目录送入回收站；取消或校验失败保留列表，不回退为永久删除。</summary>
     private async Task DeleteAsync(InstalledVersion version)
     {
         if (_dialogOpen || _folders?.Selected is not { } folder) return;
@@ -156,6 +156,10 @@ public sealed partial class VersionsView : UserControl
                 Content = "将以下版本文件夹移入回收站，其中的独立存档、模组和设置也会一起移入。共享资源和其他版本不受影响。\n\n" + version.DirectoryPath,
                 PrimaryButtonText = "移入回收站", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close
             };
+            dialog.Resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri("ms-appx:///Themes/AccentButtonResources.xaml")
+            });
             if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
             string target = await Task.Run(() => InstalledVersionService.GetDeletionTarget(folder, version));
             Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(target,

@@ -21,12 +21,6 @@
                 <Button x:Name="InstallButton" Grid.Column="2" MinWidth="96" Padding="20,12"
                         VerticalAlignment="Center" AutomationProperties.Name="安装"
                         Style="{StaticResource DeepButtonStyle}" Click="Install_Click">
-                    <Button.Resources>
-                        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#346C4B" />
-                        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#20452F" />
-                        <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White" />
-                        <SolidColorBrush x:Key="ButtonForegroundPressed" Color="White" />
-                    </Button.Resources>
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE896;" FontSize="16" Foreground="White" />
                         <TextBlock Text="安装" Foreground="White" />
@@ -57,6 +51,18 @@
                         <TextBlock Grid.Column="1" Text="Fabric" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock x:Name="FabricStatus" Grid.Column="2" FontSize="13" Foreground="#6B7A70" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
                         <FontIcon x:Name="FabricAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
+                    </Grid>
+                </Button>
+                <Button x:Name="ApiButton" Click="Api_Click" IsEnabled="False"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}"
+                        BorderThickness="1" Padding="12,10" MinHeight="56">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Image Source="ms-appx:///Assets/fabric.png" Width="32" Height="32" Stretch="Uniform" AutomationProperties.Name="Fabric API 图标" />
+                        <TextBlock Grid.Column="1" Text="Fabric API" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock x:Name="ApiStatus" Grid.Column="2" FontSize="13" Foreground="#6B7A70" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                        <FontIcon x:Name="ApiAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
                     </Grid>
                 </Button>
                 <Button x:Name="NeoForgeButton" Tag="NeoForge" Click="Loader_Click" IsEnabled="False"

@@ -9,8 +9,8 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <Grid ColumnSpacing="16">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <TextBlock Text="选择加载器版本" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Click="Close_Click" Background="Transparent" BorderThickness="0" Padding="10"
+            <TextBlock x:Name="DialogTitle" Text="选择加载器版本" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <Button x:Name="CloseButton" Grid.Column="1" Click="Close_Click" Background="Transparent" BorderThickness="0" Padding="10"
                     AutomationProperties.Name="关闭加载器版本选择" ToolTipService.ToolTip="关闭">
                 <FontIcon Glyph="&#xE711;" FontSize="18" />
             </Button>
@@ -28,15 +28,15 @@
                 </Style>
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
-                <DataTemplate x:DataType="services:LoaderVersion">
+                <DataTemplate>
                     <Border Style="{StaticResource CardStyle}" Padding="14,12" Background="Transparent"
-                            AutomationProperties.Name="{x:Bind AccessibleName}">
+                            AutomationProperties.Name="{Binding AccessibleName}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="36" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <Image Source="{x:Bind Icon}" Width="36" Height="36" Stretch="Uniform" />
+                            <Image Source="{Binding Icon}" Width="36" Height="36" Stretch="Uniform" />
                             <StackPanel Grid.Column="1" Spacing="3">
-                                <TextBlock Text="{x:Bind Version}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                <TextBlock Text="{x:Bind Detail}" FontSize="13" Foreground="#6B7A70" />
+                                <TextBlock Text="{Binding Version}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Detail}" FontSize="13" Foreground="#6B7A70" />
                             </StackPanel>
                         </Grid>
                     </Border>

@@ -1,6 +1,7 @@
 using CmlLib.Core;
 using CmlLib.Core.Files;
 using CmlLib.Core.Installers;
+using CmlLib.Core.Tasks;
 
 namespace NyxLauncher.Services;
 
@@ -27,7 +28,7 @@ internal sealed class GameDownloadInstaller(DownloadTransport transport, string 
                             true, false, null, token);
                     else if (!await DownloadTransport.ValidAsync(file.Path!, file.Hash, file.Size, token))
                         throw new IOException("安装依赖缺失且没有下载地址：" + file.Name);
-                    await file.ExecuteUpdateTask(token);
+                    await ApplyUpdatesAsync(file, token);
                     fileProgress?.Report(new(files.Length, Interlocked.Increment(ref completed), file.Name, InstallerEventType.Done));
                 }
                 catch (Exception ex)
@@ -38,6 +39,28 @@ internal sealed class GameDownloadInstaller(DownloadTransport transport, string 
             }); }
         catch when (failure is not null && !cancellationToken.IsCancellationRequested)
         { System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw(); throw; }
+    }
+
+    /// <summary>资源副本同样校验哈希和写入边界；同长度损坏会原子修复，取消或失败保留已有副本，其他后处理沿用库实现。</summary>
+    private async Task ApplyUpdatesAsync(GameFile file, CancellationToken token)
+    {
+        foreach (var update in file.UpdateTask)
+        {
+            if (update is not FileCopyTask copy) { await update.Execute(file, token); continue; }
+            ValidateDestination(root, new GameFile(file.Name) { Path = copy.DestinationPath });
+            if (await DownloadTransport.ValidAsync(copy.DestinationPath, file.Hash, file.Size, token)) continue;
+            Directory.CreateDirectory(Path.GetDirectoryName(copy.DestinationPath)!);
+            string temporary = copy.DestinationPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                await using (var source = File.OpenRead(file.Path!))
+                await using (var target = File.Create(temporary))
+                    await source.CopyToAsync(target, token);
+                token.ThrowIfCancellationRequested();
+                File.Move(temporary, copy.DestinationPath, true);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
     }
 
     /// <summary>限制远程清单文件写入游戏根目录；只额外允许官方安装器在系统临时目录的一层随机目录中下载固定安装包名称。</summary>

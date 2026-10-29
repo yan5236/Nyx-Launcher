@@ -9,12 +9,17 @@ namespace NyxLauncher.Views;
 public sealed partial class InstallationView : UserControl
 {
     private readonly LoaderAvailabilityService _service = new();
+    private readonly FabricApiService _apiService = new();
+    private IReadOnlyList<FabricApiVersion> _apiVersions = [];
+    private FabricApiVersion? _selectedApi;
+    private string _apiStatus = "正在检测…";
     private readonly Dictionary<LoaderKind, IReadOnlyList<LoaderVersion>> _versions = new();
     private readonly Dictionary<LoaderKind, string> _status = new();
     private CancellationTokenSource? _request;
     private LoaderVersionDialog? _dialog;
     private bool _active;
     private string _game = "";
+    private SourceStrategy _strategy;
     private DownloadTaskManager? _tasks;
     private GameFolderStore? _folders;
     public LoaderVersion? SelectedLoader { get; private set; }
@@ -24,14 +29,14 @@ public sealed partial class InstallationView : UserControl
     /// <summary>注入共享任务及游戏目录，点击安装时锁定当前目录，不随之后切换目录改变目标。</summary>
     public void Configure(DownloadTaskManager tasks, GameFolderStore folders) { _tasks = tasks; _folders = folders; }
 
-    /// <summary>创建真实后台任务；成功立即请求返回列表，输入或目录错误留在当前页明确显示。</summary>
+    /// <summary>创建包含所选加载器及 API 的真实任务；成功返回列表，输入或目录错误留在当前页显示。</summary>
     private void Install_Click(object sender, RoutedEventArgs e)
     {
         if (!_active || _tasks is null) return;
         InstallButton.IsEnabled = false;
         try
         {
-            _tasks.AddGame(_folders?.Selected ?? "", VersionName.Text.Trim(), _game, SelectedLoader);
+            _tasks.AddGame(_folders?.Selected ?? "", VersionName.Text.Trim(), _game, SelectedLoader, _selectedApi);
             TaskCreated?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex) { InstallError.Message = ex.Message; InstallError.IsOpen = true; }
@@ -45,25 +50,31 @@ public sealed partial class InstallationView : UserControl
         Unloaded += View_Unloaded;
     }
 
-    /// <summary>用原始游戏 ID 初始化并拉取真实清单；切换游戏清空选择，编辑名称不会改变清单目标或源策略。</summary>
+    /// <summary>用原始游戏 ID 拉取加载器与 API 清单；切换游戏清空所有选择，编辑名称不改变兼容版本范围。</summary>
     public void Open(DownloadEntry entry, SourceStrategy strategy)
     {
         Close();
         _active = true;
         SelectedLoader = null;
+        _selectedApi = null;
+        _apiVersions = [];
+        _apiStatus = "正在检测…";
         _versions.Clear();
         _status.Clear();
         VersionName.Text = entry.Title;
         _game = entry.Title;
+        _strategy = strategy;
+        _request = new CancellationTokenSource();
         InstallError.IsOpen = false;
-        _ = DetectAsync(entry.Title, strategy);
+        _ = DetectAsync(entry.Title, strategy, _request.Token);
     }
 
-    /// <summary>放弃界面所有权并取消请求、关闭弹窗；令牌由异步方法释放，迟到结果不得更新页面。</summary>
+    /// <summary>放弃界面所有权，取消本页初始检测及重试并释放令牌源、关闭弹窗；迟到结果不得更新页面。</summary>
     public void Close()
     {
         _active = false;
         _request?.Cancel();
+        _request?.Dispose();
         _request = null;
         _dialog?.Hide();
         _dialog = null;
@@ -75,20 +86,32 @@ public sealed partial class InstallationView : UserControl
     /// <summary>通知下载页返回，由父页取消请求并恢复原列表状态。</summary>
     private void Back_Click(object sender, RoutedEventArgs e) => BackRequested?.Invoke(this, EventArgs.Empty);
 
-    /// <summary>三个加载器独立拉取列表，失败互不影响；新请求或离开页面后旧结果失效。</summary>
-    private async Task DetectAsync(string gameVersion, SourceStrategy strategy)
+    /// <summary>加载器和 API 独立拉取列表，失败互不影响；离开页面取消全部请求，防止旧游戏结果回填。</summary>
+    private Task DetectAsync(string gameVersion, SourceStrategy strategy, CancellationToken token)
     {
-        using var request = new CancellationTokenSource();
-        _request = request;
+        return Task.WhenAll(Enum.GetValues<LoaderKind>().Select(loader =>
+            DetectLoaderAsync(loader, gameVersion, strategy, token)).Append(DetectApiAsync(gameVersion, token)));
+    }
+
+    /// <summary>读取指定游戏的 API 发布；检测中禁用重复请求，失败允许重试，取消后丢弃旧结果。</summary>
+    private async Task DetectApiAsync(string game, CancellationToken token)
+    {
+        _apiStatus = "正在检测…";
+        RefreshRows();
         try
         {
-            await Task.WhenAll(Enum.GetValues<LoaderKind>().Select(loader =>
-                DetectLoaderAsync(loader, gameVersion, strategy, request.Token)));
+            var versions = await _apiService.FetchAsync(game, token);
+            token.ThrowIfCancellationRequested();
+            _apiVersions = versions;
+            _apiStatus = versions.Count > 0 ? "可以添加" : "暂无可用版本";
         }
-        finally
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { return; }
+        catch (HttpRequestException ex)
         {
-            if (ReferenceEquals(_request, request)) _request = null;
+            if (token.IsCancellationRequested) return;
+            _apiStatus = "检测失败：" + ex.Message;
         }
+        RefreshRows();
     }
 
     /// <summary>保存可供弹窗选择的真实列表；错误显示原因，取消不显示错误，刷新时保留其他行已选状态。</summary>
@@ -112,7 +135,7 @@ public sealed partial class InstallationView : UserControl
         RefreshRows();
     }
 
-    /// <summary>统一更新文本、箭头和互斥禁用；点叉取消后恢复各加载器真实检测状态，不允许未取得清单的行被选择。</summary>
+    /// <summary>更新加载器互斥状态与 API 前置条件；API 只在选中 Fabric 后可用，取消加载器同时清除 API。</summary>
     private void RefreshRows()
     {
         foreach (var (loader, button, status, icon) in new[]
@@ -125,17 +148,28 @@ public sealed partial class InstallationView : UserControl
             bool selected = SelectedLoader?.Loader == loader;
             string message = _status.GetValueOrDefault(loader, "正在检测…");
             status.Text = selected ? "已选择 " + SelectedLoader!.Version :
-                message.StartsWith("检测失败：", StringComparison.Ordinal) ? "检测失败" : message;
+                message.StartsWith("检测失败：", StringComparison.Ordinal) ? "检测失败，点击重试" : message;
             icon.Glyph = selected ? "\uE711" : "\uE76C";
-            button.IsEnabled = _versions.TryGetValue(loader, out var versions) && versions.Count > 0 &&
+            button.IsEnabled = (message.StartsWith("检测失败：", StringComparison.Ordinal) ||
+                _versions.TryGetValue(loader, out var versions) && versions.Count > 0) &&
                 (SelectedLoader is null || selected);
             button.Opacity = SelectedLoader is not null && !selected ? 0.45 : 1;
             ToolTipService.SetToolTip(status, selected ? SelectedLoader!.Version : message);
             AutomationProperties.SetName(button, selected ? $"取消 {loader} {SelectedLoader!.Version}" : $"选择 {loader} 版本");
         }
+        bool fabric = SelectedLoader?.Loader == LoaderKind.Fabric;
+        if (!fabric) _selectedApi = null;
+        ApiStatus.Text = _selectedApi is not null ? "已选择 " + _selectedApi.Version :
+            _apiStatus.StartsWith("检测失败：", StringComparison.Ordinal) ? "检测失败，点击重试" :
+            _apiVersions.Count > 0 && !fabric ? "请先选择 Fabric" : _apiStatus;
+        ApiAction.Glyph = _selectedApi is null ? "\uE76C" : "\uE711";
+        ApiButton.IsEnabled = fabric && (_apiVersions.Count > 0 || _apiStatus.StartsWith("检测失败：", StringComparison.Ordinal));
+        ApiButton.Opacity = fabric ? 1 : 0.45;
+        ToolTipService.SetToolTip(ApiStatus, _selectedApi?.Version ?? _apiStatus);
+        AutomationProperties.SetName(ApiButton, _selectedApi is null ? "选择 Fabric API 版本" : "取消 Fabric API " + _selectedApi.Version);
     }
 
-    /// <summary>可用行打开单一模态列表，选中项关闭后应用互斥状态；已选行直接取消，退出页面后丢弃弹窗结果。</summary>
+    /// <summary>失败行重试成功后打开版本列表，检测中禁止重复请求；已选行取消，退出或切换游戏后丢弃迟到结果。</summary>
     private async void Loader_Click(object sender, RoutedEventArgs e)
     {
         if (!_active || _dialog is not null || sender is not Button button ||
@@ -146,7 +180,14 @@ public sealed partial class InstallationView : UserControl
             RefreshRows();
             return;
         }
-        if (SelectedLoader is not null || !_versions.TryGetValue(loader, out var versions) || versions.Count == 0) return;
+        if (SelectedLoader is not null) return;
+        if (_status.GetValueOrDefault(loader, "").StartsWith("检测失败：", StringComparison.Ordinal))
+        {
+            var token = _request!.Token;
+            await DetectLoaderAsync(loader, _game, _strategy, token);
+            if (token.IsCancellationRequested || !_active || _dialog is not null || SelectedLoader is not null) return;
+        }
+        if (!_versions.TryGetValue(loader, out var versions) || versions.Count == 0) return;
         var dialog = new LoaderVersionDialog(XamlRoot, versions);
         _dialog = dialog;
         try
@@ -165,6 +206,32 @@ public sealed partial class InstallationView : UserControl
                 _dialog = null;
                 button.Focus(FocusState.Programmatic);
             }
+        }
+    }
+
+    /// <summary>复用版本弹窗选择 API；检测失败可点击重试，已选项点击取消，离开页面或取消 Fabric 后不弹出迟到列表。</summary>
+    private async void Api_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_active || _dialog is not null || SelectedLoader?.Loader != LoaderKind.Fabric) return;
+        if (_apiStatus.StartsWith("检测失败：", StringComparison.Ordinal))
+        {
+            var token = _request!.Token;
+            await DetectApiAsync(_game, token);
+            if (token.IsCancellationRequested || !_active || _dialog is not null || SelectedLoader?.Loader != LoaderKind.Fabric) return;
+        }
+        if (_apiVersions.Count == 0) return;
+        if (_selectedApi is not null) { _selectedApi = null; RefreshRows(); return; }
+        var dialog = new LoaderVersionDialog(XamlRoot, _apiVersions);
+        _dialog = dialog;
+        try
+        {
+            await dialog.ShowAsync();
+            if (_active && ReferenceEquals(_dialog, dialog) && dialog.SelectedApi is not null)
+            { _selectedApi = dialog.SelectedApi; RefreshRows(); }
+        }
+        finally
+        {
+            if (ReferenceEquals(_dialog, dialog)) { _dialog = null; ApiButton.Focus(FocusState.Programmatic); }
         }
     }
 }

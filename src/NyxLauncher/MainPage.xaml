@@ -5,6 +5,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:views="using:NyxLauncher.Views"
     RequestedTheme="Light">
+    <Page.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ms-appx:///Themes/AccentButtonResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Page.Resources>
     <NavigationView x:Name="Navigation" PaneDisplayMode="Left" OpenPaneLength="192"
                     IsPaneToggleButtonVisible="False" IsBackButtonVisible="Collapsed"
                     IsSettingsVisible="False" IsPaneOpen="True" AlwaysShowHeader="False"
@@ -31,17 +38,18 @@
             </NavigationViewItem>
         </NavigationView.MenuItems>
         <NavigationView.PaneFooter>
-            <Button Margin="8,8,8,12" Padding="10" HorizontalAlignment="Stretch"
+            <Button x:Name="AccountMenuButton" Margin="8,8,8,12" Padding="10" HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0"
-                    AutomationProperties.Name="Steve，打开账户菜单">
+                    AutomationProperties.Name="未添加账户，打开账户菜单">
                 <Grid ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <Border Background="#DCE6D4" CornerRadius="6" Width="32" Height="32">
-                        <Image Source="ms-appx:///Assets/Avatar.svg" Width="32" Height="32" />
-                    </Border>
-                    <TextBlock Grid.Column="1" Text="Steve" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Grid Width="32" Height="32">
+                        <Image x:Name="AccountAvatar" Width="32" Height="32" Visibility="Collapsed" />
+                        <FontIcon x:Name="EmptyAccountIcon" Glyph="&#xE77B;" FontSize="24" />
+                    </Grid>
+                    <TextBlock x:Name="AccountName" Grid.Column="1" Text="未添加账户" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     <FontIcon Grid.Column="2" Glyph="&#xE70E;" FontSize="12" VerticalAlignment="Center" />
                 </Grid>
                 <Button.Flyout>
@@ -66,22 +74,7 @@
                 <views:VersionsView x:Name="VersionsContent" />
             </Grid>
             <views:DownloadsView x:Name="DownloadsContent" Visibility="Collapsed" />
-            <ScrollViewer x:Name="AccountScroll" HorizontalScrollBarVisibility="Disabled"
-                          VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                <StackPanel x:Name="AccountContent" Spacing="20">
-                    <Border Style="{StaticResource CardStyle}">
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <Border Background="#DCE6D4" CornerRadius="12" Padding="16">
-                                <Image Source="ms-appx:///Assets/Avatar.svg" Width="48" Height="48" />
-                            </Border>
-                            <TextBlock Grid.Column="1" Text="Steve" FontSize="22" VerticalAlignment="Center" />
-                            <Button Grid.Column="2" Content="切换账户" IsEnabled="False" VerticalAlignment="Center" />
-                        </Grid>
-                    </Border>
-                    <Button Content="添加账户" IsEnabled="False" />
-                </StackPanel>
-            </ScrollViewer>
+            <views:AccountsView x:Name="AccountContent" Visibility="Collapsed" />
             <ScrollViewer x:Name="SettingsScroll" HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                 <views:SettingsView x:Name="SettingsContent" />
