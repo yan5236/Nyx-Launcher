@@ -42,9 +42,7 @@
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{x:Bind AccessibleName}">
                                         <Grid ColumnSpacing="18">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="52" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                            <Border Width="52" Height="52" Background="#E0EBD6" CornerRadius="8">
-                                                <FontIcon Glyph="&#xE7FC;" FontSize="26" Foreground="#397450" />
-                                            </Border>
+                                            <views:VersionIcon Version="{x:Bind}" Width="52" Height="52" />
                                             <StackPanel Grid.Column="1" Spacing="7" VerticalAlignment="Center">
                                                 <TextBlock Text="{x:Bind Name}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{x:Bind Detail}" FontSize="13" Foreground="#6B7A70" TextTrimming="CharacterEllipsis" />

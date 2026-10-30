@@ -165,6 +165,7 @@ internal static class Program
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
 
         InstalledVersionChecks.Run();
+await VersionManagementChecks.RunAsync();
         await LoaderChecks.RunAsync(args.Contains("--live-loaders"), args.Contains("--live-fabric"));
         await LoaderVersionChecks.RunAsync(args.Contains("--live-loader-lists"));
         if (args.Contains("--live"))

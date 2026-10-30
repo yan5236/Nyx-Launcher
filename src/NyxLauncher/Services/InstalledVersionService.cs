@@ -128,7 +128,7 @@ public static class InstalledVersionService
         return value.GetString() ?? "";
     }
 
-    /// <summary>删除前验证直属目录、已知继承依赖及链接；保护依赖它的版本和外部文件，失败不修改任何内容。</summary>
+    /// <summary>删除或改名前验证直属目录、继承及 JAR 依赖和链接；保护依赖它的版本和外部文件，失败不修改任何内容。</summary>
     public static string GetDeletionTarget(string folder, InstalledVersion version)
     {
         ValidateName(version.Name);
@@ -139,7 +139,7 @@ public static class InstalledVersionService
             throw new IOException("版本路径与当前游戏目录不匹配。");
         foreach (string ancestor in new[] { root, versions, target })
             if ((File.GetAttributes(ancestor) & FileAttributes.ReparsePoint) != 0)
-                throw new IOException("为保护外部文件，不能删除链接目录中的版本。");
+                throw new IOException("为保护外部文件，不能修改链接目录中的版本。");
         foreach (string directory in Directory.EnumerateDirectories(versions))
         {
             string name = Path.GetFileName(directory);
@@ -151,7 +151,8 @@ public static class InstalledVersionService
                 using var input = File.OpenRead(manifest);
                 if (input.Length > 8 * 1024 * 1024) throw new IOException("清单过大，无法确认版本依赖：" + name);
                 using var json = JsonDocument.Parse(input);
-                if (string.Equals(Text(json.RootElement, "inheritsFrom"), version.Name, StringComparison.OrdinalIgnoreCase))
+                if (new[] { "inheritsFrom", "jar" }.Any(field =>
+                    string.Equals(Text(json.RootElement, field), version.Name, StringComparison.OrdinalIgnoreCase)))
                     throw new IOException("版本“" + name + "”仍依赖此版本，请先处理依赖版本。");
             }
             catch (JsonException) { /* 已损坏的清单不能作为有效继承依赖。 */ }

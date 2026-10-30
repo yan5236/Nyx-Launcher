@@ -22,6 +22,7 @@ public sealed partial class HomeView : UserControl
     private int _progressGeneration;
     private bool _progressEnding;
     public event EventHandler<InstalledVersion>? ManageRequested;
+    public bool IsLaunching => _session is not null;
 
     /// <summary>加载首页控件，服务通过主页面注入。</summary>
     public HomeView() => InitializeComponent();
@@ -45,7 +46,7 @@ public sealed partial class HomeView : UserControl
     {
         var card = (Grid)sender;
         double scale = VersionList.FontSize / 15;
-        ((FontIcon)card.Children[0]).FontSize = 26 * scale;
+        ((VersionIcon)card.Children[0]).Width = ((VersionIcon)card.Children[0]).Height = 32 * scale;
         var labels = (StackPanel)card.Children[1];
         ((TextBlock)labels.Children[0]).FontSize = 15 * scale;
         ((TextBlock)labels.Children[1]).FontSize = 11 * scale;

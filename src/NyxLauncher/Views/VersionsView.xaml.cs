@@ -1,5 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using NyxLauncher.Services;
 
 namespace NyxLauncher.Views;
@@ -11,6 +13,7 @@ public sealed partial class VersionsView : UserControl
     private IReadOnlyList<InstalledVersion> _versions = Array.Empty<InstalledVersion>();
     private CancellationTokenSource? _scan;
     private bool _dialogOpen;
+    private Storyboard? _pageTransition;
     public event EventHandler? InstallRequested;
 
     /// <summary>加载页面并连接详情返回与删除事件；业务目录由主页面在启动时注入。</summary>
@@ -19,23 +22,26 @@ public sealed partial class VersionsView : UserControl
         InitializeComponent();
         Details.BackRequested += Details_BackRequested;
         Details.DeleteRequested += Details_DeleteRequested;
+        Unloaded += View_Unloaded;
     }
 
-    /// <summary>共享启动时建立的目录设置，立即显示当前路径及初始化失败信息。</summary>
-    public void Configure(GameFolderStore folders)
+    /// <summary>共享目录、隔离偏好与改名保护，立即显示当前路径及初始化失败信息。</summary>
+    public void Configure(GameFolderStore folders, DownloadSettingsStore settings, Func<bool> mutationBlocked)
     {
         _folders = folders;
+        Details.Configure(folders, settings, mutationBlocked);
         RefreshPath();
         ShowError(folders.LoadError);
     }
 
-    /// <summary>进入时重新扫描磁盘；离开时取消扫描并回到列表，旧异步结果不能覆盖后续页面。</summary>
+    /// <summary>进入时重新扫描磁盘；离开时取消扫描和转场并恢复列表，旧回调不能覆盖后续页面。</summary>
     public void SetActive(bool active)
     {
         _scan?.Cancel();
         if (active) _ = RefreshAsync();
         else
         {
+            StopPageTransition();
             Details.Visibility = Visibility.Collapsed;
             Catalog.Visibility = Visibility.Visible;
         }
@@ -121,27 +127,95 @@ public sealed partial class VersionsView : UserControl
         OpenDetails(version);
     }
 
-    /// <summary>供首页和列表共用的详情入口，展示传入版本的真实元数据与目录。</summary>
+    /// <summary>供首页和列表共用的详情入口，展示真实元数据并向左淡出列表、从右淡入详情；转场期间忽略重复请求。</summary>
     public void OpenDetails(InstalledVersion version)
     {
+        if (_pageTransition is not null || _dialogOpen) return;
         Details.Open(version);
-        Catalog.Visibility = Visibility.Collapsed;
-        Details.Visibility = Visibility.Visible;
+        SwitchPage(true);
     }
 
-    /// <summary>返回列表并重新读取磁盘，保留原搜索条件。</summary>
+    /// <summary>反向转场返回列表并重新读取磁盘，保留原搜索条件；忽略转场和确认弹窗期间的重复操作。</summary>
     private void Details_BackRequested(object? sender, EventArgs e)
     {
-        Details.Visibility = Visibility.Collapsed;
-        Catalog.Visibility = Visibility.Visible;
+        if (_pageTransition is not null || _dialogOpen) return;
+        SwitchPage(false);
         _ = RefreshAsync();
     }
 
-    /// <summary>将详情页删除请求送入与卡片相同的确认与路径校验流程。</summary>
+    /// <summary>详情危险区使用当前版本对象发起共享删除流程，改名后仍显示并校验最新目录。</summary>
     private async void Details_DeleteRequested(object? sender, EventArgs e)
     {
         if (Details.Version is { } version) await DeleteAsync(version);
     }
+
+    /// <summary>以 220 毫秒水平位移和淡入淡出切换列表与详情；进入向左、返回向右，系统关闭动画时直接切换。</summary>
+    private void SwitchPage(bool entering)
+    {
+        StopPageTransition();
+        FrameworkElement outgoing = entering ? Catalog : Details;
+        FrameworkElement incoming = entering ? Details : Catalog;
+        incoming.Visibility = Visibility.Visible;
+        if (!new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
+        {
+            outgoing.Visibility = Visibility.Collapsed;
+            return;
+        }
+        outgoing.IsHitTestVisible = incoming.IsHitTestVisible = false;
+        double distance = entering ? 32 : -32;
+        var transition = new Storyboard();
+        AddPageAnimation(transition, outgoing, 1, 0, 0, -distance);
+        AddPageAnimation(transition, incoming, 0, 1, distance, 0);
+        transition.Completed += (_, _) =>
+        {
+            if (!ReferenceEquals(_pageTransition, transition)) return;
+            outgoing.Visibility = Visibility.Collapsed;
+            StopPageTransition();
+        };
+        _pageTransition = transition;
+        transition.Begin();
+    }
+
+    /// <summary>将页面透明度与水平位移加入同一个缓出转场；调用方负责结束时恢复透明度、变换和交互。</summary>
+    private static void AddPageAnimation(Storyboard storyboard, FrameworkElement page,
+        double fromOpacity, double toOpacity, double fromX, double toX)
+    {
+        page.Opacity = fromOpacity;
+        var transform = new TranslateTransform { X = fromX };
+        page.RenderTransform = transform;
+        var opacity = new DoubleAnimation
+        {
+            From = fromOpacity, To = toOpacity, Duration = TimeSpan.FromMilliseconds(220),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        var translation = new DoubleAnimation
+        {
+            From = fromX, To = toX, Duration = TimeSpan.FromMilliseconds(220),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(opacity, page);
+        Storyboard.SetTargetProperty(opacity, "Opacity");
+        Storyboard.SetTarget(translation, transform);
+        Storyboard.SetTargetProperty(translation, "X");
+        storyboard.Children.Add(opacity);
+        storyboard.Children.Add(translation);
+    }
+
+    /// <summary>停止在途转场并清除两个页面的临时视觉状态，离开模块或卸载后不会遗留透明页面或失效点击。</summary>
+    private void StopPageTransition()
+    {
+        _pageTransition?.Stop();
+        _pageTransition = null;
+        foreach (FrameworkElement page in new FrameworkElement[] { Catalog, Details })
+        {
+            page.Opacity = 1;
+            page.RenderTransform = null;
+            page.IsHitTestVisible = true;
+        }
+    }
+
+    /// <summary>视图卸载时取消扫描和动画，恢复下次进入的列表状态。</summary>
+    private void View_Unloaded(object sender, RoutedEventArgs e) => SetActive(false);
 
     /// <summary>只处理行尾的删除按钮，删除前必须显示版本名与完整路径供用户确认。</summary>
     private async void Delete_Click(object sender, RoutedEventArgs e)
@@ -149,10 +223,10 @@ public sealed partial class VersionsView : UserControl
         if (sender is Button { Tag: InstalledVersion version }) await DeleteAsync(version);
     }
 
-    /// <summary>使用共享绿色交互配色的弹窗确认后，将单个版本目录送入回收站；取消或校验失败保留列表，不回退为永久删除。</summary>
+    /// <summary>使用共享绿色交互配色的弹窗确认后，将单个版本目录送入回收站；取消或校验失败保留当前页面，成功后返回并刷新列表，不回退为永久删除。</summary>
     private async Task DeleteAsync(InstalledVersion version)
     {
-        if (_dialogOpen || _folders?.Selected is not { } folder) return;
+        if (_dialogOpen || _pageTransition is not null || _folders?.Selected is not { } folder) return;
         _dialogOpen = true;
         try
         {
@@ -172,8 +246,7 @@ public sealed partial class VersionsView : UserControl
                 Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
                 Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin,
                 Microsoft.VisualBasic.FileIO.UICancelOption.ThrowException);
-            Details.Visibility = Visibility.Collapsed;
-            Catalog.Visibility = Visibility.Visible;
+            if (Details.Visibility == Visibility.Visible) SwitchPage(false);
             await RefreshAsync();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or OperationCanceledException or System.Runtime.InteropServices.COMException)

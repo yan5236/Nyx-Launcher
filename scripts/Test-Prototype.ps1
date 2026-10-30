@@ -225,6 +225,17 @@ if ($install.SelectSingleNode('//ui:Button[@x:Name="ApiButton"]', $ins).GetAttri
     throw 'Fabric API 卡片必须与加载器卡片左侧对齐。'
 }
 
+# 危险区必须在基础页滚动内容末尾，删除使用独立按钮和事件，其他 Tab 不应显示它。
+[xml]$details = Get-Content (Join-Path $project 'Views/VersionDetailsView.xaml') -Raw -Encoding utf8
+$detailsNs = [System.Xml.XmlNamespaceManager]::new($details.NameTable)
+$detailsNs.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$detailsNs.AddNamespace('x', $xns)
+$danger = $details.SelectSingleNode('//ui:ScrollViewer[@x:Name="BasicPanel"]/ui:StackPanel/ui:StackPanel[last()]', $detailsNs)
+if (-not $danger -or -not $danger.SelectSingleNode('ui:TextBlock[@Text="危险区"]', $detailsNs) -or
+    -not $danger.SelectSingleNode('.//ui:Button[@Content="删除版本" and @Click="Delete_Click" and @AutomationProperties.Name="删除当前版本"]', $detailsNs)) {
+    throw '基础页底部必须提供危险区和可访问的删除版本按钮。'
+}
+
 # 检查 XAML 引用的本地图片资源是否存在。
 foreach ($file in $xamlFiles) {
     [xml]$document = Get-Content $file.FullName -Raw -Encoding utf8
@@ -237,4 +248,4 @@ foreach ($file in $xamlFiles) {
         }
     }
 }
-Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、设置 Tab/源策略/滑块范围及图片资源。'
+Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、详情危险区、设置 Tab/源策略/滑块范围及图片资源。'
