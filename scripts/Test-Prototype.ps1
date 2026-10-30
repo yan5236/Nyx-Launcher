@@ -65,7 +65,7 @@ if (($tabs | ForEach-Object { $_.Text }) -join ',' -cne '游戏,模组,整合包
     throw '下载页 Tab 必须依次为游戏、模组、整合包、资源包、数据包、光影。'
 }
 if (($tabs | ForEach-Object { $_.Tag }) -join ',' -cne 'game,mod,modpack,resourcepack,datapack,shader') {
-    throw '下载页 Tab 必须提供与演示数据对应的分类标签。'
+    throw '下载页 Tab 必须提供与真实资源分类对应的标签。'
 }
 $search = $downloads.SelectSingleNode('//ui:AutoSuggestBox', $dns)
 if (-not $search -or $search.GetAttribute('TextChanged') -ne 'SearchBox_TextChanged') {
@@ -104,12 +104,44 @@ if (-not $icon) { throw '列表条目左侧必须包含图标。' }
 $typeBadge = $template.SelectSingleNode('.//ui:TextBlock[@Text="{x:Bind Kind}"]', $dns)
 if (-not $typeBadge) { throw '列表条目应显示版本类型标签。' }
 
-# 每个 Tab 标签都必须在分类映射中存在；游戏分类的真实数据由服务获取。
-$catalog = Get-Content (Join-Path $project 'Views/DownloadCatalog.cs') -Raw -Encoding utf8
-foreach ($tag in ($tabs | ForEach-Object { $_.Tag })) {
-    if (-not $catalog.Contains("[""$tag""]")) {
-        throw "演示数据缺少分类：$tag"
+# 资源目录使用独立的提交式搜索和筛选，复用游戏的加载状态控件。
+[xml]$resources = Get-Content (Join-Path $project 'Views/ResourceCatalogView.xaml') -Raw -Encoding utf8
+$rns = [System.Xml.XmlNamespaceManager]::new($resources.NameTable)
+$rns.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$rns.AddNamespace('x', $xns)
+$resourceSearch = $resources.SelectSingleNode('//ui:TextBox[@x:Name="SearchBox"]', $rns)
+if (-not $resourceSearch -or $resourceSearch.HasAttribute('TextChanged') -or
+    -not $resources.SelectSingleNode('//ui:Button[@Content="搜索" and @Click="Search_Click"]', $rns)) {
+    throw '资源搜索必须由独立按钮或 Enter 提交，不能逐字发起请求。'
+}
+foreach ($name in @('GameVersionFilter', 'LoaderFilter', 'CategoryFilter', 'SourceFilter')) {
+    if (-not $resources.SelectSingleNode("//ui:ComboBox[@x:Name='$name']", $rns)) {
+        throw "资源目录缺少筛选：$name"
     }
+}
+$versionFilter = $resources.SelectSingleNode('//ui:ComboBox[@x:Name="GameVersionFilter"]', $rns)
+if ($versionFilter.IsEditable -ne 'True' -or $versionFilter.TextSubmitted -ne 'GameVersionFilter_TextSubmitted') {
+    throw 'Minecraft 版本筛选必须保留下拉并允许提交手动输入。'
+}
+if (-not $resources.SelectSingleNode('//*[local-name()="VersionLoadStatus"]', $rns)) {
+    throw '资源目录必须复用游戏的加载、失败及重试控件。'
+}
+if (-not $resources.SelectSingleNode('//ui:TextBlock[@Text="{x:Bind Description}"]', $rns) -or
+    $resources.SelectNodes('//ui:InlineUIContainer//ui:FontIcon', $rns).Count -ne 4 -or
+    -not $resources.SelectSingleNode('//ui:ItemsControl[@ItemsSource="{x:Bind LoaderIcons}"]', $rns)) {
+    throw '资源卡片必须包含简介及下载量、加载器、版本、来源和更新日期图标。'
+}
+if (-not $resources.SelectSingleNode('//*[local-name()="ResourceIcon"]', $rns) -or
+    $resources.SelectSingleNode('//ui:Border[@Width="64"]', $rns)) {
+    throw '资源图标必须使用生命周期独立、无背景框的图标控件。'
+}
+foreach ($category in @('mod','modpack','resourcepack','datapack','shader')) {
+    if (-not (Test-Path (Join-Path $project "Assets/resource-$category.svg"))) {
+        throw "缺少分类占位图标：$category"
+    }
+}
+if ($downloads.OuterXml.Contains('演示数据') -or (Test-Path (Join-Path $project 'Views/DownloadCatalog.cs'))) {
+    throw '资源目录不能继续保留演示清单。'
 }
 
 # 设置页复用相同 Tab 控件，源策略独立，滑块范围明确，不加入目标文件夹。

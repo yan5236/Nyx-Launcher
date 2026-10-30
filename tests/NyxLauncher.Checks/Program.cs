@@ -8,9 +8,15 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行 Java 管理、认证、皮肤、账户、启动和下载断言；--java-scan 显式扫描本机，--java-live/--java-catalog 及 --live 系列访问实网。</summary>
+    /// <summary>运行资源、Java、认证、账户、启动及下载断言；--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--resources-live"))
+        {
+            await ResourceCatalogChecks.LiveAsync();
+            return;
+        }
+        await ResourceCatalogChecks.RunAsync();
         if (args.Contains("--java-scan"))
         {
             await JavaChecks.ScanLiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--java-scan") + 1]));

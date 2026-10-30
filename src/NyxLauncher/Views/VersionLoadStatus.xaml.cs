@@ -7,6 +7,7 @@ namespace NyxLauncher.Views;
 public sealed partial class VersionLoadStatus : UserControl
 {
     public event EventHandler? RetryRequested;
+    private string _content = "版本";
 
     /// <summary>创建加载状态控件；由下载页控制动画生命周期。</summary>
     public VersionLoadStatus()
@@ -18,22 +19,23 @@ public sealed partial class VersionLoadStatus : UserControl
     /// <summary>交叉图标出现后停止已不可见的循环旋转，避免失败页持续消耗动画资源。</summary>
     private void Failure_Completed(object? sender, object e) => Spin.Stop();
 
-    /// <summary>清除上次错误并开始循环旋转，用于首次加载及重试。</summary>
-    public void Start()
+    /// <summary>清除上次错误并开始循环旋转；content 区分版本与资源，用于后续失败状态文本，默认兼容原调用。</summary>
+    public void Start(string content = "版本")
     {
         Stop();
         RingBrush.Color = Color.FromArgb(255, 57, 116, 80);
         Arc.Opacity = 1;
         Cross.Opacity = 0;
         ErrorDetails.Visibility = Visibility.Collapsed;
-        StatusText.Text = "正在加载版本";
+        _content = content;
+        StatusText.Text = "正在加载";
         Spin.Begin();
     }
 
-    /// <summary>先将旋转弧线变红，再淡出为交叉，并渐显错误信息与重试按钮。</summary>
+    /// <summary>先将旋转弧线变红，再淡出为交叉，显示当前内容的失败状态、传入的用户错误提示与重试按钮。</summary>
     public void ShowError(string message)
     {
-        StatusText.Text = "版本加载失败";
+        StatusText.Text = _content + "加载失败";
         ErrorText.Text = message;
         ErrorDetails.Visibility = Visibility.Visible;
         Failure.Begin();

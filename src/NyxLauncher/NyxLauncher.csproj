@@ -23,6 +23,7 @@
     <Content Include="Assets\*.jpg" CopyToOutputDirectory="PreserveNewest" />
     <Manifest Include="$(ApplicationManifest)" />
     <PackageReference Include="CmlLib.Core" Version="4.1.0" />
+    <PackageReference Include="SkiaSharp" Version="4.154.0" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.92.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
     <PackageReference Include="CmlLib.Core.Installer.Forge" Version="2.0.0" />

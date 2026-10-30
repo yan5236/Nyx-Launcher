@@ -6,7 +6,7 @@ using NyxLauncher.Services;
 
 namespace NyxLauncher.Views;
 
-/// <summary>游戏页获取真实清单；其他分类暂保留演示，支持取消、重试和筛选。</summary>
+/// <summary>游戏页获取真实清单，其他分类委托资源目录；共用下载任务入口并按页面状态取消请求。</summary>
 public sealed partial class DownloadsView : UserControl
 {
     private IReadOnlyList<DownloadEntry> _entries = Array.Empty<DownloadEntry>();
@@ -50,14 +50,15 @@ public sealed partial class DownloadsView : UserControl
         ResetPage(InstallationContent);
     }
 
-    /// <summary>右侧独立 Tab 与左侧分类互斥，进入任务页清除未读提示并停止无关清单请求。</summary>
+    /// <summary>右侧独立 Tab 与左侧分类互斥，进入任务页清除未读提示并停止游戏及资源清单请求。</summary>
     private void TaskSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (sender.SelectedItem is null || TasksContent is null) return;
         _showTasks = true;
         ContentSelector.SelectedItem = null;
         CancelLoad();
-        SearchControls.Visibility = ContentGrid.Visibility = DemoHint.Visibility = Visibility.Collapsed;
+        ResourcesContent.SetActive(false);
+        SearchControls.Visibility = ContentGrid.Visibility = ResourcesContent.Visibility = Visibility.Collapsed;
         TasksContent.Visibility = Visibility.Visible;
         TaskBadge.Visibility = Visibility.Collapsed;
     }
@@ -65,7 +66,7 @@ public sealed partial class DownloadsView : UserControl
     /// <summary>安装新版本入口使用游戏分类；分类切换时沿用现有筛选重置与加载流程。</summary>
     public void ShowGames() => ContentSelector.SelectedItem = ContentSelector.Items[0];
 
-    /// <summary>页面显示时获取当前分类；离开时取消清单、探测与双向转场，并恢复列表层级和交互。</summary>
+    /// <summary>页面显示时获取当前分类；离开时取消游戏和资源清单、探测与双向转场，并恢复列表层级和交互。</summary>
     public void SetActive(bool active)
     {
         if (_active == active) return;
@@ -77,6 +78,7 @@ public sealed partial class DownloadsView : UserControl
         }
         else
         {
+            ResourcesContent.SetActive(false);
             CancelLoad();
             _pageRequest?.Cancel();
             _pageRequest = null;
@@ -89,7 +91,7 @@ public sealed partial class DownloadsView : UserControl
         }
     }
 
-    /// <summary>点击真实游戏条目开始探测并向左转场；忽略演示条目和转场期间的重复输入。</summary>
+    /// <summary>点击真实游戏条目开始探测并向左转场；忽略非游戏分类和转场期间的重复输入。</summary>
     private async void EntryList_ItemClick(object sender, ItemClickEventArgs e)
     {
         if (!_active || _busy || _pageRequest is not null || _category != "game" || e.ClickedItem is not DownloadEntry entry) return;
@@ -185,16 +187,19 @@ public sealed partial class DownloadsView : UserControl
     /// <summary>失败后按当前设置重新请求，并从旋转状态重新开始。</summary>
     private void RetryRequested(object? sender, EventArgs e) => _ = LoadCategoryAsync();
 
-    /// <summary>切换分类时清空搜索、默认筛选正式版，并取消旧分类请求。</summary>
+    /// <summary>切换分类时重置游戏筛选；资源目录接收独立分类，仅当前可见目录保持请求。</summary>
     private void ContentSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (LoadStatus is null || sender.SelectedItem?.Tag is not string category) return;
         _showTasks = false;
         if (TaskSelector is not null) TaskSelector.SelectedItem = null;
         if (TasksContent is not null) TasksContent.Visibility = Visibility.Collapsed;
-        SearchControls.Visibility = ContentGrid.Visibility = Visibility.Visible;
         _category = category;
-        SearchBox.PlaceholderText = DownloadCatalog.GetSearchHint(category);
+        bool game = category == "game";
+        SearchControls.Visibility = ContentGrid.Visibility = game ? Visibility.Visible : Visibility.Collapsed;
+        ResourcesContent.Visibility = game ? Visibility.Collapsed : Visibility.Visible;
+        if (!game) ResourcesContent.SetCategory(category);
+        ResourcesContent.SetActive(_active && !game);
         SearchBox.Text = "";
         TypeFilter.SelectedIndex = 1;
         if (_active) _ = LoadCategoryAsync();
@@ -215,10 +220,15 @@ public sealed partial class DownloadsView : UserControl
         LoadStatus.Stop();
     }
 
-    /// <summary>获取真实游戏清单或本地演示；取消不显示错误，网络失败提供动画反馈和重试。</summary>
+    /// <summary>游戏分类获取真实清单，资源分类交给独立目录；取消不显示错误，网络失败提供动画反馈和重试。</summary>
     private async Task LoadCategoryAsync()
     {
         CancelLoad();
+        if (_category != "game")
+        {
+            ResourcesContent.SetActive(_active && !_showTasks);
+            return;
+        }
         using var request = new CancellationTokenSource();
         _request = request;
         var token = request.Token;
@@ -227,22 +237,17 @@ public sealed partial class DownloadsView : UserControl
         EntryList.ItemsSource = null;
         EntryList.Visibility = Visibility.Collapsed;
         EmptyHint.Visibility = Visibility.Collapsed;
-        DemoHint.Visibility = _category == "game" ? Visibility.Collapsed : Visibility.Visible;
-        LoadStatus.Visibility = _category == "game" ? Visibility.Visible : Visibility.Collapsed;
+        LoadStatus.Visibility = Visibility.Visible;
         LoadStatus.Opacity = 1;
         try
         {
-            if (_category == "game")
-            {
-                LoadStatus.Start();
-                var entries = await _service.FetchAsync(_settings?.Current.VersionSource ??
-                    SourceStrategy.OfficialWithFallback, token);
-                token.ThrowIfCancellationRequested();
-                _entries = entries;
-                Fade(LoadStatus, 1, 0);
-                await Task.Delay(180, token);
-            }
-            else _entries = DownloadCatalog.GetEntries(_category);
+            LoadStatus.Start();
+            var entries = await _service.FetchAsync(_settings?.Current.VersionSource ??
+                SourceStrategy.OfficialWithFallback, token);
+            token.ThrowIfCancellationRequested();
+            _entries = entries;
+            Fade(LoadStatus, 1, 0);
+            await Task.Delay(180, token);
             token.ThrowIfCancellationRequested();
             LoadStatus.Stop();
             LoadStatus.Visibility = Visibility.Collapsed;

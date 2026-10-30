@@ -101,9 +101,7 @@
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        IsHitTestVisible="False" Visibility="Collapsed" />
         </Grid>
-        <TextBlock x:Name="DemoHint" Grid.Row="3" Text="此分类暂为演示数据" Foreground="#6B7A70"
-                   VerticalAlignment="Bottom" HorizontalAlignment="Right" Visibility="Collapsed"
-                   IsHitTestVisible="False" />
+        <views:ResourceCatalogView x:Name="ResourcesContent" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" />
         <views:DownloadTasksView x:Name="TasksContent" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" />
     </Grid>
     <views:InstallationView x:Name="InstallationContent" Visibility="Collapsed" />
