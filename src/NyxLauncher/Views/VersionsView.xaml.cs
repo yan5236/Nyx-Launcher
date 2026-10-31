@@ -44,6 +44,7 @@ public sealed partial class VersionsView : UserControl
         else
         {
             StopPageTransition();
+            Details.SetActive(false);
             Details.Visibility = Visibility.Collapsed;
             Catalog.Visibility = Visibility.Visible;
         }
@@ -155,6 +156,7 @@ public sealed partial class VersionsView : UserControl
     private void SwitchPage(bool entering)
     {
         StopPageTransition();
+        Details.SetActive(entering);
         FrameworkElement outgoing = entering ? Catalog : Details;
         FrameworkElement incoming = entering ? Details : Catalog;
         incoming.Visibility = Visibility.Visible;

@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $project = Join-Path $PSScriptRoot '../src/NyxLauncher'
 [xml]$shell = Get-Content (Join-Path $project 'MainPage.xaml') -Raw -Encoding utf8
 $ns = [System.Xml.XmlNamespaceManager]::new($shell.NameTable)
@@ -150,8 +150,8 @@ $sns = [System.Xml.XmlNamespaceManager]::new($settings.NameTable)
 $sns.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
 $sns.AddNamespace('x', $xns)
 $settingTabs = $settings.SelectNodes('//ui:SelectorBar/ui:SelectorBarItem', $sns)
-if (($settingTabs | ForEach-Object { $_.Text }) -join ',' -cne '通用,下载,Java') {
-    throw '设置页必须使用通用、下载、Java 三个 Tab。'
+if (($settingTabs | ForEach-Object { $_.Text }) -join ',' -cne '通用,启动,Java,下载') {
+    throw '设置页必须按通用、启动、Java、下载顺序展示四个 Tab。'
 }
 foreach ($name in @('FileSource', 'VersionSource')) {
     $source = $settings.SelectSingleNode("//ui:ComboBox[@x:Name='$name']", $sns)

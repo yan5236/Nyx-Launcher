@@ -8,7 +8,7 @@ using Windows.Graphics.Imaging;
 
 namespace NyxLauncher.Views;
 
-/// <summary>单个真实版本的四 Tab 管理页；基础页提供改名、图标、实际游戏目录快捷入口与删除危险区，其余分类留空。</summary>
+/// <summary>单个真实版本的四 Tab 管理页；基础页提供改名、图标、实际游戏目录快捷入口与删除危险区，游戏设置提供版本独立内存配置。</summary>
 public sealed partial class VersionDetailsView : UserControl
 {
     private GameFolderStore? _folders;
@@ -21,9 +21,12 @@ public sealed partial class VersionDetailsView : UserControl
     /// <summary>初始化详情视图，不在构造时访问游戏文件。</summary>
     public VersionDetailsView() => InitializeComponent();
 
-    /// <summary>共享当前游戏目录与隔离偏好；委托用于在启动或安装进行时拒绝改名。</summary>
+    /// <summary>共享游戏目录、隔离策略与版本内存配置；委托用于在启动或安装进行时拒绝改名。</summary>
     public void Configure(GameFolderStore folders, DownloadSettingsStore settings, Func<bool> mutationBlocked)
-    { _folders = folders; _settings = settings; _mutationBlocked = mutationBlocked; }
+    {
+        _folders = folders; _settings = settings; _mutationBlocked = mutationBlocked;
+        MemoryPanel.Configure(() => Version, () => folders.Selected, () => settings.Current.Isolation, true);
+    }
 
     /// <summary>打开选中版本并默认选择基础分类，刷新名称、元数据和两处图标；错误清单保留具体原因。</summary>
     public void Open(InstalledVersion version)
@@ -45,6 +48,9 @@ public sealed partial class VersionDetailsView : UserControl
         HeaderIcon.Reload(); PreviewIcon.Reload();
     }
 
+    /// <summary>详情隐藏时停止内存采样，重新显示时仅激活游戏设置分类。</summary>
+    public void SetActive(bool active) => MemoryPanel.SetActive(active && Tabs.SelectedItem == Tabs.Items[2]);
+
     /// <summary>请求父页返回版本列表，保持搜索与文件夹选择。</summary>
     private void Back_Click(object sender, RoutedEventArgs e) => BackRequested?.Invoke(this, EventArgs.Empty);
 
@@ -54,10 +60,16 @@ public sealed partial class VersionDetailsView : UserControl
         if (Version is not null && BasicPanel.IsEnabled) DeleteRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>仅基础分类显示编辑、快捷入口和危险区；其余三个 Tab 保持空白，不显示占位内容。</summary>
+    /// <summary>仅基础分类显示编辑、快捷入口和危险区；游戏设置分类显示内存配置，其余分类保持空白。</summary>
     private void Tabs_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (BasicPanel is not null) BasicPanel.Visibility = sender.SelectedItem == sender.Items[0] ? Visibility.Visible : Visibility.Collapsed;
+        if (GamePanel is not null)
+        {
+            bool active = sender.SelectedItem == sender.Items[2];
+            GamePanel.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+            MemoryPanel.SetActive(active);
+        }
         if (Status is not null) Status.IsOpen = false;
     }
 

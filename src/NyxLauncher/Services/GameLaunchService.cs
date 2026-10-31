@@ -12,7 +12,7 @@ namespace NyxLauncher.Services;
 /// <summary>从真实本地清单生成启动进程，将隔离策略用于 gameDir 与进程工作目录。</summary>
 public static class GameLaunchService
 {
-    /// <summary>用已验证会话和可选固定 Java 路径构造进程；设置隔离目录及外置认证注入器，但不启动游戏。</summary>
+    /// <summary>用已验证会话和可选固定 Java 路径构造进程；根据实时内存与版本偏好设置堆上限、隔离目录及外置认证注入器，但不启动游戏。</summary>
     public static async Task<Process> BuildAsync(string folder, InstalledVersion version, IsolationMode isolation, GameAccount account,
         CancellationToken token = default, MSession? authenticatedSession = null, string? javaPath = null)
     {
@@ -27,8 +27,11 @@ public static class GameLaunchService
         parameters.VersionLoader = new LocalJsonVersionLoader(path);
         var launcher = new MinecraftLauncher(parameters);
         Directory.CreateDirectory(gameDirectory);
+        var memory = MemoryAllocation.Snapshot();
+        int allocated = MemoryAllocation.Resolve(MemorySettingsStore.Read(version), memory, version, MemoryAllocation.CountMods(folder, version, isolation));
         var process = await launcher.BuildProcessAsync(version.Name, new MLaunchOption
         {
+            MaximumRamMb = allocated,
             Session = session,
             JavaPath = javaPath,
             ClientId = account.ClientId,

@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -160,7 +160,7 @@ internal static class JavaChecks
         Check(!File.Exists(Path.Combine(root, "outside.txt")), "越界文件未写入");
     }
 
-    /// <summary>使用独立本地清单走真实准备与进程构造，验证固定的 Java 路径进入启动参数；不执行测试程序。</summary>
+    /// <summary>使用独立本地清单走真实准备与进程构造，验证固定的 Java 路径与版本手动内存进入启动参数；不执行测试程序。</summary>
     private static async Task CheckLaunchAsync(string root, JavaRuntime runtime)
     {
         string game = Path.Combine(root, "game");
@@ -173,7 +173,9 @@ internal static class JavaChecks
             """);
         var version = InstalledVersionService.Scan(game).Single();
         string? selected = await GameLaunchService.PrepareAsync(game, version, new(), (_, _) => { }, default, new([runtime], null));
+        MemorySettingsStore.Save(new(false, 2048), version);
         using var process = await GameLaunchService.BuildAsync(game, version, IsolationMode.All, new("JavaTest"), javaPath: selected);
+        Check(process.StartInfo.Arguments.Contains("-Xmx2048M", StringComparison.OrdinalIgnoreCase) || process.StartInfo.ArgumentList.Contains("-Xmx2048M"), "版本内存设置进入实际 JVM 参数");
         Check(selected == runtime.Executable && process.StartInfo.FileName == selected && process.StartInfo.Arguments.Contains("JavaTest"),
             "Java 自动选择贯通准备与真实游戏进程参数");
         await ThrowsAsync<IOException>(() => GameLaunchService.PrepareAsync(game, version, new(), (_, _) => { }, default,

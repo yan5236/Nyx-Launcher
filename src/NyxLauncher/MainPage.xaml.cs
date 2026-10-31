@@ -27,6 +27,7 @@ public sealed partial class MainPage : Page
         SettingsContent.ConfigureJava(java, tasks);
         VersionsContent.Configure(folders, settings, () => HomeContent.IsLaunching || tasks.HasActiveVersionTasks);
         HomeContent.Configure(folders, settings, _accounts, java);
+        SettingsContent.ConfigureMemory(folders, () => HomeContent.SelectedVersion);
         HomeContent.ManageRequested += Home_ManageRequested;
         HomeContent.CrashAnalysisChanged += (_, analyzing) => CrashToast.IsOpen = analyzing;
         AccountContent.Configure(_accounts);

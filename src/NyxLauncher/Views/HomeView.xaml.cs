@@ -9,6 +9,7 @@ namespace NyxLauncher.Views;
 /// <summary>首页版本选择、详情导航及启动进度；窗口出现后收起反馈，仅保留停止入口。</summary>
 public sealed partial class HomeView : UserControl
 {
+    public InstalledVersion? SelectedVersion => VersionList.SelectedItem as InstalledVersion;
     private GameFolderStore? _folders;
     private DownloadSettingsStore? _settings;
     private AccountStore? _accounts;
