@@ -84,6 +84,7 @@ internal static class ModDownloadChecks
             await Throws<OperationCanceledException>(() => service.FetchModFilesAsync("TestMod1", cancellation.Token));
         }
         await DependencyChecksAsync();
+        await DependencyCompatibilityChecksAsync();
         string root = Path.Combine(Path.GetTempPath(), "nyx-mod-check-" + Guid.NewGuid());
         try
         {
@@ -130,6 +131,21 @@ internal static class ModDownloadChecks
             Check(task.IsMod && !manager.HasActiveVersionTasks, "模组任务标记参与版本保护，完成后解除保护");
             Check(manager.Tasks.Single() == task && task.State == DownloadState.Completed && task.Destination == destination,
                 "模组任务确实进入共享下载管理器并完成");
+            string manual = Path.Combine(root, "manual");
+            Directory.CreateDirectory(manual);
+            string manualFile = Path.Combine(manual, file.FileName);
+            await File.WriteAllBytesAsync(manualFile, Payload);
+            var manualTask = manager.AddModToFolder(file, manual);
+            await manualTask.Execution;
+            Check(manualTask.State == DownloadState.Completed && manualTask.IsMod && manualTask.Destination == manualFile &&
+                !Directory.Exists(Path.Combine(manual, "mods")), "手选目录无需游戏清单，直接写入所选目录并进入共享任务");
+            await File.WriteAllTextAsync(manualFile, "existing user file");
+            var conflict = manager.AddModToFolder(file, manual);
+            await conflict.Execution;
+            Check(conflict.State == DownloadState.Failed && await File.ReadAllTextAsync(manualFile) == "existing user file",
+                "手选目录同名不同内容失败且不覆盖");
+            await Throws<IOException>(() => Task.FromResult(manager.AddModToFolder(file, "relative")));
+            await Throws<IOException>(() => Task.FromResult(manager.AddModToFolder(file, Path.Combine(root, "missing"))));
             await manager.ShutdownAsync();
             File.Delete(Path.Combine(target.DirectoryPath, target.Name + ".json"));
             await Throws<IOException>(() => Task.FromResult(ModInstallationService.ResolveMods(root, target, file, "1.21.1", "fabric", IsolationMode.All)));
@@ -160,7 +176,11 @@ internal static class ModDownloadChecks
             string path = request.RequestUri!.AbsolutePath;
             string query = Uri.UnescapeDataString(request.RequestUri.Query);
             string json;
-            if (path == "/v2/versions")
+            if (path.StartsWith("/v2/project/"))
+            {
+                json = DependencyRelease(path.Split('/')[3]).ToJsonString();
+            }
+            else if (path == "/v2/versions")
             {
                 Check(query.Contains("ApiVer1"), "批量补全仅版本引用");
                 json = """[{"id":"ApiVer1","project_id":"FabricApi1"}]""";
@@ -174,9 +194,9 @@ internal static class ModDownloadChecks
         })))
         {
             var service = new ModrinthCatalogService(client);
-            Check((await service.FetchRequiredProjectsAsync([FileSample()], default)).Count == 0 && requests == 0, "无前置不访问网络");
-            var projects = await service.FetchRequiredProjectsAsync([file, file], default);
-            Check(requests == 2 && projects.Select(x => x.Title).SequenceEqual(new[] { "Fabric API", "Sodium" }) &&
+            Check((await service.FetchRequiredProjectsAsync([FileSample()], "1.21.1", "fabric", default)).Count == 0 && requests == 0, "无前置不访问网络");
+            var projects = await service.FetchRequiredProjectsAsync([file, file], "1.21.1", "fabric", default);
+            Check(requests == 4 && projects.Select(x => x.Title).SequenceEqual(new[] { "Fabric API", "Sodium" }) &&
                 projects.All(x => x.Description.EndsWith(" description") && x.IconUrl.StartsWith("https://cdn.modrinth.com/")),
                 "重复文件依赖只生成一组真实名称、简介与图标卡片");
         }
@@ -184,15 +204,17 @@ internal static class ModDownloadChecks
         using (var client = JsonClient("[]"))
         {
             var service = new ModrinthCatalogService(client);
-            await Throws<HttpRequestException>(() => service.FetchRequiredProjectsAsync([file], default));
-            await Throws<HttpRequestException>(() => service.FetchRequiredProjectsAsync([direct], default));
+            await Throws<HttpRequestException>(() => service.FetchRequiredProjectsAsync([file], "1.21.1", "fabric", default));
+            await Throws<HttpRequestException>(() => service.FetchRequiredProjectsAsync([direct], "1.21.1", "fabric", default));
             await Throws<HttpRequestException>(() => service.FetchRequiredProjectsAsync(
-                [file with { Dependencies = [new("../unsafe", null)] }], default));
+                [file with { Dependencies = [new("../unsafe", null)] }], "1.21.1", "fabric", default));
         }
         var unsafeIcon = DependencyProject("Sodium1", "Sodium");
         unsafeIcon["icon_url"] = "https://example.com/icon.png";
-        using (var client = JsonClient(new JsonArray(unsafeIcon).ToJsonString()))
-            Check((await new ModrinthCatalogService(client).FetchRequiredProjectsAsync([direct], default)).Single().IconUrl == "",
+        using (var client = new HttpClient(new Handler((request, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        { Content = new StringContent(request.RequestUri!.AbsolutePath == "/v2/projects"
+            ? new JsonArray(unsafeIcon).ToJsonString() : DependencyRelease("Sodium1").ToJsonString()) }))))
+            Check((await new ModrinthCatalogService(client).FetchRequiredProjectsAsync([direct], "1.21.1", "fabric", default)).Single().IconUrl == "",
                 "前置图标沿用官方 CDN 边界和占位回退");
         var bad = VersionSample(); bad["dependencies"]![0]!["project_id"] = "../unsafe";
         using (var client = JsonClient(new JsonArray(bad).ToJsonString()))
@@ -200,10 +222,46 @@ internal static class ModDownloadChecks
         using (var client = new HttpClient(new Handler(async (_, token) => { await Task.Delay(Timeout.Infinite, token); return new(); })))
         {
             var service = new ModrinthCatalogService(client, TimeSpan.FromMilliseconds(20));
-            await Throws<HttpRequestException>(() => service.FetchRequiredProjectsAsync([direct], default));
+            await Throws<HttpRequestException>(() => service.FetchRequiredProjectsAsync([direct], "1.21.1", "fabric", default));
             using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
-            await Throws<OperationCanceledException>(() => service.FetchRequiredProjectsAsync([direct], cancellation.Token));
+            await Throws<OperationCanceledException>(() => service.FetchRequiredProjectsAsync([direct], "1.21.1", "fabric", cancellation.Token));
         }
+    }
+
+    /// <summary>构造前置的运行发布，允许分别指定游戏和加载器以验证组合匹配。</summary>
+    private static JsonArray DependencyRelease(string project, string game = "1.21.1", string loader = "fabric")
+    {
+        var version = VersionSample();
+        version["project_id"] = project;
+        version["id"] = "Version" + loader;
+        version["game_versions"] = new JsonArray(game);
+        version["loaders"] = new JsonArray(loader);
+        version["dependencies"] = new JsonArray();
+        version["files"]![0]!["url"] = $"https://cdn.modrinth.com/data/{project}/versions/Version1/example.jar";
+        return new JsonArray(version);
+    }
+
+    /// <summary>复现多加载器主文件共用依赖；前置的游戏与加载器必须在同一发布匹配，切换筛选不串用结果。</summary>
+    private static async Task DependencyCompatibilityChecksAsync()
+    {
+        var file = FileSample() with { Loaders = ["fabric", "neoforge"], Dependencies = [new("FabricApi1", null)] };
+        using var client = new HttpClient(new Handler((request, _) =>
+        {
+            var releases = DependencyRelease("FabricApi1");
+            releases.Add(DependencyRelease("FabricApi1", "1.20.1", "neoforge")[0]!.DeepClone());
+            var body = request.RequestUri!.AbsolutePath == "/v2/projects"
+                ? new JsonArray(DependencyProject("FabricApi1", "Fabric API")) : releases;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body.ToJsonString()) });
+        }));
+        var service = new ModrinthCatalogService(client);
+        Check((await service.FetchRequiredProjectsAsync([file], "1.21.1", "neoforge", default)).Count == 0,
+            "多加载器发布不能把 Fabric API 带到 NeoForge，也不能拼接不同发布的兼容范围");
+        Check((await service.FetchRequiredProjectsAsync([file], "1.21.1", "fabric", default)).Single().Id == "FabricApi1",
+            "切回 Fabric 后保留兼容的 Fabric API");
+        Check((await service.FetchRequiredProjectsAsync([file with { GameVersions = ["1.20.1"] }], "1.20.1", "fabric", default)).Count == 0,
+            "加载器匹配但游戏版本不匹配的前置不显示");
+        Check((await service.FetchRequiredProjectsAsync([file with { GameVersions = ["1.20.1"] }], "1.20.1", "neoforge", default)).Count == 1,
+            "真正存在对应游戏版本的 NeoForge 前置正常显示");
     }
 
     /// <summary>在独立验收目录实际下载一个 Sodium 文件，通过共享任务管理器分别写入隔离和共享 mods 并校验，不启动游戏。</summary>

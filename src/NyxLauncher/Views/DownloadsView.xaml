@@ -9,7 +9,6 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <Grid>
@@ -57,7 +56,7 @@
             <views:VersionLoadStatus x:Name="LoadStatus" Visibility="Collapsed" />
             <!-- 将滚动条移入页面右侧留白，等量内边距保持卡片与搜索栏对齐。 -->
             <ListView x:Name="EntryList" SelectionMode="Single" IsItemClickEnabled="True" ItemClick="EntryList_ItemClick"
-                      Margin="0,0,-20,0" Padding="0,0,20,10"
+                      Margin="0,0,-20,0" Padding="0,0,20,0"
                       ScrollViewer.VerticalScrollBarVisibility="Auto"
                       AutomationProperties.Name="下载内容列表">
                 <ListView.ItemContainerStyle>
@@ -101,8 +100,8 @@
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        IsHitTestVisible="False" Visibility="Collapsed" />
         </Grid>
-        <views:ResourceCatalogView x:Name="ResourcesContent" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" />
-        <views:DownloadTasksView x:Name="TasksContent" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" />
+        <views:ResourceCatalogView x:Name="ResourcesContent" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed" />
+        <views:DownloadTasksView x:Name="TasksContent" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed" />
     </Grid>
     <views:InstallationView x:Name="InstallationContent" Visibility="Collapsed" />
     <views:ModDetailsView x:Name="ModDetailsContent" Visibility="Collapsed" />

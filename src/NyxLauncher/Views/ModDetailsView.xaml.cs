@@ -214,7 +214,7 @@ public sealed partial class ModDetailsView : UserControl
         }
     }
 
-    /// <summary>逐级选择游戏与加载器，点击文件后扫描兼容的本地版本并显示真实目标路径；成功创建任务后保留文件列表。</summary>
+    /// <summary>逐级选择游戏与加载器；文件弹窗提供兼容版本及手动目录两种下载入口，无游戏目录仍可手动下载，成功后保留文件列表。</summary>
     private async void Choice_Click(object sender, ItemClickEventArgs e)
     {
         if (!_active || _dialog is not null || e.ClickedItem is not ModDetailChoice choice) return;
@@ -225,13 +225,17 @@ public sealed partial class ModDetailsView : UserControl
         ModInstallDialog? dialog = null;
         try
         {
-            string folder = _folders?.Selected ?? throw new IOException("请先选择游戏目录。");
-            var targets = InstalledVersionService.Scan(folder).Where(x => ModInstallationService.IsCompatible(x, _game, _loader))
+            string folder = _folders?.Selected ?? "";
+            var targets = (Directory.Exists(folder) ? InstalledVersionService.Scan(folder) : []).Where(x => ModInstallationService.IsCompatible(x, _game, _loader))
                 .Select(x => new ModInstallTarget(x, Path.Combine(VersionIsolation.Resolve(folder, x, _settings.Current.Isolation), "mods")))
                 .ToArray();
             dialog = new ModInstallDialog(XamlRoot, file.FileName, targets, target =>
             {
                 _tasks.AddMod(file, folder, target, _game, _loader);
+                ShowNotice("已添加到下载任务：" + file.FileName, InfoBarSeverity.Success);
+            }, directory =>
+            {
+                _tasks.AddModToFolder(file, directory);
                 ShowNotice("已添加到下载任务：" + file.FileName, InfoBarSeverity.Success);
             });
             _dialog = dialog;

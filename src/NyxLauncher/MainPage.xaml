@@ -65,7 +65,7 @@
                 </Button.Flyout>
             </Button>
         </NavigationView.PaneFooter>
-        <Grid x:Name="ContentHost" Padding="28,20,28,28" MaxWidth="1280" HorizontalAlignment="Stretch">
+        <Grid x:Name="ContentHost" Padding="28,20,28,0" MaxWidth="1280" HorizontalAlignment="Stretch">
             <ScrollViewer x:Name="HomeScroll" SizeChanged="Home_SizeChanged" HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
                 <views:HomeView x:Name="HomeContent" />

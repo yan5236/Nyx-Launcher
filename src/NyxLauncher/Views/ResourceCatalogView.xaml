@@ -7,7 +7,7 @@
  <Grid RowSpacing="16">
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-   <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+   <RowDefinition Height="*"/>
   </Grid.RowDefinitions>
   <Grid ColumnSpacing="12">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -17,7 +17,7 @@
     Style="{StaticResource AccentButtonStyle}"/>
   </Grid>
   <Grid Grid.Row="1" ColumnSpacing="16">
-   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <StackPanel Spacing="6">
     <TextBlock Text="版本" VerticalAlignment="Center"/>
     <ComboBox x:Name="GameVersionFilter" HorizontalAlignment="Stretch"
@@ -47,10 +47,16 @@
      <ComboBoxItem Content="CurseForge（暂不可用）" IsEnabled="False"/>
     </ComboBox>
    </StackPanel>
+   <StackPanel x:Name="Pagination" Grid.Column="4" Orientation="Horizontal" Spacing="12"
+    HorizontalAlignment="Right" VerticalAlignment="Bottom" Visibility="Collapsed">
+    <Button x:Name="PreviousButton" Content="上一页" Click="Previous_Click"/>
+    <TextBlock x:Name="PageText" VerticalAlignment="Center"/>
+    <Button x:Name="NextButton" Content="下一页" Click="Next_Click"/>
+   </StackPanel>
   </Grid>
   <Grid Grid.Row="2">
    <ListView x:Name="ProjectList" SelectionMode="None" Visibility="Collapsed" IsItemClickEnabled="True" ItemClick="ProjectList_ItemClick"
-    Margin="0,0,-20,0" Padding="0,0,20,10" ScrollViewer.VerticalScrollBarVisibility="Auto"
+    Margin="0,0,-20,0" Padding="0,0,20,0" ScrollViewer.VerticalScrollBarVisibility="Auto"
     AutomationProperties.Name="资源列表">
     <ListView.ItemContainerStyle>
      <Style TargetType="ListViewItem">
@@ -103,11 +109,5 @@
    <TextBlock x:Name="EmptyHint" Text="没有匹配的内容" FontSize="15" Foreground="#6B7A70"
     HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
   </Grid>
-  <StackPanel x:Name="Pagination" Grid.Row="3" Orientation="Horizontal" Spacing="12"
-   HorizontalAlignment="Right" Visibility="Collapsed">
-   <Button x:Name="PreviousButton" Content="上一页" Click="Previous_Click"/>
-   <TextBlock x:Name="PageText" VerticalAlignment="Center"/>
-   <Button x:Name="NextButton" Content="下一页" Click="Next_Click"/>
-  </StackPanel>
  </Grid>
 </UserControl>

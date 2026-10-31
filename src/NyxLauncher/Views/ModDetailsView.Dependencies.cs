@@ -42,14 +42,14 @@ public sealed partial class ModDetailsView
         _ = LoadDependenciesAsync(files);
     }
 
-    /// <summary>单独加载当前兼容文件的必需前置；失败只显示前置重试，不阻止文件选择和下载。</summary>
+    /// <summary>单独加载当前兼容文件的必需前置，并检查前置自身的游戏和加载器兼容性；失败只显示前置重试，不阻止文件选择和下载。</summary>
     private async Task LoadDependenciesAsync(IReadOnlyList<ModrinthModFile> files)
     {
         using var request = new CancellationTokenSource();
         _dependencyRequest = request;
         try
         {
-            var projects = await _service.FetchRequiredProjectsAsync(files, request.Token);
+            var projects = await _service.FetchRequiredProjectsAsync(files, _game, _loader, request.Token);
             request.Token.ThrowIfCancellationRequested();
             _dependencies = projects.Where(x => x.Id != _project?.Id).ToArray();
             ShowDependencies();

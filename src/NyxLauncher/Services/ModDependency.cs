@@ -25,11 +25,12 @@ public sealed partial class ModrinthCatalogService
         return result.Distinct().ToArray();
     }
 
-    /// <summary>合并调用方已按游戏和加载器筛选的文件依赖；补全仅版本引用后批量读取项目卡片，缺失项目或坏响应报中文错误，取消向上传播。</summary>
+    /// <summary>按指定游戏和加载器合并文件依赖并补全项目；仅返回自身有同组合运行文件的前置，避免多加载器发布混入其他平台依赖。缺失项目或坏响应报中文错误，取消向上传播。</summary>
     public async Task<IReadOnlyList<ResourceProject>> FetchRequiredProjectsAsync(
-        IEnumerable<ModrinthModFile> files, CancellationToken token)
+        IEnumerable<ModrinthModFile> files, string game, string loader, CancellationToken token)
     {
-        var dependencies = files.SelectMany(x => x.Dependencies).Distinct().ToArray();
+        var dependencies = files.Where(x => x.GameVersions.Contains(game) && x.Loaders.Contains(loader))
+            .SelectMany(x => x.Dependencies).Distinct().ToArray();
         if (dependencies.Length == 0) return [];
         try
         {
@@ -69,7 +70,14 @@ public sealed partial class ModrinthCatalogService
                     project.GetProperty("project_type").GetString() ?? "mod"));
             }
             if (result.Select(x => x.Id).Distinct().Count() != ids.Count) throw new JsonException();
-            return result.DistinctBy(x => x.Id).OrderBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ToArray();
+            var compatible = new List<ResourceProject>();
+            foreach (var project in result.DistinctBy(x => x.Id))
+            {
+                var releases = await FetchModFilesAsync(project.Id, token);
+                if (releases.Any(x => x.GameVersions.Contains(game) && x.Loaders.Contains(loader)))
+                    compatible.Add(project);
+            }
+            return compatible.OrderBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ToArray();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException or FormatException or OverflowException)
         { throw new HttpRequestException("前置资源暂时不可用，请重试。", ex); }

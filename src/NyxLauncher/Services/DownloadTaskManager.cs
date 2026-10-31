@@ -127,6 +127,27 @@ public sealed class DownloadTaskManager
         return item;
     }
 
+    /// <summary>直接下载模组到用户选择的现有目录，不要求可扫描的游戏版本且不追加 mods；保留元数据、哈希和同名保护，开始及重试前检查目录仍存在。</summary>
+    public DownloadTaskItem AddModToFolder(ModrinthModFile file, string folder)
+    {
+        file.Validate();
+        if (!Path.IsPathFullyQualified(folder) || !Directory.Exists(folder))
+            throw new IOException("请选择可访问的下载目录。");
+        string directory = Path.GetFullPath(folder);
+        string path = Path.Combine(directory, file.FileName);
+        GameInstallationService.EnsureNoLinks(path);
+        var item = new DownloadTaskItem { Name = file.FileName, Destination = path, IsMod = true };
+        item.Work = (transport, token) =>
+        {
+            if (!Directory.Exists(directory)) throw new IOException("下载目录已不存在，请重新选择。");
+            return ModInstallationService.InstallAsync(file, directory, transport,
+                (done, total) => Report(item, total > 0 ? done * 100d / total : 0,
+                    $"下载模组 · {done / 1048576d:0.0} / {total / 1048576d:0.0} MiB"), token);
+        };
+        Add(item);
+        return item;
+    }
+
     /// <summary>关闭期间或目标重复时抛出 I/O 异常，不加入任务；否则通知新任务提示并启动共享传输。</summary>
     private void Add(DownloadTaskItem item)
     {
