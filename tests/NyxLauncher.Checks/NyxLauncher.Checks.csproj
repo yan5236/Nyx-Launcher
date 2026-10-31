@@ -6,6 +6,7 @@
   <Nullable>enable</Nullable>
  </PropertyGroup>
  <ItemGroup>
+  <Content Include="../../src/NyxLauncher/Assets/Launch/*" Link="Assets/Launch/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   <EmbeddedResource Include="../../config/microsoft-auth.example.json" LogicalName="NyxLauncher.MicrosoftAuth.json" />
   <PackageReference Include="CmlLib.Core" Version="4.1.0" />
   <PackageReference Include="SkiaSharp" Version="4.154.0" />

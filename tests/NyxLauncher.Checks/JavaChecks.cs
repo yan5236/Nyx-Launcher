@@ -160,7 +160,7 @@ internal static class JavaChecks
         Check(!File.Exists(Path.Combine(root, "outside.txt")), "越界文件未写入");
     }
 
-    /// <summary>使用独立本地清单走真实准备与进程构造，验证固定的 Java 路径与版本手动内存进入启动参数；不执行测试程序。</summary>
+    /// <summary>使用独立本地清单走真实准备与进程构造，验证固定 Java、内存和高级参数的主类边界；不执行测试程序。</summary>
     private static async Task CheckLaunchAsync(string root, JavaRuntime runtime)
     {
         string game = Path.Combine(root, "game");
@@ -178,6 +178,11 @@ internal static class JavaChecks
         Check(process.StartInfo.Arguments.Contains("-Xmx2048M", StringComparison.OrdinalIgnoreCase) || process.StartInfo.ArgumentList.Contains("-Xmx2048M"), "版本内存设置进入实际 JVM 参数");
         Check(selected == runtime.Executable && process.StartInfo.FileName == selected && process.StartInfo.Arguments.Contains("JavaTest"),
             "Java 自动选择贯通准备与真实游戏进程参数");
+        using var customized = await GameLaunchService.BuildAsync(game, version, IsolationMode.All, new("JavaTest"), javaPath: selected,
+            advanced: new(JvmArguments: "-Dnyx.path=\"C:\\中文 目录\\mods\"", GameArguments: "--width 900", Collector: GarbageCollector.Z));
+        var arguments = LaunchArguments.Parse(customized.StartInfo.Arguments);
+        Check(arguments.Contains("-Dnyx.path=C:\\中文 目录\\mods") && arguments.Contains("-XX:+UseZGC") && !arguments.Any(x => x.Contains("G1")), "真实启动构造保留 Windows 路径且 ZGC 不混用 G1");
+        Check(Array.IndexOf(arguments, "-XX:+UseZGC") < Array.IndexOf(arguments, "test.Main") && Array.IndexOf(arguments, "--width") > Array.IndexOf(arguments, "test.Main"), "JVM 和游戏参数位于主类两侧");
         await ThrowsAsync<IOException>(() => GameLaunchService.PrepareAsync(game, version, new(), (_, _) => { }, default,
             new([], Path.Combine(root, "missing-java"))), "启动准备明确拒绝失效手动 Java");
     }

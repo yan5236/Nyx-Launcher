@@ -31,21 +31,25 @@ public sealed partial class SettingsView : UserControl
     /// <summary>连接 Java 管理和统一下载任务，保持原有下载偏好独立持久化。</summary>
     public void ConfigureJava(JavaRuntimeStore store, DownloadTaskManager tasks) => JavaPanel.Configure(store, tasks);
 
-    /// <summary>设置页出现时激活当前 Java 或内存 Tab；仅尚未初始化的配置触发一次自动浅扫描。</summary>
+    /// <summary>设置页出现时激活当前 Java 或启动 Tab；仅尚未初始化的配置触发一次自动浅扫描。</summary>
     public void SetActive(bool active)
     {
         JavaPanel.SetActive(active && JavaPanel.Visibility == Visibility.Visible);
         MemoryPanel.SetActive(active && LaunchPanel.Visibility == Visibility.Visible);
+        AdvancedPanel.SetActive(active && LaunchPanel.Visibility == Visibility.Visible);
     }
 
-    /// <summary>为全局内存预览连接首页当前版本及实际运行目录策略。</summary>
-    public void ConfigureMemory(GameFolderStore folders, Func<InstalledVersion?> version) =>
+    /// <summary>连接全局内存预览与高级启动卡片；全局保存不写入版本目录。</summary>
+    public void ConfigureMemory(GameFolderStore folders, Func<InstalledVersion?> version)
+    {
         MemoryPanel.Configure(version, () => folders.Selected, () => _store!.Current.Isolation, false);
+        AdvancedPanel.Configure(version, false);
+    }
 
     /// <summary>主窗口退出时等待 Java 扫描结束并关闭安装弹窗。</summary>
     public Task StopAsync() => JavaPanel.StopAsync();
 
-    /// <summary>沿用下载页 Tab 控件切换通用、启动、Java 及下载分组，首次进入 Java 时后台扫描。</summary>
+    /// <summary>沿用下载页 Tab 控件切换通用、启动、Java 及下载分组，首次进入 Java 时后台扫描，进入启动页刷新内存和高级配置。</summary>
     private void Tabs_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (GeneralPanel is null || DownloadPanel is null || JavaPanel is null || LaunchPanel is null) return;
@@ -56,6 +60,7 @@ public sealed partial class SettingsView : UserControl
         JavaPanel.SetActive(tab == "java");
         LaunchPanel.Visibility = tab == "launch" ? Visibility.Visible : Visibility.Collapsed;
         MemoryPanel.SetActive(tab == "launch");
+        AdvancedPanel.SetActive(tab == "launch");
     }
 
     /// <summary>源策略变化后保存，版本页下次打开时使用最新策略。</summary>

@@ -17,6 +17,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+  <Content Include="Assets\Launch\*" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="..\..\config\microsoft-auth.json" LogicalName="NyxLauncher.MicrosoftAuth.json" />
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\*.svg" CopyToOutputDirectory="PreserveNewest" />

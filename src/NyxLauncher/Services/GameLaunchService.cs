@@ -12,9 +12,9 @@ namespace NyxLauncher.Services;
 /// <summary>从真实本地清单生成启动进程，将隔离策略用于 gameDir 与进程工作目录。</summary>
 public static class GameLaunchService
 {
-    /// <summary>用已验证会话和可选固定 Java 路径构造进程；根据实时内存与版本偏好设置堆上限、隔离目录及外置认证注入器，但不启动游戏。</summary>
+    /// <summary>以版本优先的高级配置构造进程，保留加载器参数并接入兼容组件与外置认证；只构造进程，不启动或修改显卡偏好。</summary>
     public static async Task<Process> BuildAsync(string folder, InstalledVersion version, IsolationMode isolation, GameAccount account,
-        CancellationToken token = default, MSession? authenticatedSession = null, string? javaPath = null)
+        CancellationToken token = default, MSession? authenticatedSession = null, string? javaPath = null, AdvancedLaunchSettings? advanced = null)
     {
         var session = authenticatedSession ?? CreateSession(account);
         if (session.UUID != account.Uuid || account.IsMicrosoft && (session.UserType != "msa" || string.IsNullOrEmpty(session.AccessToken)))
@@ -29,7 +29,11 @@ public static class GameLaunchService
         Directory.CreateDirectory(gameDirectory);
         var memory = MemoryAllocation.Snapshot();
         int allocated = MemoryAllocation.Resolve(MemorySettingsStore.Read(version), memory, version, MemoryAllocation.CountMods(folder, version, isolation));
-        var process = await launcher.BuildProcessAsync(version.Name, new MLaunchOption
+        advanced ??= AdvancedLaunchSettingsStore.Read(version);
+        var profile = await launcher.GetVersionAsync(version.Name, token);
+        int major = javaPath is null ? RequiredJavaMajor(profile) : JavaRuntime.Inspect(Path.GetDirectoryName(javaPath)!)?.Major
+            ?? throw new IOException("无法识别所选 Java 版本。");
+        var option = new MLaunchOption
         {
             MaximumRamMb = allocated,
             Session = session,
@@ -37,11 +41,22 @@ public static class GameLaunchService
             ClientId = account.ClientId,
             GameLauncherName = "NyxLauncher",
             ArgumentDictionary = new Dictionary<string, string> { ["game_directory"] = gameDirectory }
-        }, token);
+        };
+        LaunchArguments.Apply(option, advanced, major);
+        var process = await launcher.BuildProcessAsync(version.Name, option, token);
         process.StartInfo.WorkingDirectory = gameDirectory;
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.CreateNoWindow = true;
-        try { if (account.IsExternal) await AuthlibInjector.ConfigureAsync(process, folder, account.AuthServer!, token); }
+        try
+        {
+            bool affectedLwjgl = profile.EnumerateToParent().SelectMany(x => x.Libraries ?? []).Any(x => x.Name is "org.lwjgl:lwjgl:3.4.0" or "org.lwjgl:lwjgl:3.4.1");
+            string mainClass = profile.EnumerateToParent().Select(x => x.MainClass).FirstOrDefault(x => !string.IsNullOrEmpty(x))
+                ?? throw new IOException("游戏清单缺少主类。");
+            int actualMajor = JavaRuntime.Inspect(Path.GetDirectoryName(process.StartInfo.FileName)!)?.Major ?? major;
+            if (advanced.Collector == GarbageCollector.Z && actualMajor < 15) throw new IOException("ZGC 需要 Java 15 或更新版本。");
+            LaunchCompatibility.Apply(process.StartInfo, advanced, actualMajor, mainClass, affectedLwjgl);
+            if (account.IsExternal) await AuthlibInjector.ConfigureAsync(process, folder, account.AuthServer!, token);
+        }
         catch { process.Dispose(); throw; }
         return process;
     }

@@ -71,6 +71,6 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="GamePanel" Grid.Row="3" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"><views:MemorySettingsView x:Name="MemoryPanel" VerticalAlignment="Top" Margin="0,0,4,0"/></ScrollViewer>
+        <ScrollViewer x:Name="GamePanel" Grid.Row="3" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="16" Margin="0,0,4,0"><views:MemorySettingsView x:Name="MemoryPanel" VerticalAlignment="Top"/><views:AdvancedLaunchSettingsView x:Name="AdvancedPanel"/></StackPanel></ScrollViewer>
     </Grid>
 </UserControl>

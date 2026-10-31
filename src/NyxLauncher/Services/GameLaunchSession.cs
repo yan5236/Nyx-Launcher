@@ -45,7 +45,7 @@ public sealed class GameLaunchSession
         }
     }
 
-    /// <summary>创建日志并按固定 Java 选择检查资源，认证后使用同一 Java 构造进程；取消覆盖网络与进程，最终回收句柄。</summary>
+    /// <summary>固定本次高级设置与 Java，认证后构造进程并应用其显卡偏好；取消覆盖网络与进程，最终回收句柄。</summary>
     public async Task RunAsync(string folder, InstalledVersion version, DownloadSettings settings, GameAccount account,
         Func<GameAccount, CancellationToken, Task<MSession>>? authenticate = null, JavaSelection? java = null)
     {
@@ -59,6 +59,7 @@ public sealed class GameLaunchSession
             token.ThrowIfCancellationRequested();
             _log = new GameLaunchLog(folder);
             _log.Write("启动版本：" + version.Name);
+            var advanced = AdvancedLaunchSettingsStore.Read(version);
             string? javaPath = await Task.Run(() => GameLaunchService.PrepareAsync(folder, version, settings, Report, token, java), token);
             if (javaPath is not null) _log.Write("Java：" + javaPath);
             token.ThrowIfCancellationRequested();
@@ -66,7 +67,7 @@ public sealed class GameLaunchSession
             var identity = authenticate is null ? GameLaunchService.CreateSession(account) : await authenticate(account, token);
             _accessToken = identity.AccessToken;
             token.ThrowIfCancellationRequested();
-            process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token, identity, javaPath);
+            process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token, identity, javaPath, advanced);
             GameDirectory = process.StartInfo.WorkingDirectory;
             StartedUtc = DateTime.UtcNow;
             _gameLog = new GameLaunchLog(folder, gameOutput: true);
@@ -75,6 +76,8 @@ public sealed class GameLaunchSession
             process.StartInfo.RedirectStandardError = true;
             process.OutputDataReceived += CaptureOutput;
             process.ErrorDataReceived += CaptureOutput;
+            LaunchCompatibility.ConfigureGpu(process.StartInfo.FileName, advanced.HighPerformanceGpu);
+            token.ThrowIfCancellationRequested();
             started = process.Start();
             if (!started) throw new IOException("系统未能创建游戏进程。");
             process.BeginOutputReadLine(); process.BeginErrorReadLine();

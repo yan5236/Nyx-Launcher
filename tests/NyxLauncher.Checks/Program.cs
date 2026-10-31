@@ -8,9 +8,11 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行 MCIM 与本地资源、整合包、模组、资源、Java、认证、账户、启动及下载断言；--mcim-live 限定真实镜像验收，--local-resources 可选读取本地样本；--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
+    /// <summary>运行高级启动及现有业务断言；--advanced-launch 仅检查高级配置，--mcim-live 限定真实镜像验收，--local-resources 可选读取本地样本；--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        AdvancedLaunchChecks.Run();
+        if (args.Contains("--advanced-launch")) return;
         if (args.Contains("--mcim-live")) { await ResourceMirrorChecks.LiveAsync(); return; }
         await ResourceMirrorChecks.RunAsync();
         if (args.Contains("--live-modpacks")) { await ModpackChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-modpacks") + 1])); return; }

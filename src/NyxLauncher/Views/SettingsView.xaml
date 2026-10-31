@@ -64,7 +64,7 @@
    </Border>
   </StackPanel>
   </ScrollViewer>
-  <ScrollViewer x:Name="LaunchPanel" Grid.Row="1" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"><views:MemorySettingsView x:Name="MemoryPanel" Margin="0,0,16,0" VerticalAlignment="Top"/></ScrollViewer>
+  <ScrollViewer x:Name="LaunchPanel" Grid.Row="1" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="16" Margin="0,0,16,0"><views:MemorySettingsView x:Name="MemoryPanel" VerticalAlignment="Top"/><views:AdvancedLaunchSettingsView x:Name="AdvancedPanel"/></StackPanel></ScrollViewer>
   <views:JavaSettingsView x:Name="JavaPanel" Grid.Row="1" Visibility="Collapsed"/>
   <InfoBar x:Name="SaveError" Grid.Row="2" Severity="Error" IsClosable="False" />
  </Grid>
