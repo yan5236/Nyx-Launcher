@@ -89,7 +89,7 @@ public sealed class DownloadTransport : IDisposable
             .Equals(hash, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>探测可验证的 Range 支持后并行写入互不重叠的片段；服务器忽略 Range 时丢弃片段并回到单连接。</summary>
+    /// <summary>已知不足 4 MiB 的小文件直接 GET；大文件或未知大小才限时探测 Range 并分段，服务器忽略 Range 时回退单连接。</summary>
     private async Task TransferAsync(Uri url, string destination, string? hash, long expected, bool overwrite,
         bool segmented, Action<long, long>? progress, CancellationToken token, TimeSpan? firstByteTimeout)
     {
@@ -98,13 +98,13 @@ public sealed class DownloadTransport : IDisposable
         string? etag = null;
         try
         {
-            if (segmented && _settings.MaxConnections > 1)
+            if (segmented && _settings.MaxConnections > 1 && (expected == 0 || expected >= 4 * 1024 * 1024))
             {
                 await _connections.WaitAsync(token);
                 try
                 {
                     using var head = new HttpRequestMessage(HttpMethod.Head, url);
-                    using var response = await SendAsync(head, token, firstByteTimeout);
+                    using var response = await SendAsync(head, token, firstByteTimeout ?? TimeSpan.FromSeconds(3));
                     if (response.IsSuccessStatusCode && response.Headers.AcceptRanges.Contains("bytes") &&
                         response.Headers.ETag is { IsWeak: false } tag)
                     { total = response.Content.Headers.ContentLength ?? expected; etag = tag.ToString(); }

@@ -14,21 +14,22 @@ public sealed class ModpackInstallDialog : ContentDialog
     private readonly string? _path;
     private readonly ModrinthModFile? _remote;
 
-    /// <summary>用整合包名预填实例名称；用户确认后只创建任务，不在界面线程执行安装。</summary>
+    /// <summary>沿用左取消、右确认的按钮布局，用整合包名预填实例名称；用户确认后只创建任务，不在界面线程执行安装。</summary>
     public ModpackInstallDialog(XamlRoot root, DownloadTaskManager tasks, string folder, string name,
         string? path = null, ModrinthModFile? remote = null)
     {
         XamlRoot = root;
         Title = "安装整合包";
-        PrimaryButtonText = "安装";
-        CloseButtonText = "取消";
-        DefaultButton = ContentDialogButton.Primary;
+        PrimaryButtonText = "取消";
+        SecondaryButtonText = "安装";
+        SecondaryButtonStyle = (Style)Application.Current.Resources["DeepButtonStyle"];
+        DefaultButton = ContentDialogButton.Secondary;
         _tasks = tasks; _folder = folder; _path = path; _remote = remote;
         _name = new TextBox { Header = "版本名称", Text = name, MinWidth = 320, MaxLength = 128 };
         Content = new StackPanel { Spacing = 12, Children = { _name, _error } };
         Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("ms-appx:///Themes/AccentButtonResources.xaml") });
         _name.TextChanged += NameChanged;
-        PrimaryButtonClick += Install;
+        SecondaryButtonClick += Install;
         Validate();
     }
 
@@ -38,8 +39,8 @@ public sealed class ModpackInstallDialog : ContentDialog
     /// <summary>更新错误和主按钮状态；不修改用户输入，避免暗中修剪或更换实例名。</summary>
     private void Validate()
     {
-        try { _tasks.ValidateModpackName(_folder, _name.Text); _error.IsOpen = false; IsPrimaryButtonEnabled = true; }
-        catch (Exception ex) { _error.Message = ex.Message; _error.IsOpen = true; IsPrimaryButtonEnabled = false; }
+        try { _tasks.ValidateModpackName(_folder, _name.Text); _error.IsOpen = false; IsSecondaryButtonEnabled = true; }
+        catch (Exception ex) { _error.Message = ex.Message; _error.IsOpen = true; IsSecondaryButtonEnabled = false; }
     }
 
     /// <summary>提交时重新检查竞争冲突；创建失败保留弹窗和输入，成功交给标准任务界面展示。</summary>

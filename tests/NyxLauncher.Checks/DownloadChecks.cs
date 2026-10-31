@@ -31,6 +31,26 @@ internal static class DownloadChecks
                 Check(handler.Ranges > 0 && handler.Maximum <= 3, "执行 Range 且遵守连接上限");
                 await Throws<IOException>(() => transport.DownloadAsync(new("https://example.test/file"), target, null, 0, false, true, null, default), "普通下载不覆盖已有文件");
             }
+            var stalledHead = new FileHandler(data, false, true);
+            using (var transport = new DownloadTransport(new(), new HttpClient(stalledHead)))
+            using (var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(8)))
+            {
+                string target = Path.Combine(root, "head-timeout.bin");
+                await transport.DownloadAsync(new("https://example.test/head-timeout"), target, hash,
+                    data.Length, false, true, null, deadline.Token);
+                Check(stalledHead.Heads == 1 && stalledHead.Ranges == 0 && File.ReadAllBytes(target).SequenceEqual(data),
+                    "HEAD 无响应时限时回退 GET，不占用完整的正文等待时间");
+            }
+            byte[] small = data[..131072];
+            var smallHandler = new FileHandler(small, false);
+            using (var transport = new DownloadTransport(new(), new HttpClient(smallHandler)))
+            {
+                string target = Path.Combine(root, "small.jar");
+                await transport.DownloadAsync(new("https://example.test/small"), target,
+                    Convert.ToHexString(SHA1.HashData(small)), small.Length, false, true, null, default);
+                Check(smallHandler.Heads == 0 && smallHandler.Ranges == 0 && File.ReadAllBytes(target).SequenceEqual(small),
+                    "已知小文件跳过 HEAD 和分段，单次 GET 保持哈希及字节正确");
+            }
             using (var transport = new DownloadTransport(new(), new HttpClient(new FileHandler(data, false))))
             {
                 string target = Path.Combine(root, "corrupt.bin");
@@ -138,19 +158,22 @@ internal static class DownloadChecks
     { try { await action(); } catch (T) { _checks++; return; } throw new Exception("未抛出异常：" + name); }
 
     /// <summary>可控 HTTP 文件端点，返回真实分段字节，检测并发及服务端忽略 Range 的回退。</summary>
-    private sealed class FileHandler(byte[] data, bool ignoreRange) : HttpMessageHandler
+    private sealed class FileHandler(byte[] data, bool ignoreRange, bool stallHead = false) : HttpMessageHandler
     {
         private int _active;
+        public int Heads;
         public int Ranges;
         public int Maximum;
 
         /// <summary>模拟带强 ETag 的完整文件与 Range 响应；使用短延迟使分段并发可被断言。</summary>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
+            if (request.Method == HttpMethod.Head) Interlocked.Increment(ref Heads);
             int active = Interlocked.Increment(ref _active);
             Maximum = Math.Max(Maximum, active);
             try
             {
+                if (stallHead && request.Method == HttpMethod.Head) await Task.Delay(Timeout.Infinite, token);
                 await Task.Delay(10, token);
                 var response = new HttpResponseMessage(HttpStatusCode.OK);
                 response.Headers.ETag = new EntityTagHeaderValue("\"revision1\"");

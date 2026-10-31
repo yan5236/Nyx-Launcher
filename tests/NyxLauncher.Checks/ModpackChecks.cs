@@ -103,7 +103,7 @@ internal static class ModpackChecks
             var releases = await catalog.FetchModFilesAsync("abc123", default, true);
             Check(releases.Count == 1 && releases[0].IsModpack && releases[0].FileName == "test.mrpack", "在线整合包发布文件解析");
             Check((await catalog.FetchModFilesAsync("abc123", default)).Count == 0, "模组查询不混入整合包");
-            byte[] data = Encoding.UTF8.GetBytes("downloaded mod bytes");
+            byte[] data = Enumerable.Range(0, 262144).Select(x => (byte)(x % 251)).ToArray();
             string hash = Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(data));
             string zip = Write(root, "modrinth.index.json", "{}", ("overrides/config/a.txt", "common"), ("client-overrides/config/a.txt", "client"));
             var manifest = new ModpackManifest("Test", "1.21.1", null,
@@ -111,7 +111,10 @@ internal static class ModpackChecks
                 new Dictionary<string,string> { ["config/a.txt"] = "client-overrides/config/a.txt" });
             string publish = Path.Combine(root, "publish");
             using var transport = new DownloadTransport(new(), new HttpClient(new PackHandler(data)));
-            await ModpackInstallationService.InstallFilesAsync(zip, publish, "Test", manifest, transport, (_, _) => { }, default);
+            var reports = new System.Collections.Concurrent.ConcurrentQueue<(double Percent, string Detail)>();
+            await ModpackInstallationService.InstallFilesAsync(zip, publish, "Test", manifest, transport, (p, d) => reports.Enqueue((p, d)), default);
+            Check(reports.Any(x => x.Percent > 65 && x.Percent < 90 && x.Detail.Contains("0/1")), "文件尚未下载完即报告真实字节进度");
+            Check(reports.Any(x => x.Percent == 90 && x.Detail.Contains("1/1")), "完成数与下载阶段进度同步");
             Check(File.ReadAllBytes(Path.Combine(publish, "mods/a.jar")).SequenceEqual(data), "下载地址回退后保留真实字节");
             Check(File.ReadAllText(Path.Combine(publish, "config/a.txt")) == "client", "写入客户端覆盖内容");
             var bad = manifest with { Files = [new("mods/b.jar", new string('0',40), data.Length, [new("https://test.invalid/ok")])] };

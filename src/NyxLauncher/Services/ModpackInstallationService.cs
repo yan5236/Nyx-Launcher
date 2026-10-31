@@ -39,7 +39,7 @@ public sealed class ModpackInstallationService(string folder, string taskId, Dow
             });
     }
 
-    /// <summary>下载声明文件并解压覆盖目录；拒绝覆盖启动清单、客户端和内部标记，缺少文件或校验失败不发布实例。</summary>
+    /// <summary>并行下载时持续汇总字节及完成数，再解压覆盖目录；拒绝覆盖管理文件，缺少文件或校验失败不发布实例。</summary>
     internal static async Task InstallFilesAsync(string archive, string publish, string name, ModpackManifest manifest,
         DownloadTransport transport, Action<double, string> report, CancellationToken token)
     {
@@ -52,7 +52,32 @@ public sealed class ModpackInstallationService(string folder, string taskId, Dow
                 throw new IOException("整合包试图覆盖启动器管理文件：" + relative);
         }
         int completed = 0;
-        await Parallel.ForEachAsync(manifest.Files.Where(x => x.Urls.Count > 0 && !manifest.Entries.ContainsKey(x.Path)),
+        var downloads = manifest.Files.Where(x => x.Urls.Count > 0 && !manifest.Entries.ContainsKey(x.Path)).ToArray();
+        var received = downloads.ToDictionary(x => x.Path, _ => (Bytes: 0L, Credit: 0L));
+        var weights = downloads.ToDictionary(x => x.Path, x => x.Size > 0 ? x.Size : 1048576L);
+        double totalWeight = weights.Values.Sum(x => (double)x);
+        double doneWeight = 0;
+        long totalBytes = 0;
+        var progressLock = new object();
+
+        // 汇总各文件当前字节；未知长度只使用估算权重计算百分比，界面不把估算量当作真实总大小。
+        void ReportFile(ModpackFile file, long bytes, bool finished)
+        {
+            lock (progressLock)
+            {
+                var previous = received[file.Path];
+                long credit = finished ? weights[file.Path] : Math.Min(bytes, weights[file.Path]);
+                doneWeight += credit - previous.Credit;
+                totalBytes += bytes - previous.Bytes;
+                received[file.Path] = (bytes, credit);
+                if (finished) completed++;
+                report(65 + 25 * (completed == downloads.Length ? 1 : doneWeight / Math.Max(1, totalWeight)),
+                    $"下载整合包资源 · {completed}/{downloads.Length} · {totalBytes / 1048576d:0.0} MiB · {file.Path}");
+            }
+        }
+
+        report(65, $"下载整合包资源 · 0/{downloads.Length}");
+        await Parallel.ForEachAsync(downloads,
             new ParallelOptions { MaxDegreeOfParallelism = transport.MaxParallelDownloads, CancellationToken = token }, async (file, cancellation) =>
         {
             string destination = Path.Combine(publish, file.Path);
@@ -62,14 +87,15 @@ public sealed class ModpackInstallationService(string folder, string taskId, Dow
             {
                 try
                 {
-                    await transport.DownloadAsync(url, destination, file.Sha1, file.Size, true, true, null, cancellation);
+                    await transport.DownloadAsync(url, destination, file.Sha1, file.Size, true, true,
+                        (bytes, _) => ReportFile(file, bytes, false), cancellation);
                     failure = null;
                     break;
                 }
                 catch (Exception ex) when (ex is IOException or HttpRequestException) { failure = ex; }
             }
             if (failure is not null) throw failure;
-            report(65 + 25d * Interlocked.Increment(ref completed) / Math.Max(1, manifest.Files.Count), "下载整合包资源 · " + file.Path);
+            ReportFile(file, new FileInfo(destination).Length, true);
         });
         using var zip = ZipFile.OpenRead(archive);
         foreach (var (relative, entryName) in manifest.Entries)
