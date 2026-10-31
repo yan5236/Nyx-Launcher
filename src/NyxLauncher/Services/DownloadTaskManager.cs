@@ -105,6 +105,23 @@ public sealed class DownloadTaskManager
         return item;
     }
 
+    /// <summary>为真实模组文件创建标准下载任务；捕获游戏版本、加载器和隔离设置，开始及重试前重新校验目标，共享暂停、限速与取消。</summary>
+    public DownloadTaskItem AddMod(ModrinthModFile file, string folder, InstalledVersion target, string game, string loader)
+    {
+        var isolation = _settings.Current.Isolation;
+        string mods = ModInstallationService.ResolveMods(folder, target, file, game, loader, isolation);
+        var item = new DownloadTaskItem { Name = file.FileName, Destination = Path.Combine(mods, file.FileName) };
+        item.Work = (transport, token) =>
+        {
+            string currentMods = ModInstallationService.ResolveMods(folder, target, file, game, loader, isolation);
+            return ModInstallationService.InstallAsync(file, currentMods, transport,
+                (done, total) => Report(item, total > 0 ? done * 100d / total : 0,
+                    $"下载模组 · {done / 1048576d:0.0} / {total / 1048576d:0.0} MiB"), token);
+        };
+        Add(item);
+        return item;
+    }
+
     /// <summary>阻止同目标的重复任务，加入列表并通知新任务提示，再交给启动入口应用传输预算。</summary>
     private void Add(DownloadTaskItem item)
     {

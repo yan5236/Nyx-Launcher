@@ -87,7 +87,7 @@ public sealed class FabricApiService
         return result.OrderByDescending(x => x.Published).DistinctBy(x => x.Id).ToArray();
     }
 
-    /// <summary>在远程解析和安装入口校验相同的下载契约，限制官方项目 CDN、单级 JAR 名和 SHA-1，失败不写文件。</summary>
+    /// <summary>在远程解析和安装入口校验相同的下载契约；兼容官方旧路径开头的重复斜杠及大小 0（未知），仍限制项目 CDN、单级 JAR 名和 SHA-1，失败不写文件。</summary>
     internal static void Validate(FabricApiVersion version)
     {
         GameInstallationService.ValidateName(version.FileName);
@@ -95,9 +95,9 @@ public sealed class FabricApiService
             version.Channel is not ("release" or "beta" or "alpha") ||
             !version.FileName.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) ||
             !version.FileName.StartsWith("fabric-api-", StringComparison.OrdinalIgnoreCase) ||
-            version.Size <= 0 || version.Sha1 is null || version.Sha1.Length != 40 || !version.Sha1.All(Uri.IsHexDigit) ||
+            version.Size < 0 || version.Sha1 is null || version.Sha1.Length != 40 || !version.Sha1.All(Uri.IsHexDigit) ||
             !version.Url.IsAbsoluteUri || version.Url.Scheme != "https" || version.Url.Host != "cdn.modrinth.com" ||
-            version.Url.UserInfo.Length > 0 || !version.Url.AbsolutePath.StartsWith($"/data/{ProjectId}/versions/", StringComparison.Ordinal))
+            version.Url.UserInfo.Length > 0 || !version.Url.AbsolutePath.TrimStart('/').StartsWith($"data/{ProjectId}/versions/", StringComparison.Ordinal))
             throw new JsonException("Fabric API 文件元数据无效。");
     }
 

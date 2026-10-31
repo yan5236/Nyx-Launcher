@@ -24,7 +24,7 @@ internal static class FabricApiChecks
         })
     };
 
-    /// <summary>验证筛选、主文件选择、失败/取消、真实文件字节和冲突保护，不访问网络或用户游戏目录。</summary>
+    /// <summary>验证筛选、主文件选择、官方双斜杠旧链接及未知大小、失败/取消、真实文件字节和冲突保护，不访问网络或用户游戏目录。</summary>
     public static async Task RunAsync()
     {
         var release = Release();
@@ -32,6 +32,11 @@ internal static class FabricApiChecks
         var parsed = FabricApiService.Parse("1.21.1", list);
         Check(parsed.Count == 1 && parsed[0].GameVersion == "1.21.1", "精确游戏及加载器筛选、去重");
         var api = parsed[0];
+        var legacy = Release("legacy");
+        legacy["files"]![0]!["url"] = $"https://cdn.modrinth.com//data/{FabricApiService.ProjectId}/versions/legacy/fabric-api-test.jar";
+        legacy["files"]![0]!["size"] = 0;
+        Check(FabricApiService.Parse("1.21.1", JsonSerializer.SerializeToUtf8Bytes(new[] { release, legacy })).Count == 2,
+            "兼容官方旧链接的双斜杠路径及未知大小，不阻断其他发布");
         var older = Release("older"); older["date_published"] = "2025-01-01T00:00:00Z";
         Check(FabricApiService.Parse("1.21.1", JsonSerializer.SerializeToUtf8Bytes(new[] { older, release }))[0].Id == "version", "按真实发布日期降序");
         Check(FabricApiService.Parse("missing", list).Count == 0 && FabricApiService.Parse("1.21.1", "[]"u8.ToArray()).Count == 0, "空结果保留无版本语义");
@@ -56,7 +61,9 @@ internal static class FabricApiChecks
         {
             x => x["project_id"] = "wrong", x => x["files"]![0]!["filename"] = "../outside.jar",
             x => x["files"]![0]!["hashes"]!["sha1"] = "bad", x => x["files"]![0]!["url"] = "http://cdn.modrinth.com/file",
-            x => x["files"]![0]!["size"] = 0, x => x["files"]![0]!["file_type"] = "sources-jar",
+            x => x["files"]![0]!["url"] = "https://example.com//data/P7dR8mSH/versions/legacy/fabric-api-test.jar",
+            x => x["files"]![0]!["url"] = "https://cdn.modrinth.com//data/OtherMod/versions/legacy/fabric-api-test.jar",
+            x => x["files"]![0]!["size"] = -1, x => x["files"]![0]!["file_type"] = "sources-jar",
             x => x["files"] = new JsonArray(), x => x["date_published"] = "invalid"
         })
         {
@@ -85,7 +92,7 @@ internal static class FabricApiChecks
             using var transport = new DownloadTransport(new(), new HttpClient(new Handler((_, _) =>
             { requests++; return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Content) }); })));
             string mods = Path.Combine(root, "mods");
-            await FabricApiService.InstallAsync(api, mods, transport, default);
+            await FabricApiService.InstallAsync(api with { Size = 0 }, mods, transport, default);
             Check(File.ReadAllBytes(Path.Combine(mods, api.FileName)).SequenceEqual(Content), "API 下载实际字节及哈希");
             await FabricApiService.InstallAsync(api, mods, transport, default);
             Check(requests == 1, "相同 API 经哈希验证复用");

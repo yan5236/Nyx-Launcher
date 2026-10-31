@@ -105,5 +105,6 @@
         <views:DownloadTasksView x:Name="TasksContent" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" />
     </Grid>
     <views:InstallationView x:Name="InstallationContent" Visibility="Collapsed" />
+    <views:ModDetailsView x:Name="ModDetailsContent" Visibility="Collapsed" />
     </Grid>
 </UserControl>

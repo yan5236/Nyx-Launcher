@@ -28,6 +28,8 @@ public sealed partial class DownloadsView : UserControl
         LoadStatus.RetryRequested += RetryRequested;
         InstallationContent.BackRequested += Installation_BackRequested;
         InstallationContent.TaskCreated += Installation_TaskCreated;
+        ResourcesContent.ModRequested += Mod_Requested;
+        ModDetailsContent.BackRequested += Mod_BackRequested;
         Unloaded += View_Unloaded;
     }
 
@@ -37,6 +39,7 @@ public sealed partial class DownloadsView : UserControl
         _settings = settings;
         TasksContent.Configure(tasks);
         InstallationContent.Configure(tasks, folders);
+        ModDetailsContent.Configure(tasks, folders, settings);
         tasks.TaskAdded += (_, _) => TaskBadge.Visibility = _showTasks && _active ? Visibility.Collapsed : Visibility.Visible;
     }
 
@@ -66,7 +69,7 @@ public sealed partial class DownloadsView : UserControl
     /// <summary>安装新版本入口使用游戏分类；分类切换时沿用现有筛选重置与加载流程。</summary>
     public void ShowGames() => ContentSelector.SelectedItem = ContentSelector.Items[0];
 
-    /// <summary>页面显示时获取当前分类；离开时取消游戏和资源清单、探测与双向转场，并恢复列表层级和交互。</summary>
+    /// <summary>页面显示时获取当前分类；离开时取消游戏和资源清单、两类详情请求与双向转场，并恢复列表层级和交互。</summary>
     public void SetActive(bool active)
     {
         if (_active == active) return;
@@ -85,8 +88,11 @@ public sealed partial class DownloadsView : UserControl
             _pageTransition?.Stop();
             ResetPage(CatalogPanel);
             ResetPage(InstallationContent);
+            ResetPage(ModDetailsContent);
             InstallationContent.Close();
+            ModDetailsContent.Close();
             InstallationContent.Visibility = Visibility.Collapsed;
+            ModDetailsContent.Visibility = Visibility.Collapsed;
             CatalogPanel.Visibility = Visibility.Visible;
         }
     }
@@ -108,20 +114,38 @@ public sealed partial class DownloadsView : UserControl
         if (_active && CatalogPanel.Visibility == Visibility.Visible) EntryList.Focus(FocusState.Programmatic);
     }
 
-    /// <summary>按进入/返回方向同时平移并淡入淡出两个页面；遵循系统动画开关，取消后不覆盖新页面状态。</summary>
-    private async Task SwitchPageAsync(bool entering)
+    /// <summary>打开真实模组详情并淡入淡出；保留原资源列表、分页及滚动位置，转场中忽略重复操作。</summary>
+    private async void Mod_Requested(object? sender, ResourceProject project)
     {
+        if (!_active || _pageRequest is not null) return;
+        ModDetailsContent.Open(project);
+        await SwitchPageAsync(true, ModDetailsContent);
+    }
+
+    /// <summary>关闭详情请求和弹窗，按反向淡入淡出返回保留的目录，并恢复键盘焦点。</summary>
+    private async void Mod_BackRequested(object? sender, EventArgs e)
+    {
+        if (_pageRequest is not null) return;
+        ModDetailsContent.Close();
+        await SwitchPageAsync(false, ModDetailsContent);
+        if (_active) ResourcesContent.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>游戏详情平移并淡入淡出，模组详情仅淡入淡出；共用既有转场生命周期，遵循系统动画开关，取消后不覆盖新页面。</summary>
+    private async Task SwitchPageAsync(bool entering, FrameworkElement? detailPage = null)
+    {
+        detailPage ??= InstallationContent;
         using var request = new CancellationTokenSource();
         _pageRequest = request;
-        FrameworkElement outgoing = entering ? CatalogPanel : InstallationContent;
-        FrameworkElement incoming = entering ? InstallationContent : CatalogPanel;
+        FrameworkElement outgoing = entering ? CatalogPanel : detailPage;
+        FrameworkElement incoming = entering ? detailPage : CatalogPanel;
         outgoing.IsHitTestVisible = incoming.IsHitTestVisible = false;
         incoming.Visibility = Visibility.Visible;
         try
         {
             if (new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
             {
-                double distance = entering ? 32 : -32;
+                double distance = detailPage == ModDetailsContent ? 0 : entering ? 32 : -32;
                 _pageTransition = new Storyboard();
                 AddPageAnimation(_pageTransition, outgoing, 1, 0, 0, -distance);
                 AddPageAnimation(_pageTransition, incoming, 0, 1, distance, 0);

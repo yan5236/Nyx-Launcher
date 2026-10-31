@@ -1,0 +1,4 @@
+{
+  "ClientId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "RedirectUri": "http://localhost:43871/nyxlauncher/oauth/callback"
+}

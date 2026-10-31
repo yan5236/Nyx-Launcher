@@ -49,7 +49,7 @@
    </StackPanel>
   </Grid>
   <Grid Grid.Row="2">
-   <ListView x:Name="ProjectList" SelectionMode="None" Visibility="Collapsed"
+   <ListView x:Name="ProjectList" SelectionMode="None" Visibility="Collapsed" IsItemClickEnabled="True" ItemClick="ProjectList_ItemClick"
     Margin="0,0,-20,0" Padding="0,0,20,10" ScrollViewer.VerticalScrollBarVisibility="Auto"
     AutomationProperties.Name="资源列表">
     <ListView.ItemContainerStyle>

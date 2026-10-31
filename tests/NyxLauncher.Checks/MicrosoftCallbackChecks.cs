@@ -2,18 +2,22 @@ using System.Net;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensibility;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
 using NyxLauncher.Services;
 
 internal static class MicrosoftCallbackChecks
 {
-    /// <summary>用真实 MSAL 回调验证路径、PKCE、拒绝和取消，再验证手动浏览器恢复；不打开浏览器或获取用户令牌。</summary>
+    /// <summary>用真实 MSAL 验证回调、PKCE S256 与兑换 verifier、拒绝和取消；使用合成授权码及固定错误响应，不获取用户令牌。</summary>
     public static async Task RunAsync()
     {
-        var settings = new MicrosoftLoginSettings(MicrosoftLoginSettings.TestClientId, MicrosoftLoginSettings.TestRedirectUri);
+        var settings = new MicrosoftLoginSettings(MicrosoftAccountChecks.ClientId, MicrosoftAccountChecks.RedirectUri);
         settings.Validate();
-        foreach (string scenario in new[] { "denied", "wrong-state", "cancel" })
+        var challenges = new HashSet<string>();
+        foreach (string scenario in new[] { "denied", "wrong-state", "cancel", "pkce" })
         {
-            using var metadata = new HttpClient(new MetadataHandler());
+            using var handler = new MetadataHandler();
+            using var metadata = new HttpClient(handler);
             var app = PublicClientApplicationBuilder.Create(settings.ClientId).WithTenantId("consumers")
                 .WithRedirectUri(settings.RedirectUri).WithInstanceDiscovery(false).WithHttpClientFactory(new Factory(metadata)).Build();
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
@@ -26,9 +30,12 @@ internal static class MicrosoftCallbackChecks
                         query["code_challenge_method"] != "S256" || string.IsNullOrWhiteSpace(query["code_challenge"]) ||
                         string.IsNullOrWhiteSpace(query["state"]) || !query["scope"]!.Contains("XboxLive.signin"))
                         throw new Exception("MSAL 授权参数、测试回调或 PKCE 不符合预期。");
+                    handler.Challenge = query["code_challenge"];
+                    if (!challenges.Add(handler.Challenge!) || query["code_verifier"] is not null)
+                        throw new Exception("每次授权必须使用新挑战值，且浏览器链接不能包含 verifier。");
                     opened = true;
                     if (scenario == "cancel") { deadline.CancelAfter(300); return Task.CompletedTask; }
-                    callback = SendCallbackAsync(settings.RedirectUri, query["state"]!, scenario == "wrong-state", deadline.Token);
+                    callback = SendCallbackAsync(settings.RedirectUri, query["state"]!, scenario == "wrong-state", deadline.Token, scenario == "pkce");
                     return Task.CompletedTask;
                 });
             try
@@ -40,8 +47,10 @@ internal static class MicrosoftCallbackChecks
             catch (MsalException ex) when (opened && (scenario is "denied" or "wrong-state" && ex.ErrorCode is "access_denied" or "authentication_canceled" ||
                 scenario == "cancel" && ex.ErrorCode == "authentication_canceled")) { }
             catch (OperationCanceledException) when (opened && scenario == "cancel") { }
+            catch (MsalException ex) when (opened && scenario == "pkce" && handler.Verified && ex.ErrorCode == "invalid_grant") { }
+            if ((scenario == "pkce") != handler.Verified) throw new Exception("PKCE 兑换验证未按预期执行。");
             if (callback is not null) await callback;
-            using var listener = new TcpListener(IPAddress.Loopback, 29116);
+            using var listener = new TcpListener(IPAddress.Loopback, new Uri(settings.RedirectUri).Port);
             listener.Server.ExclusiveAddressUse = true;
             listener.Start(); listener.Stop();
             Console.WriteLine($"通过 MSAL 本机回调：{scenario}，PKCE 参数正确且端口已释放。");
@@ -52,7 +61,7 @@ internal static class MicrosoftCallbackChecks
     /// <summary>界面未能自动打开浏览器时仍保留同一授权地址和监听；手动回调或取消后必须使链接失效并释放端口。</summary>
     private static async Task CheckManualBrowserAsync()
     {
-        var redirect = new Uri(MicrosoftLoginSettings.TestRedirectUri);
+        var redirect = new Uri(MicrosoftAccountChecks.RedirectUri);
         var authorizationUri = new Uri("https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?state=manual-recovery");
         foreach (bool cancel in new[] { false, true })
         {
@@ -94,8 +103,8 @@ internal static class MicrosoftCallbackChecks
         public void Report(Uri? value) => report(value);
     }
 
-    /// <summary>验证错误 state、路径、Host 和重复参数均不能抢走监听，再提交匹配 state 的拒绝授权响应。</summary>
-    private static async Task SendCallbackAsync(string redirect, string state, bool wrongState, CancellationToken token)
+    /// <summary>验证错误 state、路径、Host 和重复参数不能抢走监听；随后按场景提交合成授权码或拒绝响应。</summary>
+    private static async Task SendCallbackAsync(string redirect, string state, bool wrongState, CancellationToken token, bool authorized = false)
     {
         using var browser = new HttpClient(new HttpClientHandler { UseProxy = false });
         await Task.Yield();
@@ -114,25 +123,44 @@ internal static class MicrosoftCallbackChecks
             using var hostResponse = await browser.SendAsync(wrongHost, token);
             if (hostResponse.StatusCode != HttpStatusCode.BadRequest) throw new Exception("回调必须拒绝其他 Host。");
         }
-        using var response = await browser.GetAsync(redirect + "?error=access_denied&state=" + Uri.EscapeDataString(state), token);
+        string result = authorized ? "code=synthetic-code" : "error=access_denied";
+        using var response = await browser.GetAsync(redirect + "?" + result + "&state=" + Uri.EscapeDataString(state), token);
         response.EnsureSuccessStatusCode();
     }
 
     /// <summary>为 MSAL 提供仅含公开端点的固定发现文档，确保回调验收不依赖外网或应用白名单。</summary>
     private sealed class MetadataHandler : HttpMessageHandler
     {
-        /// <summary>只允许发现请求；若测试意外走到令牌交换则立即失败，避免模拟成功掩盖应用资格问题。</summary>
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        public string? Challenge { get; set; }
+        public bool Verified { get; private set; }
+
+        /// <summary>提供固定发现文档；合成码兑换时校验 verifier 的 S256 哈希及公共客户端参数，再返回 invalid_grant，不伪造登录成功。</summary>
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
+            if (request.RequestUri!.AbsolutePath.EndsWith("/token"))
+            {
+                var form = System.Web.HttpUtility.ParseQueryString(await request.Content!.ReadAsStringAsync(token));
+                string verifier = form["code_verifier"] ?? "";
+                string challenge = Convert.ToBase64String(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)))
+                    .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+                if (request.Method != HttpMethod.Post || form["code"] != "synthetic-code" || form["grant_type"] != "authorization_code" ||
+                    form["client_id"] != MicrosoftAccountChecks.ClientId || form["redirect_uri"] != MicrosoftAccountChecks.RedirectUri ||
+                    form["client_secret"] is not null || verifier.Length is < 43 or > 128 ||
+                    !verifier.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '.' or '_' or '~') || challenge != Challenge)
+                    throw new Exception("PKCE verifier、挑战值或授权码兑换参数不匹配。");
+                Verified = true;
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                { Content = new StringContent("""{"error":"invalid_grant","error_description":"Synthetic code used only to verify PKCE."}""") };
+            }
             if (!request.RequestUri!.AbsolutePath.EndsWith("openid-configuration")) throw new Exception("不应发起真实令牌交换。");
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""
                 {"authorization_endpoint":"https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize",
                  "token_endpoint":"https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
                  "issuer":"https://login.microsoftonline.com/consumers/v2.0",
                  "jwks_uri":"https://login.microsoftonline.com/consumers/discovery/v2.0/keys",
                  "end_session_endpoint":"https://login.microsoftonline.com/consumers/oauth2/v2.0/logout"}
-                """) });
+                """) };
         }
     }
 

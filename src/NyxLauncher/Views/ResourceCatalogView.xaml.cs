@@ -19,6 +19,14 @@ public sealed partial class ResourceCatalogView : UserControl
     private int _offset;
     private bool _active;
     private bool _updating;
+    public event EventHandler<ResourceProject>? ModRequested;
+
+    /// <summary>仅模组卡片进入真实下载详情；其余资源类别继续保持目录浏览行为。</summary>
+    private void ProjectList_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (_active && _category == "mod" && e.ClickedItem is ResourceProject project)
+            ModRequested?.Invoke(this, project);
+    }
 
     /// <summary>初始化资源列表及“全部”版本项，绑定失败重试和卸载取消；未显示时不访问平台。</summary>
     public ResourceCatalogView()

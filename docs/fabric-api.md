@@ -7,7 +7,7 @@
 ## 数据与下载
 
 - 使用 [Modrinth 项目版本接口](https://docs.modrinth.com/api/operations/getprojectversions/)，固定官方 Fabric API 项目 `P7dR8mSH`，同时传入精确 `game_versions` 与 `loaders=["fabric"]`。返回后再次验证项目、游戏与加载器，按发布时间降序去重。
-- 只安装主 JAR；没有 primary 标记时按接口约定选第一个文件，拒绝源码等非运行文件、无效文件名、无效 SHA-1 或非官方项目 CDN 地址。
+- 只安装主 JAR；没有 primary 标记时按接口约定选第一个文件，拒绝源码等非运行文件、无效文件名、无效 SHA-1 或非官方项目 CDN 地址。兼容官方历史链接的 `//data/` 路径；历史元数据大小为 0 时按未知大小处理，仍要求并校验 SHA-1，负数大小拒绝。
 - 清单请求总超时 15 秒、正文上限 8 MiB，使用系统代理和 HTTPS 校验；离开页面取消请求。Fabric API 当前直接使用 Modrinth 官方服务，没有虚构 BMCLAPI 映射。
 - 安装任务捕获 API 版本、目标游戏目录及隔离设置。文件下载共用现有并行额度、连接数、限速、暂停/继续和取消机制，按长度及 SHA-1 验证后原子发布。
 

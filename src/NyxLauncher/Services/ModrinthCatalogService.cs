@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace NyxLauncher.Services;
 
 /// <summary>从 Modrinth v2 获取五类资源与版本筛选项；仅负责发现资源，不修改游戏文件。</summary>
-public sealed class ModrinthCatalogService
+public sealed partial class ModrinthCatalogService
 {
     public const int PageSize = 20;
     public static readonly string[] LoaderIds = ["fabric", "forge", "neoforge", "quilt", "liteloader", "rift"];

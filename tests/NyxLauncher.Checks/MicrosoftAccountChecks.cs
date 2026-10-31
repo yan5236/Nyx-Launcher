@@ -5,6 +5,8 @@ using NyxLauncher.Services;
 
 internal static class MicrosoftAccountChecks
 {
+    internal const string ClientId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    internal const string RedirectUri = "http://localhost:43871/nyxlauncher/oauth/callback";
     private const string Uuid = "1234567890abcdef1234567890abcdef";
     private static int _checks;
 
@@ -22,7 +24,7 @@ internal static class MicrosoftAccountChecks
     public static async Task VerifyLaunchArgumentsAsync(string root)
     {
         var versions = InstalledVersionService.Scan(root);
-        var account = new GameAccount("MicrosoftTest", Uuid, "test-home", MicrosoftLoginSettings.TestClientId, "AAAA");
+        var account = new GameAccount("MicrosoftTest", Uuid, "test-home", MicrosoftAccountChecks.ClientId, "AAAA");
         foreach (string name in new[] { "qa-vanilla", "qa-Fabric", "qa-Forge", "qa-NeoForge" })
         {
             var version = versions.Single(x => x.Name == name && x.Error is null);
@@ -30,7 +32,7 @@ internal static class MicrosoftAccountChecks
             { Username = account.Name, UUID = Uuid, UserType = "msa", AccessToken = "synthetic-minecraft-token", Xuid = "123456" };
             using var process = await GameLaunchService.BuildAsync(root, version, IsolationMode.All, account, authenticatedSession: session);
             string arguments = process.StartInfo.Arguments;
-            Check(new[] { account.Name, Uuid, "synthetic-minecraft-token", "msa", "123456", MicrosoftLoginSettings.TestClientId }
+            Check(new[] { account.Name, Uuid, "synthetic-minecraft-token", "msa", "123456", MicrosoftAccountChecks.ClientId }
                 .All(arguments.Contains), name + "微软会话完整进入启动参数");
             session.UUID = new string('b', 32);
             try
@@ -43,19 +45,25 @@ internal static class MicrosoftAccountChecks
         Console.WriteLine($"通过 {_checks} 项真实本地版本的微软启动参数检查，未启动游戏。");
     }
 
-    /// <summary>验证用户指定测试回调及正式配置约束，拒绝远端、查询或凭据等可能外泄授权码的回调。</summary>
+    /// <summary>验证示例资源可独立加载，损坏或空配置不回退；拒绝远端、查询或凭据等可能外泄授权码的回调。</summary>
     private static void VerifySettings()
     {
-        var settings = new MicrosoftLoginSettings(MicrosoftLoginSettings.TestClientId, MicrosoftLoginSettings.TestRedirectUri);
+        var settings = MicrosoftLoginSettings.Load();
         settings.Validate();
-        Check(settings.IsTest && settings.RedirectUri == "http://localhost:29116/authentication-response", "测试配置精确匹配");
+        Check(settings.ClientId == ClientId && settings.RedirectUri == RedirectUri, "从内嵌示例 JSON 读取配置，不依赖开发者实际配置");
+        using var empty = new MemoryStream(Encoding.UTF8.GetBytes("null"));
+        Throws<IOException>(() => MicrosoftLoginSettings.Read(empty), "空配置不回退旧客户端");
+        using var broken = new MemoryStream(Encoding.UTF8.GetBytes("{"));
+        Throws<JsonException>(() => MicrosoftLoginSettings.Read(broken), "损坏配置不回退");
+        using var invalid = new MemoryStream(Encoding.UTF8.GetBytes("""{"ClientId":"not-an-id","RedirectUri":"http://localhost/callback"}"""));
+        Throws<ArgumentException>(() => MicrosoftLoginSettings.Read(invalid), "读取时校验配置字段");
         foreach (string redirect in new[] { "https://example.com/auth", "http://localhost.evil:29116/auth", "http://user@localhost/auth",
-            "http://localhost/auth?q=1", "http://localhost/auth#x", "http://localhost:29116/wrong" })
+            "http://localhost/auth?q=1", "http://localhost/auth#x" })
             Throws<ArgumentException>(() => (settings with { RedirectUri = redirect }).Validate(), "拒绝错误回调");
         Throws<ArgumentException>(() => (settings with { ClientId = "not-an-id" }).Validate(), "拒绝无效客户端 ID");
         var production = new MicrosoftLoginSettings("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "http://localhost:29117/auth");
         production.Validate();
-        Check(!production.IsTest, "允许独立正式应用配置");
+        Check(production.RedirectUri == "http://localhost:29117/auth", "允许独立应用回调配置");
     }
 
     /// <summary>验证旧配置迁移、同名不同类型、UUID 改名更新、加密重启、删除与失败原子性。</summary>
@@ -75,7 +83,7 @@ internal static class MicrosoftAccountChecks
             Check(plain.All(x => x == 0), "加密后清理序列化明文缓冲区");
             Check(Encoding.UTF8.GetString(MicrosoftLoginService.Unprotect(encrypted)) == "synthetic-refresh-token", "当前 Windows 用户可解密缓存");
             Throws<InvalidOperationException>(() => MicrosoftLoginService.Unprotect("AAAA"), "损坏缓存要求重新登录");
-            var online = new GameAccount("Steve", Uuid, "test-home-account", MicrosoftLoginSettings.TestClientId, encrypted);
+            var online = new GameAccount("Steve", Uuid, "test-home-account", MicrosoftAccountChecks.ClientId, encrypted);
             store.SaveMicrosoft(online);
             Check(store.Accounts.Count == 2 && store.Selected == online, "允许微软与离线同名且自动选中微软");
             string saved = File.ReadAllText(path);
@@ -97,7 +105,7 @@ internal static class MicrosoftAccountChecks
             Throws<UnauthorizedAccessException>(() => store.SaveMicrosoft(renamed, online), "刷新写入失败报错");
             Check(store.Selected == online && store.Accounts.Contains(online), "写入失败不更改当前身份");
             foreach (var invalid in new[] { online with { ProfileId = "bad" }, online with { MicrosoftAccountId = null },
-                online with { ProtectedTokenCache = "bad!" }, offline with { ClientId = MicrosoftLoginSettings.TestClientId } })
+                online with { ProtectedTokenCache = "bad!" }, offline with { ClientId = MicrosoftAccountChecks.ClientId } })
                 Throws<ArgumentException>(invalid.Validate, "拒绝不完整认证身份");
         }
         finally { Directory.Delete(root, true); }

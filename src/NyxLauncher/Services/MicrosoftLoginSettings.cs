@@ -1,27 +1,23 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace NyxLauncher.Services;
 
-/// <summary>微软公共客户端配置；测试应用只供 Debug 验证，正式应用通过本机配置文件提供。</summary>
+/// <summary>微软公共客户端配置；构建时从本地 JSON 嵌入程序集，不包含客户端 secret 或用户凭据。</summary>
 public sealed record MicrosoftLoginSettings(string ClientId, string RedirectUri)
 {
-    public const string TestClientId = "288ec5dd-6736-4d4b-9b96-30e083a8cad2";
-    public const string TestRedirectUri = "http://localhost:29116/authentication-response";
-    [JsonIgnore] public bool IsTest => string.Equals(ClientId, TestClientId, StringComparison.OrdinalIgnoreCase);
-    public static string ConfigPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "NyxLauncher", "microsoft-auth.json");
-
-    /// <summary>加载本机显式配置；缺省 Debug 使用用户指定测试应用，损坏配置报错而不偷偷回退。</summary>
+    /// <summary>读取构建时嵌入的配置；资源缺失时报错，不回退旧客户端或读取用户目录中的历史配置。</summary>
     public static MicrosoftLoginSettings Load()
     {
-        var settings = File.Exists(ConfigPath)
-            ? JsonSerializer.Deserialize<MicrosoftLoginSettings>(File.ReadAllText(ConfigPath)) ?? throw new IOException("微软登录配置为空。")
-            : new(TestClientId, TestRedirectUri);
+        using var stream = typeof(MicrosoftLoginSettings).Assembly.GetManifestResourceStream("NyxLauncher.MicrosoftAuth.json")
+            ?? throw new IOException("程序缺少微软登录配置，请填写 config/microsoft-auth.json 后重新构建。");
+        return Read(stream);
+    }
+
+    /// <summary>从调用方持有的 UTF-8 JSON 流解析并校验配置；空内容、损坏 JSON 或无效字段报错，不关闭传入流。</summary>
+    internal static MicrosoftLoginSettings Read(Stream stream)
+    {
+        var settings = JsonSerializer.Deserialize<MicrosoftLoginSettings>(stream) ?? throw new IOException("微软登录配置为空。");
         settings.Validate();
-#if !DEBUG
-        if (settings.IsTest) throw new InvalidOperationException("测试客户端仅限 Debug 使用，请在 microsoft-auth.json 填写获批的正式客户端 ID。");
-#endif
         return settings;
     }
 
@@ -32,7 +28,5 @@ public sealed record MicrosoftLoginSettings(string ClientId, string RedirectUri)
             !Uri.TryCreate(RedirectUri, UriKind.Absolute, out var uri) || uri.Scheme != "http" ||
             uri.Host != "localhost" || uri.Port <= 0 || uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0)
             throw new ArgumentException("微软登录配置需要有效客户端 ID 和 http://localhost 回调地址。");
-        if (IsTest && RedirectUri != TestRedirectUri)
-            throw new ArgumentException("测试客户端回调必须为 " + TestRedirectUri);
     }
 }

@@ -15,14 +15,17 @@ public sealed record ResourceProject(string Id, string Title, string Description
     public string VersionsDetail => string.Join("、", Versions.Reverse());
     public string LoadersText => string.Join(" / ", Loaders.Select(LoaderName));
     public bool HasLoaders => Loaders.Count > 0;
-    public IReadOnlyList<string> LoaderIcons => Loaders.Select(loader => loader switch
+    public IReadOnlyList<string> LoaderIcons => Loaders.Select(LoaderIcon).ToArray();
+
+    /// <summary>提供资源卡片和模组详情共用的加载器图标；未提供品牌图标时使用透明加载器占位。</summary>
+    public static string LoaderIcon(string loader) => loader switch
     {
         "fabric" => "ms-appx:///Assets/fabric.png",
         "forge" => "ms-appx:///Assets/forge.png",
         "neoforge" => "ms-appx:///Assets/neoforge.png",
         "quilt" => "ms-appx:///Assets/quilt.svg",
         _ => "ms-appx:///Assets/loader.svg"
-    }).ToArray();
+    };
 
     /// <summary>把 API 加载器标识转换为正式产品名；不翻译品牌名，未知项保留原值。</summary>
     public static string LoaderName(string loader) => loader switch

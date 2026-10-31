@@ -4,25 +4,37 @@
 
 当前实现使用 Microsoft.Identity.Client（MSAL.NET）4.92.0 和系统浏览器，申请个人微软账户的 `XboxLive.signin` 权限。MSAL 负责授权码、随机 state、PKCE S256、微软令牌及刷新缓存，自动处理其必要的 OIDC / 离线访问 scope；不需要也不接收客户端 secret。
 
-Debug 没有本机配置时使用用户明确提供的测试值：
+客户端配置保存在仓库根目录的 `config/` 中。首次构建前复制示例：
+
+```powershell
+Copy-Item config/microsoft-auth.example.json config/microsoft-auth.json
+```
+
+将实际文件中的 `ClientId` 替换为自己的应用（客户端）ID，示例中的 GUID 只是占位值：
 
 ```json
 {
-  "ClientId": "288ec5dd-6736-4d4b-9b96-30e083a8cad2",
-  "RedirectUri": "http://localhost:29116/authentication-response"
+  "ClientId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "RedirectUri": "http://localhost:43871/nyxlauncher/oauth/callback"
 }
 ```
 
-正式接入时替换测试客户端配置。
+`config/microsoft-auth.json` 已被 Git 忽略，实际 ID 不进入源码提交；`config/microsoft-auth.example.json` 随仓库提供填写结构。缺少实际配置时应用构建明确失败，不自动使用示例或旧测试 ID。
 
-正式应用获批后，在 `%LOCALAPPDATA%/NyxLauncher/microsoft-auth.json` 写入同结构配置，替换 `ClientId` 为自己的应用 ID，`RedirectUri` 填应用后台登记的桌面公共客户端回调。若沿用当前回调，必须精确保留路径、大小写及无尾斜杠形式。只接受 `http://localhost` 回环 URI；配置错误明确报错，不偷偷回退测试 ID。Release 禁止使用此测试 ID。
+Debug、Release 和 publish 均将实际 JSON 作为 `NyxLauncher.MicrosoftAuth.json` 资源嵌入主程序集。运行时读取该资源，不依赖开发机路径或额外的外置配置文件；修改配置后必须重新构建。旧的 `%LOCALAPPDATA%/NyxLauncher/microsoft-auth.json` 不再读取，也不会被删除。
 
-配置每次认证读取，切换客户端后须在账户卡片点击“重试登录”。客户端 ID 是公共应用标识，不是密码；不要在配置中填 client secret、密码、授权码或令牌。无需提前创建本机配置文件即可进行 Debug 测试。
+在微软应用注册的“身份验证 → 添加平台 → 移动和桌面应用程序”登记 `http://localhost:43871/nyxlauncher/oauth/callback`，精确保留路径、大小写及无尾斜杠形式。使用面向个人微软账户的公共客户端，不配置 client secret 或隐式授权。只接受 `http://localhost` 回环 URI；配置错误明确报错。localhost 的注册匹配不依赖端口，因此不同回调用路径区分；本机仍严格校验实际端口和 Host。
+
+切换客户端后须在账户卡片点击“重试登录”，旧客户端的刷新缓存不能用于新应用。客户端 ID 是公开应用标识；Git 忽略防止误提交，嵌入资源用于随程序分发，均不构成保密或加密。不要在配置中填 client secret、密码、授权码或令牌。
+
+## PKCE
+
+当前公共客户端已由 MSAL 自动使用 PKCE S256，包括自定义本机回调模式：每次授权生成新的 verifier，浏览器仅接收 SHA-256 挑战值；兑换授权码时 MSAL 提交原始 `code_verifier`。应用不自行生成第二套 PKCE，不持久化 verifier，也不将其放进浏览器链接。回调仍额外校验随机 state、Host 和精确路径。
 
 ## 登录与账户生命周期
 
-1. 账户 → 添加 → 微软登录。测试配置的入口显示“测试应用 · 仅供开发验证”。
-2. 先独占绑定 `127.0.0.1:29116`，再打开系统浏览器。弹窗居中显示进度和提示，底部提供“打开浏览器”“复制链接”“取消”。自动打开失败不会结束认证，可重复尝试打开或复制同一授权链接到本机浏览器继续验证；回调完成、取消或超时后链接入口失效。微软密码、验证码及同意授权由用户在微软页面完成；启动器不读取密码页面。
+1. 账户 → 添加 → 微软登录，配置资源无效时禁用微软入口并提示错误。
+2. 先独占绑定配置中的 IPv4 回环端口（当前为 `127.0.0.1:43871`），再打开系统浏览器。弹窗居中显示进度和提示，底部提供“打开浏览器”“复制链接”“取消”。自动打开失败不会结束认证，可重复尝试打开或复制同一授权链接到本机浏览器继续验证；回调完成、取消或超时后链接入口失效。微软密码、验证码及同意授权由用户在微软页面完成；启动器不读取密码页面。
 3. 回调只接受精确 Host、路径和当前 state，拒绝重复参数、同时提交 code 与 error、超大请求头；无效请求不会终止正确登录。收到回调的浏览器页面只提示返回启动器，不提前声称登录成功。
 4. 微软访问令牌依次换取 Xbox 用户票据、Minecraft RP 的 XSTS、Minecraft 令牌，核验游戏资格和真实 Java 档案。XSTS 缺少 XUID 时从 Xbox Live RP 补取声明并校验用户哈希一致。
 5. 全部成功才保存并选中账户。身份使用 Minecraft 返回的 UUID 和名称，不使用邮箱或 Xbox 昵称冒充游戏名称。返回 `msa` 会话、游戏访问令牌、XUID 和客户端 ID 给 CmlLib 启动参数。
@@ -60,7 +72,9 @@ Debug 没有本机配置时使用用户明确提供的测试值：
 .\scripts\Test-Prototype.ps1
 ```
 
-`--microsoft-callback` 使用固定的公开发现文档、真实 MSAL 和真实 `localhost:29116` TCP 回调，不打开浏览器也不交换真实用户令牌。验证精确客户端/回调、PKCE、无效 state / Host / 路径 / 重复参数、拒绝授权、取消以及端口释放；同时覆盖未打开浏览器时保留原链接、手动继续验证及结束后链接清理。
+`--microsoft-callback` 使用固定的公开发现文档、真实 MSAL 和真实 `localhost:43871` TCP 回调，不打开浏览器也不交换真实用户令牌。验证精确客户端/回调、每次不同的 S256 挑战值、浏览器不暴露 verifier、令牌兑换中的 verifier 长度/字符与 SHA-256 匹配，以及无效 state / Host / 路径 / 重复参数、拒绝授权、取消和端口释放。PKCE 兑换使用合成授权码，校验请求后返回固定 `invalid_grant`，不伪造有效会话；同时覆盖手动继续验证及结束后链接清理。离线业务检查从示例 JSON 构建测试资源，无需开发者实际 ID，并验证空、损坏和无效配置不回退。
+
+2026-10-31：实际配置从示例复制后填写本地 ID，Git 忽略检查通过；Debug 构建与 Release publish 均成功，直接检查两份主程序集确认 JSON 资源包含实际配置，输出无需外置认证 JSON。631 项离线检查、4 个 MSAL 回调场景（含 verifier 的 S256 匹配）及 2 个手动恢复/取消场景、页面结构和差异空白检查通过。通过用户授权的 ego-browser 登录态，在 Entra 的 Nyx launcher 应用中添加并确认上述移动和桌面回调，登记前没有其他回调。未执行新客户端的真实微软/Xbox/Minecraft 登录或游戏启动；已有微软账户需要重新登录。
 
 2026-10-29 弹窗调整验证：410 项业务检查、3 个 MSAL 回调场景、2 个手动恢复/取消场景、Debug 构建（0 警告/错误）及页面结构检查通过。桌面工具及备用入口因沙箱初始化失败无法启动，本次未验证实际布局截图、按钮点击、系统浏览器故障恢复或真实账户授权。
 

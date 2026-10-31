@@ -18,11 +18,11 @@ public sealed partial class AddAccountDialog : ContentDialog
     private Uri? _authorizationUri;
     private bool _openingBrowser;
 
-    /// <summary>注入账户存储和可选重登身份；显示测试配置提示，配置失败仅禁用微软入口，关闭会取消登录。</summary>
+    /// <summary>注入账户存储和可选重登身份；验证内嵌客户端配置，配置失败仅禁用微软入口，关闭会取消登录。</summary>
     public AddAccountDialog(AccountStore accounts, GameAccount? previous = null)
     {
         InitializeComponent(); _accounts = accounts; _previous = previous;
-        try { MicrosoftHint.Text = MicrosoftLoginSettings.Load().IsTest ? "测试应用 · 仅供开发验证" : "在系统浏览器中登录"; }
+        try { MicrosoftLoginSettings.Load(); MicrosoftHint.Text = "在系统浏览器中登录"; }
         catch (Exception ex) { MicrosoftButton.IsEnabled = false; Error.Message = ex.Message; Error.IsOpen = true; }
         Closed += (_, _) => { _authorizationUri = null; _externalTokens = null; ExternalPassword.Password = ""; _closed = true; _transition?.Stop(); _loginCancellation?.Cancel(); };
         if (previous?.IsExternal == true)
