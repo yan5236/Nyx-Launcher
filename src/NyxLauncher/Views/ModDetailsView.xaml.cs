@@ -215,7 +215,7 @@ public sealed partial class ModDetailsView : UserControl
         }
     }
 
-    /// <summary>逐级选择游戏与加载器；文件弹窗提供兼容版本及手动目录两种下载入口，无游戏目录仍可手动下载；整合包改用名称弹窗，成功后保留文件列表。</summary>
+    /// <summary>逐级选择游戏与加载器；当前所选版本在候选中置顶；文件弹窗提供兼容版本及手动目录两种下载入口，无游戏目录仍可手动下载；整合包改用名称弹窗，成功后保留文件列表。</summary>
     private async void Choice_Click(object sender, ItemClickEventArgs e)
     {
         if (!_active || _dialog is not null || e.ClickedItem is not ModDetailChoice choice) return;
@@ -252,7 +252,7 @@ public sealed partial class ModDetailsView : UserControl
             {
                 _tasks.AddModToFolder(file, directory);
                 ShowNotice("已添加到下载任务：" + file.FileName, InfoBarSeverity.Success);
-            });
+            }, preferredVersion: Directory.Exists(folder) ? _folders?.RestoreVersion(InstalledVersionService.Scan(folder))?.Name : null);
             _dialog = dialog;
             await dialog.ShowAsync();
         }

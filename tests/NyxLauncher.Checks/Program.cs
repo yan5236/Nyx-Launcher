@@ -8,11 +8,12 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行整合包、模组、资源、Java、认证、账户、启动及下载断言；--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
+    /// <summary>运行本地资源、整合包、模组、资源、Java、认证、账户、启动及下载断言；--local-resources 可选读取本地样本；--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
         if (args.Contains("--live-modpacks")) { await ModpackChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-modpacks") + 1])); return; }
         if (args.Contains("--live-resources")) { await ResourceDownloadChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-resources") + 1])); return; }
+        await LocalResourceChecks.RunAsync(args.Contains("--local-resources") ? args[Array.IndexOf(args, "--local-resources") + 1] : null);
         await ResourceDownloadChecks.RunAsync();
         ModpackChecks.Run();
         await ModpackChecks.FilesAsync();

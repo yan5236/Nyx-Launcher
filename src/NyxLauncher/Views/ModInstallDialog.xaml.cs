@@ -13,14 +13,16 @@ public sealed partial class ModInstallDialog : ContentDialog
     private readonly Action<InstalledVersion> _install;
     private readonly Action<string> _downloadToFolder;
     private bool _closed;
+    private readonly Func<InstalledVersion?, string?, Task>? _localInstall;
     private readonly Func<InstalledVersion, IReadOnlyList<ModInstallTarget>>? _worlds;
     private readonly Action<InstalledVersion, string>? _installWorld;
     private readonly IReadOnlyList<ModInstallTarget> _versions;
     private InstalledVersion? _selectedVersion;
 
-    /// <summary>绑定安装候选和两种任务回调；可选存档提供器用于数据包的第二步，存档回调接收客户端和真实存档路径；按窗口限制列表高度，无候选仍允许手动选目录。关闭后忽略文件夹选择器迟到结果。</summary>
+    /// <summary>按当前版本优先排序并绑定安装候选；可选本地异步回调复用同一弹窗，复制期间禁用操作，失败保留错误；可选存档提供器用于数据包的第二步，存档回调接收客户端和真实存档路径；按窗口限制列表高度，无候选仍允许手动选目录。关闭后忽略文件夹选择器迟到结果。</summary>
     public ModInstallDialog(XamlRoot root, string fileName, IReadOnlyList<ModInstallTarget> targets, Action<InstalledVersion> install, Action<string> downloadToFolder,
-        Func<InstalledVersion, IReadOnlyList<ModInstallTarget>>? worlds = null, Action<InstalledVersion, string>? installWorld = null)
+        Func<InstalledVersion, IReadOnlyList<ModInstallTarget>>? worlds = null, Action<InstalledVersion, string>? installWorld = null, string? preferredVersion = null,
+        Func<InstalledVersion?, string?, Task>? localInstall = null)
     {
         InitializeComponent();
         XamlRoot = root;
@@ -28,6 +30,10 @@ public sealed partial class ModInstallDialog : ContentDialog
         Title = new InstallDialogTitle("选择安装版本", Visibility.Collapsed);
         DialogContent.Width = Math.Clamp(root.Size.Width - 100, 240, 460);
         DialogContent.MaxHeight = Math.Max(160, root.Size.Height - 220);
+        targets = targets.OrderByDescending(x => x.Version.Name == preferredVersion).ToArray();
+        _localInstall = localInstall;
+        if (localInstall is not null) PrimaryButtonText = "选择文件夹安装";
+        EmptyHint.Text = "当前游戏目录没有可用版本，可选择文件夹。";
         Targets.ItemsSource = targets;
         EmptyHint.Visibility = targets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         _versions = targets;
@@ -37,9 +43,10 @@ public sealed partial class ModInstallDialog : ContentDialog
         _install = install;
         _downloadToFolder = downloadToFolder;
         Closed += (_, _) => _closed = true;
+        Closing += (_, args) => args.Cancel = _localInstall is not null && !Targets.IsEnabled;
     }
 
-    /// <summary>通过当前窗口的系统选择器选择直接下载目录；取消不创建任务，失败保留弹窗，关闭后的选择结果丢弃。</summary>
+    /// <summary>通过当前窗口的系统选择器选择下载或本地安装目录；本地复制等待完成，取消不创建任务，失败保留弹窗，关闭后的选择结果丢弃。</summary>
     private async void ChooseDirectory_Click(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
         args.Cancel = true;
@@ -47,38 +54,49 @@ public sealed partial class ModInstallDialog : ContentDialog
         Error.IsOpen = false;
         try
         {
-            var picker = new FolderPicker(XamlRoot.ContentIslandEnvironment.AppWindowId) { CommitButtonText = "下载到此文件夹" };
+            var picker = new FolderPicker(XamlRoot.ContentIslandEnvironment.AppWindowId) { CommitButtonText = _localInstall is null ? "下载到此文件夹" : "安装到此文件夹" };
             var folder = await picker.PickSingleFolderAsync();
             if (_closed || folder is null) return;
-            _downloadToFolder(folder.Path);
-            Hide();
+            if (_localInstall is not null) await _localInstall(null, folder.Path);
+            else _downloadToFolder(folder.Path);
+            Targets.IsEnabled = true; Hide();
         }
         catch (Exception ex) { if (!_closed) { Error.Message = ex.Message; Error.IsOpen = true; } }
         finally { IsPrimaryButtonEnabled = Targets.IsEnabled = true; }
     }
 
-    /// <summary>点击客户端时按需进入存档列表，最终目标创建任务成功后关闭；失败保留当前步骤，重复点击由列表禁用及任务管理器保护。</summary>
-    private void Target_Click(object sender, ItemClickEventArgs e)
+    /// <summary>点击客户端时按需进入存档列表并等待本地安装完成，最终目标创建任务成功后关闭；失败保留当前步骤，重复点击由列表禁用及任务管理器保护。</summary>
+    private async void Target_Click(object sender, ItemClickEventArgs e)
     {
         if (!Targets.IsEnabled || e.ClickedItem is not ModInstallTarget target) return;
-        Targets.IsEnabled = false;
+        IsPrimaryButtonEnabled = Targets.IsEnabled = false;
+        Error.IsOpen = false;
         try
         {
             if (_selectedVersion is not null)
-            { _installWorld!(_selectedVersion, target.WorldPath!); Hide(); }
+            {
+                if (_localInstall is not null) await _localInstall(_selectedVersion, target.WorldPath);
+                else _installWorld!(_selectedVersion, target.WorldPath!);
+                Targets.IsEnabled = true; Hide();
+            }
             else if (_worlds is not null)
             {
                 var worlds = _worlds(target.Version);
                 _selectedVersion = target.Version;
                 Targets.ItemsSource = worlds;
                 Title = new InstallDialogTitle("2 / 2 · 选择存档", Visibility.Visible);
-                EmptyHint.Text = "此客户端没有存档，可返回选择其他版本或选择文件夹下载。";
+                EmptyHint.Text = "此客户端没有存档，可返回选择其他版本或选择文件夹。";
                 EmptyHint.Visibility = worlds.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             }
-            else { _install(target.Version); Hide(); }
+            else
+            {
+                if (_localInstall is not null) await _localInstall(target.Version, null);
+                else _install(target.Version);
+                Targets.IsEnabled = true; Hide();
+            }
         }
         catch (Exception ex) { Error.Message = ex.Message; Error.IsOpen = true; }
-        finally { Targets.IsEnabled = true; }
+        finally { IsPrimaryButtonEnabled = Targets.IsEnabled = true; }
     }
     /// <summary>卡片进入可视树时从当前存档读取图标，版本卡片使用已有占位图。</summary>
     private void Icon_Loaded(object sender, RoutedEventArgs e) => LoadIcon((Image)sender);

@@ -5,7 +5,7 @@ namespace NyxLauncher.Views;
 
 public sealed partial class ModDetailsView
 {
-    /// <summary>复用模组安装弹窗与文件夹选择器；数据包增加存档步骤，资源包和光影直接写入客户端资源目录。</summary>
+    /// <summary>复用模组安装弹窗与文件夹选择器，并将当前所选版本置顶；数据包增加存档步骤，资源包和光影直接写入客户端资源目录。</summary>
     private ModInstallDialog CreateResourceDialog(ModrinthModFile file, string folder)
     {
         var isolation = _settings!.Current.Isolation;
@@ -35,6 +35,6 @@ public sealed partial class ModDetailsView
         {
             _tasks!.AddResource(file, folder, target, _game, world);
             ShowNotice("已添加到下载任务：" + file.FileName, InfoBarSeverity.Success);
-        });
+        }, preferredVersion: Directory.Exists(folder) ? _folders?.RestoreVersion(InstalledVersionService.Scan(folder))?.Name : null);
     }
 }

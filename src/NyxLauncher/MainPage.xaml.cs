@@ -9,6 +9,9 @@ public sealed partial class MainPage : Page
 {
     private readonly DownloadTaskManager _tasks;
     private readonly AccountStore _accounts;
+    private readonly GameFolderStore _folders;
+    private readonly DownloadSettingsStore _settings;
+    private bool _importing;
 
     /// <summary>窗口关闭时停止下载、游戏、Java 扫描及账户认证，等待后台回收，不删除已完成版本。</summary>
     public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(), AccountContent.StopAsync(), SettingsContent.StopAsync());
@@ -18,6 +21,8 @@ public sealed partial class MainPage : Page
         InitializeComponent();
         var settings = new DownloadSettingsStore();
         var folders = new GameFolderStore();
+        _folders = folders;
+        _settings = settings;
         _accounts = new AccountStore();
         var tasks = new DownloadTaskManager(settings, action => DispatcherQueue.TryEnqueue(() => action()));
         _tasks = tasks;
@@ -43,7 +48,7 @@ public sealed partial class MainPage : Page
         Navigation.SelectedItem = HomeItem;
     }
 
-    /// <summary>主窗口接受认证文本和整合包文件的复制拖拽；放下后验证格式并要求用户确认。</summary>
+    /// <summary>主窗口接受认证文本和本地资源文件的复制拖拽；放下后验证格式并要求用户确认。</summary>
     private void AuthServer_DragOver(object sender, DragEventArgs e)
     {
         if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text) ||
@@ -51,30 +56,33 @@ public sealed partial class MainPage : Page
             e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
     }
 
-    /// <summary>读取单个整合包或认证文本后立即结束系统拖放，再打开相应确认弹窗；拖放延迟不覆盖网络请求或弹窗生命周期，读取失败同样释放。</summary>
+    /// <summary>读取资源文件列表或认证文本后立即结束系统拖放，再打开相应确认弹窗；拖放延迟不覆盖网络请求或弹窗生命周期，读取失败同样释放。</summary>
     private async void AuthServer_Drop(object sender, DragEventArgs e)
     {
         e.Handled = true;
+        if (_importing) return;
+        _importing = true;
         try
         {
             string text = "";
-            string? pack = null;
+            var paths = new List<string>();
             var deferral = e.GetDeferral();
             try
             {
                 if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
                 {
                     var files = await e.DataView.GetStorageItemsAsync();
-                    if (files.Count == 1 && files[0] is Windows.Storage.StorageFile file) pack = file.Path;
+                    foreach (var item in files)
+                        if (item is Windows.Storage.StorageFile file) paths.Add(file.Path);
+                        else throw new IOException("请拖入资源文件，不支持文件夹。");
                 }
                 else if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text))
                     text = await e.DataView.GetTextAsync();
             }
             finally { deferral.Complete(); }
-            if (pack is not null)
+            if (paths.Count > 0)
             {
-                Navigation.SelectedItem = VersionsItem;
-                await VersionsContent.ImportModpackAsync(pack);
+                foreach (string path in paths) await ImportResourceAsync(path);
                 return;
             }
             if (!text.StartsWith("authlib-injector:yggdrasil-server:", StringComparison.OrdinalIgnoreCase)) return;
@@ -83,8 +91,9 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            await new ContentDialog { XamlRoot = XamlRoot, Title = "无法读取认证卡片", Content = ex.Message, CloseButtonText = "确定" }.ShowAsync();
+            await new ContentDialog { XamlRoot = XamlRoot, Title = "导入失败", Content = ex.Message, CloseButtonText = "确定" }.ShowAsync();
         }
+        finally { _importing = false; }
     }
 
     /// <summary>把首页视口尺寸交给首页布局，窗口缩放时同步调整图片和启动控件，不影响其他页面。</summary>
