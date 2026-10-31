@@ -93,14 +93,14 @@ public sealed partial class InstallationView : UserControl
             DetectLoaderAsync(loader, gameVersion, strategy, token)).Append(DetectApiAsync(gameVersion, token)));
     }
 
-    /// <summary>读取指定游戏的 API 发布；检测中禁用重复请求，失败允许重试，取消后丢弃旧结果。</summary>
+    /// <summary>按当前页面版本列表源策略读取指定游戏的 API 发布；检测中禁用重复请求，失败允许重试，取消后丢弃旧结果。</summary>
     private async Task DetectApiAsync(string game, CancellationToken token)
     {
         _apiStatus = "正在检测…";
         RefreshRows();
         try
         {
-            var versions = await _apiService.FetchAsync(game, token);
+            var versions = await _apiService.FetchAsync(game, token, _strategy);
             token.ThrowIfCancellationRequested();
             _apiVersions = versions;
             _apiStatus = versions.Count > 0 ? "可以添加" : "暂无可用版本";

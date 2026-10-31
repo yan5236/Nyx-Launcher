@@ -29,7 +29,7 @@ public static class ModInstallationService
         return mods;
     }
 
-    /// <summary>复用统一传输的暂存、长度及 SHA-1 校验和原子发布；完整同名文件直接复用，其他已有文件明确拒绝覆盖。</summary>
+    /// <summary>按文件源设置选择官方或 MCIM，复用统一传输的暂存、长度及 SHA-1 校验和原子发布；完整同名文件直接复用，其他已有文件明确拒绝覆盖。</summary>
     internal static async Task InstallAsync(ModrinthModFile file, string mods, DownloadTransport transport,
         Action<long, long>? progress, CancellationToken token)
     {
@@ -37,6 +37,6 @@ public static class ModInstallationService
         string path = Path.Combine(mods, file.FileName);
         GameInstallationService.EnsureNoLinks(path);
         if (await DownloadTransport.ValidAsync(path, file.Sha1, file.Size, token)) return;
-        await transport.DownloadAsync(file.Url, path, file.Sha1, file.Size, false, true, progress, token);
+        await transport.DownloadAsync(file.Url, path, file.Sha1, file.Size, false, true, progress, token, mirrorResource: true);
     }
 }

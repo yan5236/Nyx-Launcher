@@ -33,9 +33,9 @@ public sealed partial class ModDetailsView : UserControl
         Unloaded += View_Unloaded;
     }
 
-    /// <summary>注入下载模块、目录和隔离设置；不创建独立下载客户端或后台任务系统。</summary>
+    /// <summary>注入下载模块、目录和隔离设置；元数据请求读取最新版本列表源策略，不创建独立后台任务系统。</summary>
     public void Configure(DownloadTaskManager tasks, GameFolderStore folders, DownloadSettingsStore settings)
-    { _tasks = tasks; _folders = folders; _settings = settings; }
+    { _tasks = tasks; _folders = folders; _settings = settings; _service.Source = () => settings.Current.VersionSource; }
 
     /// <summary>从目录进入时清除详情历史；外部版本和加载器只用于置顶和标注，不跳过玩家的逐级选择。</summary>
     public void Open(ResourceProject project, string preferredGame = "", string preferredLoader = "")

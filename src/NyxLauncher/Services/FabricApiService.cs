@@ -23,22 +23,29 @@ public sealed class FabricApiService
     private readonly HttpClient _client;
     private readonly TimeSpan _timeout;
 
-    /// <summary>复用连接并为整次清单请求设置 15 秒超时；测试可注入客户端和时限。</summary>
+    /// <summary>复用连接并为每个来源的清单请求设置 15 秒超时；测试可注入客户端和时限。</summary>
     public FabricApiService(HttpClient? client = null, TimeSpan? timeout = null)
     { _client = client ?? SharedClient; _timeout = timeout ?? TimeSpan.FromSeconds(15); }
 
-    /// <summary>按原始游戏 ID 和 fabric 双重筛选，读取最多 8 MiB；空数组代表无版本，网络和格式错误保留原因，主动取消向上传播。</summary>
-    public async Task<IReadOnlyList<FabricApiVersion>> FetchAsync(string game, CancellationToken token)
+    /// <summary>按版本列表源策略读取并回退；原始游戏 ID 和 fabric 双重筛选，每源最多 8 MiB，空数组代表无版本，主动取消向上传播。</summary>
+    public Task<IReadOnlyList<FabricApiVersion>> FetchAsync(string game, CancellationToken token,
+        SourceStrategy strategy = SourceStrategy.OfficialWithFallback)
     {
         GameInstallationService.ValidateName(game);
+        return SourceFallback.FetchAsync(strategy, (mirror, ct) => FetchSourceAsync(game, mirror, ct), TimeSpan.FromSeconds(3), token);
+    }
+
+    /// <summary>读取单个官方或 MCIM 发布清单，独立超时并发送登记 UA；解析与兼容性验证保持一致。</summary>
+    private async Task<IReadOnlyList<FabricApiVersion>> FetchSourceAsync(string game, bool mirror, CancellationToken token)
+    {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(_timeout);
         try
         {
             string url = $"https://api.modrinth.com/v2/project/{ProjectId}/version?loaders=%5B%22fabric%22%5D&game_versions=" +
                 Uri.EscapeDataString(JsonSerializer.Serialize(new[] { game })) + "&include_changelog=false";
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.UserAgent.ParseAdd("NyxLauncher/0.1");
+            using var request = new HttpRequestMessage(HttpMethod.Get, mirror ? ResourceMirror.Map(new Uri(url))! : new Uri(url));
+            request.Headers.UserAgent.ParseAdd(ResourceMirror.UserAgent);
             using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
             response.EnsureSuccessStatusCode();
             await using var input = await response.Content.ReadAsStreamAsync(timeout.Token);
@@ -121,6 +128,6 @@ public sealed class FabricApiService
             x.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) && !Path.GetFileName(x).Equals(api.FileName, StringComparison.OrdinalIgnoreCase)))
             throw new IOException("mods 中已存在另一版本 Fabric API，请先移走旧版或使用版本隔离。");
         if (await DownloadTransport.ValidAsync(destination, api.Sha1, api.Size, token)) return;
-        await transport.DownloadAsync(api.Url, destination, api.Sha1, api.Size, false, false, null, token);
+        await transport.DownloadAsync(api.Url, destination, api.Sha1, api.Size, false, false, null, token, mirrorResource: true);
     }
 }

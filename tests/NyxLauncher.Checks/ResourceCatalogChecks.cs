@@ -93,7 +93,7 @@ internal static class ResourceCatalogChecks
         using (var client = new HttpClient(new Handler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)))))
         {
             try { await new ModrinthCatalogService(client).SearchAsync("mod", "", "", "", 0, default); throw new Exception("限流未失败"); }
-            catch (HttpRequestException ex) { Check(ex.Message == "请求过于频繁，请稍后重试。", "限流使用用户可理解的中文提示"); }
+            catch (HttpRequestException ex) { Check(ex.Message.Contains("请求过于频繁，请稍后重试。"), "限流使用用户可理解的中文提示"); }
         }
         using (var client = new HttpClient(new Handler(async (_, token) => { await Task.Delay(Timeout.Infinite, token); return new(); })))
         {

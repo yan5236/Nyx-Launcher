@@ -25,6 +25,9 @@ public sealed partial class ResourceCatalogView : UserControl
     /// <summary>当前加载器的平台标识，空字符串表示全部，供详情置顶和标注。</summary>
     public string SelectedLoader => (LoaderFilter.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
 
+    /// <summary>绑定共享版本列表源设置；每次请求读取最新值，不新增设置项。</summary>
+    public void Configure(DownloadSettingsStore settings) => _service.Source = () => settings.Current.VersionSource;
+
     /// <summary>五类资源卡片进入共用下载详情，由资源类别决定版本、加载器和文件选择步骤。</summary>
     private void ProjectList_ItemClick(object sender, ItemClickEventArgs e)
     {

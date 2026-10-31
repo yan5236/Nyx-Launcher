@@ -10,6 +10,9 @@ namespace NyxLauncher.Views;
 public sealed class ResourceIcon : UserControl
 {
     private static readonly ResourceIconService Service = new();
+
+    /// <summary>所有资源卡片共享最新文件源策略；已成功解码的缓存无需重新下载。</summary>
+    public static void Configure(DownloadSettingsStore settings) => Service.Source = () => settings.Current.FileSource;
     private readonly Image _placeholder = new() { Width = 38, Height = 38 };
     private readonly Image _image = new() { Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform };
     private CancellationTokenSource? _request;

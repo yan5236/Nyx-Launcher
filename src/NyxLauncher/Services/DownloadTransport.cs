@@ -34,7 +34,7 @@ public sealed class DownloadTransport : IDisposable
         return uri;
     }
 
-    /// <summary>仅为已知官方分发域名生成 BMCLAPI 地址；任意用户链接保持原样。</summary>
+    /// <summary>为已知游戏分发域名生成 BMCLAPI 地址、资源分发域名生成 MCIM 地址；其他域名不映射。</summary>
     public static Uri? Mirror(Uri uri) => uri.Host switch
     {
         "piston-meta.mojang.com" or "launchermeta.mojang.com" or "piston-data.mojang.com" or "launcher.mojang.com"
@@ -44,18 +44,18 @@ public sealed class DownloadTransport : IDisposable
         "maven.minecraftforge.net" or "maven.fabricmc.net" => new("https://bmclapi2.bangbang93.com/maven" + uri.PathAndQuery),
         "maven.neoforged.net" => new("https://bmclapi2.bangbang93.com/maven" + uri.PathAndQuery.Replace("/releases/", "/")),
         "meta.fabricmc.net" => new("https://bmclapi2.bangbang93.com/fabric-meta" + uri.PathAndQuery),
-        _ => null
+        _ => ResourceMirror.Map(uri)
     };
 
-    /// <summary>普通文件与游戏资源共用并行文件额度；等待可取消，下载校验后原子发布，失败释放额度并清理临时文件，不破坏已有目标。</summary>
+    /// <summary>共用并行额度、校验及原子发布；mirrorResource 仅由已验证资源入口启用镜像，不改变禁止覆盖规则，自定义链接不改写。</summary>
     public async Task DownloadAsync(Uri url, string destination, string? sha1, long size,
-        bool gameFile, bool segmented, Action<long, long>? progress, CancellationToken token)
+        bool gameFile, bool segmented, Action<long, long>? progress, CancellationToken token, bool mirrorResource = false)
     {
         ValidateUrl(url.AbsoluteUri);
         if (gameFile && await ValidAsync(destination, sha1, size, token)) return;
         if (!gameFile && File.Exists(destination)) throw new IOException("目标文件已存在，请选择其他目录或重命名原文件。");
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        Uri? mirror = gameFile ? Mirror(url) : null;
+        Uri? mirror = gameFile ? Mirror(url) : mirrorResource ? ResourceMirror.Map(url) : null;
         var strategy = _settings.FileSource;
         var first = strategy == SourceStrategy.MirrorFirst && mirror is not null ? mirror : url;
         var second = first == url ? mirror : url;
@@ -180,9 +180,10 @@ public sealed class DownloadTransport : IDisposable
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 
-    /// <summary>限制响应头等待时间；正文使用独立空闲超时，允许大文件持续下载。</summary>
+    /// <summary>所有 HEAD、GET 和 Range 请求发送登记 UA 并限制响应头等待；正文使用独立空闲超时。</summary>
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token, TimeSpan? timeout)
     {
+        request.Headers.UserAgent.ParseAdd(ResourceMirror.UserAgent);
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
         deadline.CancelAfter(timeout ?? TimeSpan.FromSeconds(30));
         return await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token);

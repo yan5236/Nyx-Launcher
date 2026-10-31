@@ -37,6 +37,8 @@ public sealed partial class DownloadsView : UserControl
     public void Configure(DownloadSettingsStore settings, DownloadTaskManager tasks, GameFolderStore folders)
     {
         _settings = settings;
+        ResourcesContent.Configure(settings);
+        ResourceIcon.Configure(settings);
         TasksContent.Configure(tasks);
         InstallationContent.Configure(tasks, folders);
         ModDetailsContent.Configure(tasks, folders, settings);

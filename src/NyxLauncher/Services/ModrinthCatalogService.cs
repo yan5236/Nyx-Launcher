@@ -12,6 +12,7 @@ public sealed partial class ModrinthCatalogService
     { AutomaticDecompression = DecompressionMethods.All }) { Timeout = Timeout.InfiniteTimeSpan };
     private readonly HttpClient _client;
     private readonly TimeSpan _timeout;
+    public Func<SourceStrategy> Source { get; set; } = () => SourceStrategy.OfficialWithFallback;
     private IReadOnlyList<string>? _releaseVersions;
 
     /// <summary>复用平台连接；允许测试注入客户端和请求时限，默认每次请求最多等待 20 秒。</summary>
@@ -113,15 +114,20 @@ public sealed partial class ModrinthCatalogService
         { throw new HttpRequestException("资源类型暂时不可用，请重试。", ex); }
     }
 
-    /// <summary>带独立超时及取消读取最多 8 MiB JSON；不关闭 TLS 校验，向界面提供中文网络、限流和格式错误。</summary>
-    private async Task<JsonDocument> GetAsync(string path, CancellationToken token)
+    /// <summary>按当前版本列表源策略读取元数据；官方慢响应三秒后并行尝试 MCIM，失败回退，取消剩余请求。</summary>
+    private Task<JsonDocument> GetAsync(string path, CancellationToken token) => SourceFallback.FetchAsync(Source(),
+        (mirror, ct) => GetSourceAsync(path, mirror, ct), TimeSpan.FromSeconds(3), token);
+
+    /// <summary>单源独立超时读取最多 8 MiB JSON；发送登记 UA，保留限流提示，取消不转成失败。</summary>
+    private async Task<JsonDocument> GetSourceAsync(string path, bool mirror, CancellationToken token)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(_timeout);
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.modrinth.com/v2/" + path);
-            request.Headers.UserAgent.ParseAdd("NyxLauncher/0.1");
+            var url = new Uri("https://api.modrinth.com/v2/" + path);
+            using var request = new HttpRequestMessage(HttpMethod.Get, mirror ? ResourceMirror.Map(url)! : url);
+            request.Headers.UserAgent.ParseAdd(ResourceMirror.UserAgent);
             using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
             response.EnsureSuccessStatusCode();
             await using var input = await response.Content.ReadAsStreamAsync(timeout.Token);

@@ -73,3 +73,18 @@ dotnet run --project tests/NyxLauncher.Checks --no-build -- --live-mod-install .
 验证入口：`dotnet run --project tests/NyxLauncher.Checks -- --local-resources E:/下载`。可选样本路径只读，检查输出位于独立临时目录，不改动玩家文件。
 
 2026-10-31：本地资源检查与现有离线回归通过；用户提供的 Fast Better Grass、Xaero Minimap、Furnicraft 三个样本均完成识别、独立目录复制与逐字节比对。19 项原生弹窗检查通过，覆盖当前版本 B 置顶、数据包返回保留排序、真实文件复制、失败保留和下载入口复用；验收源 `.local/LocalResourceUiApp.cs`、日志 `.local/local-resource-ui.log`。Debug x64 构建与页面结构检查通过。未实测资源管理器鼠标拖放、系统文件夹选择器、游戏内加载或 Release；NuGet 漏洞数据源不可达仍产生 NU1900 警告。
+
+
+## MCIM 镜像源
+
+按 [MCIM 接入指南](https://www.mcimirror.top/guide/start/getting-started) 复用现有设置，不新增源选项：搜索、标签、项目/前置和发布列表使用“版本列表源”；图标、模组、资源包、数据包、光影、整合包及其文件和 Fabric API JAR 使用“文件下载源”。镜像优先失败回退官方，官方优先失败回退镜像；官方缓慢策略在元数据/图标三秒后并发镜像，在文件响应头超过三秒后切换镜像。下载批次仍锁定原文件策略，资源请求读取最新设置。
+
+- `api.modrinth.com` → `mod.mcimirror.top/modrinth`；`cdn.modrinth.com` → `mod.mcimirror.top`。
+- 整合包中的 `edge.forgecdn.net` 文件可走 MCIM，`mediafilez.forgecdn.net` 按文档保持原样。CurseForge 搜索入口仍未启用。
+- 统一 UA 为报备的 `Nyx-Launcher/{程序集版本号}`，当前构建为 `Nyx-Launcher/1.0.0`；覆盖 API、图标每次重定向、文件 HEAD/GET/Range。名称固定，版本随程序集发布版本更新。
+- 图标跟随最多五次 HTTPS 重定向，每源保留 4 MiB、尺寸与解码限制。文件仍校验长度和 SHA-1，保留禁止覆盖、取消和原子发布规则。自定义下载链接不会改写。
+- MCIM 返回缓存，可能晚于官方；当前按所选源接受有效缓存，不把 `sync_at` 当作发布时间，也不自动判定“最新版本”。需要刚发布的版本时选官方优先。镜像 404/连接失败回退官方，双源失败继续显示错误。
+
+离线检查包含源映射边界、设置变更、UA、404 回退、图标 302、分段 HEAD/Range、损坏文件回退与临时文件清理。实网入口：`dotnet run --project tests/NyxLauncher.Checks -- --mcim-live`；该检查仅在本测试进程直连，禁止官方回退掩盖镜像故障，下载单个 Fabric API 文件至临时目录并校验 SHA-1 后清理。
+
+2026-10-31：MCIM 离线检查及完整既有离线回归通过，Debug x64 构建 0 警告、0 错误，差异空白检查通过。实网搜索曾返回有效结果、全量发布请求收到 HTTP 200，但完整图标与文件下载验收未完成；后续直连明确遭遇本机 SocketException 10055（系统缓冲区不足），未关闭证书验证或修改系统网络设置。测试项目仍有 NuGet 漏洞数据源不可达的 NU1900 警告。未验证原生 UI、游戏加载或 Release。
