@@ -95,6 +95,33 @@ public sealed class DownloadTaskManager
         return item;
     }
 
+    /// <summary>检查实例名、现有目录及未结束任务，供所有整合包入口反馈；不创建文件。</summary>
+    public void ValidateModpackName(string folder, string name)
+    {
+        GameInstallationService.ValidateName(name);
+        if (!Path.IsPathFullyQualified(folder) || !Directory.Exists(folder)) throw new IOException("请先选择有效游戏目录。");
+        string destination = Path.Combine(folder, "versions", name);
+        GameInstallationService.EnsureNoLinks(destination);
+        if (Directory.Exists(destination) || File.Exists(destination) || Tasks.Any(x =>
+            x.State is not (DownloadState.Completed or DownloadState.Cancelled) &&
+            string.Equals(x.Destination, destination, StringComparison.OrdinalIgnoreCase)))
+            throw new IOException("该版本名称已存在或已有安装任务，请换一个名称。");
+    }
+
+    /// <summary>把本地或在线整合包作为一个游戏安装任务，统一进度、暂停、重试和取消；发布成功刷新版本列表。</summary>
+    public DownloadTaskItem AddModpack(string folder, string name, string? localPath = null, ModrinthModFile? remote = null)
+    {
+        ValidateModpackName(folder, name);
+        if ((localPath is null) == (remote is null)) throw new ArgumentException("必须选择一个整合包来源。");
+        remote?.Validate();
+        var item = new DownloadTaskItem { Name = name, Destination = Path.Combine(folder, "versions", name), IsGame = true };
+        var installation = new ModpackInstallationService(folder, item.Id, _settings.Current);
+        item.Work = (transport, token) => installation.InstallAsync(name, localPath, remote, transport,
+            (percent, detail) => Report(item, percent, detail), token);
+        item.Cleanup = installation.Cleanup;
+        Add(item);
+        return item;
+    }
     /// <summary>为选定 Java 发行包创建标准下载任务，共享并行预算、进度、暂停、重试和取消，成功后由安装器登记到 Java 列表。</summary>
     public DownloadTaskItem AddJava(JavaPackage package, JavaRuntimeStore store, string? launcherDirectory = null)
     {

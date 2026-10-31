@@ -17,7 +17,7 @@
                         <FontIcon Grid.Column="2" Glyph="&#xE70D;" FontSize="12" />
                     </Grid>
                 </Button>
-                <Button Grid.Column="1" Content="安装新版本" Click="Install_Click" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><Button Content="导入整合包" Click="ImportPack_Click" /><Button Content="安装新版本" Click="Install_Click" /></StackPanel>
             </Grid>
             <AutoSuggestBox x:Name="Search" Grid.Row="1" PlaceholderText="搜索版本" QueryIcon="Find"
                             AutomationProperties.Name="搜索已安装版本" TextChanged="Search_TextChanged" />

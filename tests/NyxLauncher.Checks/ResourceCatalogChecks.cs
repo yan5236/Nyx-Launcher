@@ -29,7 +29,7 @@ internal static class ResourceCatalogChecks
                 string[] filters = facets.RootElement.EnumerateArray().SelectMany(x => x.EnumerateArray()).Select(x => x.GetString()!).ToArray();
                 Check(query["query"] == "中文 & a+b" && query["offset"] == "20" && query["limit"] == "20", "保留中文关键词及特殊字符与分页");
                 Check(filters.Contains("project_type:" + category) && filters.Contains("versions:1.21.1") &&
-                    filters.Contains("categories:fabric") == (category == "mod"), category + " 精确分类且仅模组添加加载器筛选");
+                    filters.Contains("categories:fabric") == (category is "mod" or "modpack"), category + " 精确分类且模组和整合包添加加载器筛选");
                 Check(request.Headers.UserAgent.Count > 0 && request.RequestUri.Host == "api.modrinth.com" &&
                     filters.Contains("categories:optimization"), "平台地址、客户端标识和资源类型筛选");
                 return Task.FromResult(Response(new JsonObject { ["hits"] = new JsonArray(Project()), ["total_hits"] = 42 }.ToJsonString()));
@@ -38,9 +38,9 @@ internal static class ResourceCatalogChecks
             var project = page.Projects.Single();
             Check(page.Total == 42 && project.Title == "Fabric API" && project.Description == "测试简介" &&
                 project.Downloads == 52000 && project.Updated.Day == 29 && project.IconUrl.StartsWith("https://cdn.modrinth.com/"), "真实字段及匹配总数");
-            Check(project.HasLoaders == (category == "mod") && (category != "mod" || project.LoadersText == "Fabric / Forge / NeoForge / Quilt"),
+            Check(project.HasLoaders == (category is "mod" or "modpack") && (category is not ("mod" or "modpack") || project.LoadersText == "Fabric / Forge / NeoForge / Quilt"),
                 category + " 不混入资源标签或非模组加载器");
-            Check(project.Category == category && (category != "mod" || project.LoaderIcons.Contains("ms-appx:///Assets/quilt.svg")), "分类占位及 Quilt 图标地址");
+            Check(project.Category == category && (category is not ("mod" or "modpack") || project.LoaderIcons.Contains("ms-appx:///Assets/quilt.svg")), "分类占位及 Quilt 图标地址");
             Check(project.VersionsText == "1.19–1.21" && project.VersionsDetail.Contains("1.20.1") && project.DownloadText == "5.2万", "卡片合并系列并保留完整悬停版本");
         }
         using (var client = new HttpClient(new Handler((_, _) => Task.FromResult(Response("{\"hits\":[],\"total_hits\":0}")))))

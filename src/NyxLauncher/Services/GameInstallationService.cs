@@ -43,9 +43,10 @@ public sealed class GameInstallationService
                 throw new IOException("安装路径不能包含符号链接或目录联接：" + current);
     }
 
-    /// <summary>按所选版本和可选 Fabric API 安装；API 写入隔离策略对应的 mods，取消保留已验证共享资源，失败不发布版本，已有目标绝不覆盖。</summary>
+    /// <summary>按所选版本和可选 Fabric API 安装；API 写入隔离策略对应的 mods，取消保留已验证共享资源，失败不发布版本，已有目标绝不覆盖；beforePublish 在发布前补齐整合包，失败保留暂存供重试。</summary>
     public async Task InstallAsync(string name, string game, LoaderVersion? loader, DownloadTransport transport,
-        Action<double, string> report, CancellationToken token, FabricApiVersion? fabricApi = null)
+        Action<double, string> report, CancellationToken token, FabricApiVersion? fabricApi = null,
+        Func<string, CancellationToken, Task>? beforePublish = null)
     {
         ValidateName(name); ValidateName(game);
         if (loader is not null) ValidateName(loader.Id);
@@ -110,10 +111,25 @@ public sealed class GameInstallationService
                 await FabricApiService.InstallAsync(fabricApi, mods, transport, token);
             }
             token.ThrowIfCancellationRequested();
+            if (beforePublish is not null) await beforePublish(publish, token);
+            token.ThrowIfCancellationRequested();
             Directory.CreateDirectory(Path.Combine(_root, "versions"));
-            Directory.Move(publish, destination);
+            await PublishAsync(publish, destination, token);
         }
         finally { folderLock.Release(); }
+    }
+
+    /// <summary>原子发布已校验目录；Windows 扫描器可能短暂占用新写入文件，限时重试且响应取消，目标存在时立即失败。</summary>
+    internal static async Task PublishAsync(string source, string destination, CancellationToken token)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            token.ThrowIfCancellationRequested();
+            if (Directory.Exists(destination) || File.Exists(destination)) throw new IOException("版本名称已存在，不能覆盖。");
+            try { Directory.Move(source, destination); return; }
+            catch (Exception ex) when (attempt < 10 && ex is IOException or UnauthorizedAccessException)
+            { await Task.Delay(300, token); }
+        }
     }
 
     /// <summary>Fabric 使用官方 profile；Forge/NeoForge 执行安装包真实处理器，采用用户所选完整坐标，不自动换成最新版。</summary>

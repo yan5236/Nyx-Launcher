@@ -19,10 +19,10 @@
      <TextBlock x:Name="ModTitle" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
      <TextBlock x:Name="Description" Foreground="#6B7A70" TextWrapping="Wrap" MaxLines="3" TextTrimming="WordEllipsis"/>
      <StackPanel Orientation="Horizontal" Spacing="10">
-      <Button x:Name="CopyButton" Click="Copy_Click" AutomationProperties.Name="复制模组名称">
+      <Button x:Name="CopyButton" Click="Copy_Click" AutomationProperties.Name="复制资源名称">
        <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE8C8;" FontSize="14"/><TextBlock Text="复制名称"/></StackPanel>
       </Button>
-      <Button Click="Website_Click" AutomationProperties.Name="在浏览器打开 Modrinth 模组详情">
+      <Button Click="Website_Click" AutomationProperties.Name="在浏览器打开 Modrinth 资源详情">
        <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE774;" FontSize="14"/><TextBlock Text="前往 Modrinth"/></StackPanel>
       </Button>
      </StackPanel>
@@ -45,7 +45,7 @@
   <InfoBar x:Name="Notice" Grid.Row="3" IsOpen="False"/>
   <Grid Grid.Row="4">
    <ListView x:Name="Choices" SelectionMode="None" IsItemClickEnabled="True" ItemClick="Choice_Click"
-    Margin="0,0,-20,0" Padding="0,0,20,10" AutomationProperties.Name="模组版本选择">
+    Margin="0,0,-20,0" Padding="0,0,20,10" AutomationProperties.Name="资源版本选择">
     <ListView.Header>
      <StackPanel x:Name="DependencySection" Visibility="Collapsed" Spacing="12" Margin="0,0,0,16" HorizontalAlignment="Stretch">
       <TextBlock Text="前置资源" FontSize="18" FontWeight="SemiBold"/>

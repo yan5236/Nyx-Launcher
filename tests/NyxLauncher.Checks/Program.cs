@@ -8,9 +8,12 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行模组、资源、Java、认证、账户、启动及下载断言；--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
+    /// <summary>运行整合包、模组、资源、Java、认证、账户、启动及下载断言；--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--live-modpacks")) { await ModpackChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-modpacks") + 1])); return; }
+        ModpackChecks.Run();
+        await ModpackChecks.FilesAsync();
         MemoryChecks.Run();
         CrashReportChecks.Run();
         if (args.Contains("--live-mod-install"))

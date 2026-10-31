@@ -18,7 +18,7 @@ public sealed partial class ModrinthCatalogService
     public ModrinthCatalogService(HttpClient? client = null, TimeSpan? timeout = null)
     { _client = client ?? SharedClient; _timeout = timeout ?? TimeSpan.FromSeconds(20); }
 
-    /// <summary>把资源分类、版本、模组加载器和资源类型组合为 AND 筛选；正确转义关键词并分页，取消由调用方处理。</summary>
+    /// <summary>把资源分类、版本、模组或整合包加载器和资源类型组合为 AND 筛选；正确转义关键词并分页，取消由调用方处理。</summary>
     public async Task<ResourceSearchPage> SearchAsync(string category, string query, string gameVersion,
         string loader, int offset, CancellationToken token, string resourceType = "")
     {
@@ -28,7 +28,7 @@ public sealed partial class ModrinthCatalogService
         var facets = new List<string[]> { new[] { "project_type:" + category } };
         if (gameVersion.Length > 0) facets.Add(["versions:" + gameVersion]);
         if (resourceType.Length > 0) facets.Add(["categories:" + resourceType]);
-        if (category == "mod" && loader.Length > 0)
+        if ((category is "mod" or "modpack") && loader.Length > 0)
         {
             if (!LoaderIds.Contains(loader)) throw new ArgumentException("未知加载器。", nameof(loader));
             facets.Add(["categories:" + loader]);
@@ -84,7 +84,7 @@ public sealed partial class ModrinthCatalogService
                 if (downloads < 0) throw new JsonException();
                 var versions = hit.GetProperty("versions").EnumerateArray().Select(x => x.GetString() ?? "")
                     .Where(x => x.Length > 0).Distinct().ToArray();
-                var loaders = category == "mod" ? hit.GetProperty("categories").EnumerateArray()
+                var loaders = (category is "mod" or "modpack") ? hit.GetProperty("categories").EnumerateArray()
                     .Select(x => x.GetString() ?? "").Where(LoaderIds.Contains).Distinct().ToArray() : [];
                 return new ResourceProject(id, title, hit.GetProperty("description").GetString() ?? "", icon,
                     downloads, hit.GetProperty("date_modified").GetDateTimeOffset(), versions, loaders, category);

@@ -25,10 +25,10 @@ public sealed partial class ResourceCatalogView : UserControl
     /// <summary>当前加载器的平台标识，空字符串表示全部，供详情置顶和标注。</summary>
     public string SelectedLoader => (LoaderFilter.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
 
-    /// <summary>仅模组卡片进入真实下载详情；其余资源类别继续保持目录浏览行为。</summary>
+    /// <summary>模组和整合包卡片进入共用的三级下载详情；其余资源保持目录浏览行为。</summary>
     private void ProjectList_ItemClick(object sender, ItemClickEventArgs e)
     {
-        if (_active && _category == "mod" && e.ClickedItem is ResourceProject project)
+        if (_active && (_category is "mod" or "modpack") && e.ClickedItem is ResourceProject project)
             ModRequested?.Invoke(this, project);
     }
 
@@ -45,7 +45,7 @@ public sealed partial class ResourceCatalogView : UserControl
         Unloaded += View_Unloaded;
     }
 
-    /// <summary>切换资源类别时清空关键词及已提交版本，重置选择和手动输入文本，非模组隐藏加载器；显示后才请求第一页。</summary>
+    /// <summary>切换资源类别时清空关键词及已提交版本，重置选择和手动输入文本，模组和整合包显示加载器；显示后才请求第一页。</summary>
     public void SetCategory(string category)
     {
         if (_category == category) return;
@@ -59,7 +59,7 @@ public sealed partial class ResourceCatalogView : UserControl
         GameVersionFilter.SelectedIndex = LoaderFilter.SelectedIndex = SourceFilter.SelectedIndex = 0;
         GameVersionFilter.Text = "全部";
         ResetCategoryFilter();
-        LoaderControls.Visibility = category == "mod" ? Visibility.Visible : Visibility.Collapsed;
+        LoaderControls.Visibility = (category is "mod" or "modpack") ? Visibility.Visible : Visibility.Collapsed;
         _offset = 0;
         _updating = false;
         if (_active) _ = LoadAsync();

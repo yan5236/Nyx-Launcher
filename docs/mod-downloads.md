@@ -41,3 +41,5 @@ dotnet run --project tests/NyxLauncher.Checks --no-build -- --live-mod-install .
 2026-10-31：筛选置顶和前置导航完成，48 项模组下载检查及其余离线回归通过，包含必需依赖筛选、版本引用补全、批量去重、缺失响应、不安全编号、图标回退、超时和取消。原生 WinUI 验收通过 29 项流程检查：真实 Iris → Sodium 文件列表 → 安装完成 → 返回 Iris，恢复版本、加载器和滚动位置；覆盖前置共同滚动、阶段隐藏、NeoForge 非默认置顶、不支持的筛选项及最外层返回。验收源为 `.local/ModDependenciesUiApp.cs`，日志 `.local/mod-dependency-ui.log`，实际渲染截图 `.local/screenshots/mod-dependency-{games,loaders,iris,scrolled,sodium,back}.png`；设置和目标均为独立验收目录。正常 Debug x64 入口在 `.local/mod-dependencies-build` 构建通过，0 警告、0 错误；未验证装模组后的游戏启动、其他 Windows/DPI 或 Release。
 
 2026-10-31 审查修复：模组任务纳入版本改名/删除保护，删除执行前重新检查忙碌状态，关闭阶段拒绝新任务和恢复操作。687 项离线检查、页面结构检查及独立目录下 5 项原生 WinUI 保护检查通过；Debug x64 构建零警告、零错误。界面验收源为 `.local/AuditFixesUiApp.cs`，日志为 `.local/audit-fixes-ui.log`。未验证实网下载、实际游戏运行或 Release。
+
+整合包复用此三级详情，但文件确认弹窗改为版本名输入，见[整合包安装](modpack-installation.md)。

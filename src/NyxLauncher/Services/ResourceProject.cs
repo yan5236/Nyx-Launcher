@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace NyxLauncher.Services;
 
-/// <summary>资源搜索结果及卡片显示数据；非模组分类不会携带加载器。</summary>
+/// <summary>资源搜索结果及卡片显示数据；模组和整合包分类携带加载器。</summary>
 public sealed record ResourceProject(string Id, string Title, string Description, string IconUrl,
     long Downloads, DateTimeOffset Updated, IReadOnlyList<string> Versions, IReadOnlyList<string> Loaders, string Category = "mod")
 {

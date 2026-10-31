@@ -15,7 +15,7 @@ public sealed partial class ModDetailsView : UserControl
     private ResourceProject? _project;
     private IReadOnlyList<ModrinthModFile> _files = [];
     private CancellationTokenSource? _request;
-    private ModInstallDialog? _dialog;
+    private ContentDialog? _dialog;
     private DownloadTaskManager? _tasks;
     private DownloadSettingsStore? _settings;
     private GameFolderStore? _folders;
@@ -123,7 +123,7 @@ public sealed partial class ModDetailsView : UserControl
             var data = new DataPackage();
             data.SetText(_project.Title);
             Clipboard.SetContent(data);
-            ShowNotice("已复制模组名称", InfoBarSeverity.Success);
+            ShowNotice("已复制名称", InfoBarSeverity.Success);
         }
         catch (Exception ex) { ShowNotice("复制失败：" + ex.Message, InfoBarSeverity.Error); }
     }
@@ -134,7 +134,7 @@ public sealed partial class ModDetailsView : UserControl
         if (_project is null) return;
         try
         {
-            if (!await Launcher.LaunchUriAsync(new Uri("https://modrinth.com/mod/" + Uri.EscapeDataString(_project.Id))) && _active)
+            if (!await Launcher.LaunchUriAsync(new Uri("https://modrinth.com/" + _project.Category + "/" + Uri.EscapeDataString(_project.Id))) && _active)
                 ShowNotice("无法打开浏览器，请检查默认浏览器设置。", InfoBarSeverity.Error);
         }
         catch (Exception ex) { if (_active) ShowNotice("打开失败：" + ex.Message, InfoBarSeverity.Error); }
@@ -152,10 +152,10 @@ public sealed partial class ModDetailsView : UserControl
         _request = request;
         Choices.Visibility = EmptyHint.Visibility = Visibility.Collapsed;
         LoadStatus.Visibility = Visibility.Visible;
-        LoadStatus.Start("模组版本");
+        LoadStatus.Start(_project.Category == "modpack" ? "整合包版本" : "模组版本");
         try
         {
-            var files = await _service.FetchModFilesAsync(_project.Id, request.Token);
+            var files = await _service.FetchModFilesAsync(_project.Id, request.Token, _project.Category == "modpack");
             request.Token.ThrowIfCancellationRequested();
             _files = files;
             LoadStatus.Stop();
@@ -193,7 +193,7 @@ public sealed partial class ModDetailsView : UserControl
         {
             choices = _files.Where(x => x.GameVersions.Contains(_game) && x.Loaders.Contains(_loader))
                 .Select(x => new ModDetailChoice(x.FileName, x.Detail, "", x.Badge, x));
-            StageText.Text = $"3 / 3 · {_game} · {ResourceProject.LoaderName(_loader)} · 选择模组文件";
+            StageText.Text = $"3 / 3 · {_game} · {ResourceProject.LoaderName(_loader)} · 选择文件";
         }
         var rows = choices.ToArray();
         Choices.ItemsSource = rows;
@@ -214,7 +214,7 @@ public sealed partial class ModDetailsView : UserControl
         }
     }
 
-    /// <summary>逐级选择游戏与加载器；文件弹窗提供兼容版本及手动目录两种下载入口，无游戏目录仍可手动下载，成功后保留文件列表。</summary>
+    /// <summary>逐级选择游戏与加载器；文件弹窗提供兼容版本及手动目录两种下载入口，无游戏目录仍可手动下载；整合包改用名称弹窗，成功后保留文件列表。</summary>
     private async void Choice_Click(object sender, ItemClickEventArgs e)
     {
         if (!_active || _dialog is not null || e.ClickedItem is not ModDetailChoice choice) return;
@@ -222,10 +222,17 @@ public sealed partial class ModDetailsView : UserControl
         if (_game.Length == 0) { _game = choice.Title; RefreshChoices(); return; }
         if (_loader.Length == 0) { _loader = choice.Loader; RefreshChoices(); return; }
         if (choice.File is not { } file || _tasks is null || _settings is null) return;
-        ModInstallDialog? dialog = null;
+        ContentDialog? dialog = null;
         try
         {
             string folder = _folders?.Selected ?? "";
+            if (_project?.Category == "modpack")
+            {
+                dialog = new ModpackInstallDialog(XamlRoot, _tasks, folder, _project.Title, remote: file);
+                _dialog = dialog;
+                await dialog.ShowAsync();
+                return;
+            }
             var targets = (Directory.Exists(folder) ? InstalledVersionService.Scan(folder) : []).Where(x => ModInstallationService.IsCompatible(x, _game, _loader))
                 .Select(x => new ModInstallTarget(x, Path.Combine(VersionIsolation.Resolve(folder, x, _settings.Current.Isolation), "mods")))
                 .ToArray();

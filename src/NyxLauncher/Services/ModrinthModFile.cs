@@ -8,18 +8,19 @@ public sealed record ModrinthModFile(string ProjectId, string VersionId, string 
     DateTimeOffset Published, string Channel, IReadOnlyList<string> GameVersions,
     IReadOnlyList<string> Loaders, Uri Url, string Sha1, long Size)
 {
+    public bool IsModpack { get; init; }
     public IReadOnlyList<ModDependency> Dependencies { get; init; } = [];
     public string ChannelLabel => Channel switch { "release" => "正式版", "beta" => "测试版", _ => "预览版" };
     public string Badge => Channel switch { "release" => "R", "beta" => "B", _ => "A" };
     public string Detail => Published.ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + " · " + ChannelLabel;
 
-    /// <summary>在清单解析及创建任务时共同验证文件契约；兼容官方旧链接的重复起始斜杠及大小 0（未知），仍要求有效 SHA-1、单级 JAR 名和项目官方 CDN 路径。</summary>
+    /// <summary>在清单解析及创建任务时共同验证文件契约；兼容官方旧链接的重复起始斜杠及大小 0（未知），仍要求有效 SHA-1、单级 JAR 或 MRPACK 名和项目官方 CDN 路径。</summary>
     internal void Validate()
     {
         GameInstallationService.ValidateName(FileName);
         if (string.IsNullOrEmpty(ProjectId) || !ProjectId.All(char.IsAsciiLetterOrDigit) ||
             string.IsNullOrEmpty(VersionId) || !VersionId.All(char.IsAsciiLetterOrDigit) ||
-            !FileName.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) ||
+            !FileName.EndsWith(IsModpack ? ".mrpack" : ".jar", StringComparison.OrdinalIgnoreCase) ||
             Channel is not ("release" or "beta" or "alpha") || Size < 0 ||
             Sha1 is null || Sha1.Length != 40 || !Sha1.All(Uri.IsHexDigit) ||
             GameVersions.Count == 0 || GameVersions.Any(string.IsNullOrWhiteSpace) ||
@@ -34,8 +35,8 @@ public sealed record ModrinthModFile(string ProjectId, string VersionId, string 
 /// <summary>资源目录的模组发布查询；复用目录服务的连接、超时、响应大小限制和错误提示。</summary>
 public sealed partial class ModrinthCatalogService
 {
-    /// <summary>获取项目全部发布，保留每个运行 JAR 的兼容范围和必需前置，按更新日期倒序返回；不以搜索摘要代替文件信息，主动取消向上传播。</summary>
-    public async Task<IReadOnlyList<ModrinthModFile>> FetchModFilesAsync(string projectId, CancellationToken token)
+    /// <summary>获取项目全部发布，按 modpack 选择 MRPACK 或运行 JAR，保留兼容范围和必需前置，按更新日期倒序返回；不以搜索摘要代替文件信息，主动取消向上传播。</summary>
+    public async Task<IReadOnlyList<ModrinthModFile>> FetchModFilesAsync(string projectId, CancellationToken token, bool modpack = false)
     {
         if (string.IsNullOrEmpty(projectId) || !projectId.All(char.IsAsciiLetterOrDigit))
             throw new ArgumentException("模组项目编号无效。", nameof(projectId));
@@ -54,14 +55,14 @@ public sealed partial class ModrinthCatalogService
                 foreach (var file in version.GetProperty("files").EnumerateArray().OrderByDescending(x => x.GetProperty("primary").GetBoolean()))
                 {
                     string name = file.GetProperty("filename").GetString() ?? throw new JsonException();
-                    if (!name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!name.EndsWith(modpack ? ".mrpack" : ".jar", StringComparison.OrdinalIgnoreCase)) continue;
                     if (file.TryGetProperty("file_type", out var type) && type.ValueKind != JsonValueKind.Null &&
                         type.GetString() is not ("" or "unknown")) continue;
                     var item = new ModrinthModFile(projectId, version.GetProperty("id").GetString()!, name,
                         version.GetProperty("date_published").GetDateTimeOffset(), version.GetProperty("version_type").GetString()!,
                         games, loaders, new Uri(file.GetProperty("url").GetString()!),
                         file.GetProperty("hashes").GetProperty("sha1").GetString()!, file.GetProperty("size").GetInt64())
-                    { Dependencies = dependencies };
+                    { Dependencies = dependencies, IsModpack = modpack };
                     item.Validate();
                     result.Add(item);
                 }

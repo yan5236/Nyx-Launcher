@@ -26,6 +26,7 @@ public sealed partial class MainPage : Page
         var java = new JavaRuntimeStore();
         SettingsContent.ConfigureJava(java, tasks);
         VersionsContent.Configure(folders, settings, () => HomeContent.IsLaunching || tasks.HasActiveVersionTasks);
+        VersionsContent.ConfigureModpacks(tasks);
         HomeContent.Configure(folders, settings, _accounts, java);
         SettingsContent.ConfigureMemory(folders, () => HomeContent.SelectedVersion);
         HomeContent.ManageRequested += Home_ManageRequested;
@@ -42,27 +43,40 @@ public sealed partial class MainPage : Page
         Navigation.SelectedItem = HomeItem;
     }
 
-    /// <summary>主窗口接受浏览器文本卡片的复制拖拽，具体格式在放下后校验。</summary>
+    /// <summary>主窗口接受认证文本和整合包文件的复制拖拽；放下后验证格式并要求用户确认。</summary>
     private void AuthServer_DragOver(object sender, DragEventArgs e)
     {
-        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text))
+        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text) ||
+            e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
             e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
     }
 
-    /// <summary>读取卡片后立即结束系统拖放，再打开登录弹窗；拖放延迟不覆盖网络请求或弹窗生命周期，读取失败同样释放。</summary>
+    /// <summary>读取单个整合包或认证文本后立即结束系统拖放，再打开相应确认弹窗；拖放延迟不覆盖网络请求或弹窗生命周期，读取失败同样释放。</summary>
     private async void AuthServer_Drop(object sender, DragEventArgs e)
     {
         e.Handled = true;
         try
         {
-            string text;
+            string text = "";
+            string? pack = null;
             var deferral = e.GetDeferral();
             try
             {
-                if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text)) return;
-                text = await e.DataView.GetTextAsync();
+                if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+                {
+                    var files = await e.DataView.GetStorageItemsAsync();
+                    if (files.Count == 1 && files[0] is Windows.Storage.StorageFile file) pack = file.Path;
+                }
+                else if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text))
+                    text = await e.DataView.GetTextAsync();
             }
             finally { deferral.Complete(); }
+            if (pack is not null)
+            {
+                Navigation.SelectedItem = VersionsItem;
+                await VersionsContent.ImportModpackAsync(pack);
+                return;
+            }
             if (!text.StartsWith("authlib-injector:yggdrasil-server:", StringComparison.OrdinalIgnoreCase)) return;
             Navigation.SelectedItem = null; ShowPage("account");
             await AccountContent.ImportServerAsync(text);
