@@ -82,9 +82,10 @@ public sealed class JavaRuntimeStore
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>同目录临时文件原子替换配置，更新内存只发生在写入成功后；调用方负责显示 I/O 错误。</summary>
+    /// <summary>读取失败时拒绝覆盖原配置并抛出 I/O 异常；否则用同目录临时文件原子替换，成功后才更新内存。</summary>
     private void Save(JavaSelection selection)
     {
+        if (LoadError is not null) throw new IOException(LoadError);
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         string temporary = _path + ".tmp";
         try

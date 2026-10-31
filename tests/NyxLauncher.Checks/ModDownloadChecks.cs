@@ -127,6 +127,7 @@ internal static class ModDownloadChecks
             var manager = new DownloadTaskManager(settings, action => action());
             var task = manager.AddMod(file, root, target, "1.21.1", "fabric");
             await task.Execution;
+            Check(task.IsMod && !manager.HasActiveVersionTasks, "模组任务标记参与版本保护，完成后解除保护");
             Check(manager.Tasks.Single() == task && task.State == DownloadState.Completed && task.Destination == destination,
                 "模组任务确实进入共享下载管理器并完成");
             await manager.ShutdownAsync();

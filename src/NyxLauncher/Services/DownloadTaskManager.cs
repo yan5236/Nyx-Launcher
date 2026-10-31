@@ -12,6 +12,7 @@ public sealed class DownloadTaskItem : INotifyPropertyChanged
     public required string Destination { get; init; }
     public bool IsGame { get; init; }
     public bool IsJava { get; init; }
+    public bool IsMod { get; init; }
     public DownloadState State { get; internal set; } = DownloadState.Queued;
     public string Detail { get; internal set; } = "等待下载";
     public double Percent { get; internal set; }
@@ -46,7 +47,11 @@ public sealed class DownloadTaskManager
     private readonly DownloadSettingsStore _settings;
     private readonly Action<Action> _dispatch;
     private DownloadTransport? _transport;
+    private bool _shuttingDown;
+    private Task? _shutdown;
     public List<DownloadTaskItem> Tasks { get; } = [];
+    /// <summary>游戏或模组任务仍在执行或清理时保护版本目录；普通文件和 Java 下载不阻止版本管理。</summary>
+    public bool HasActiveVersionTasks => Tasks.Any(x => (x.IsGame || x.IsMod) && x.IsBusy);
     public event EventHandler? Changed;
     public event EventHandler? TaskAdded;
     public event EventHandler? InstallationCompleted;
@@ -110,7 +115,7 @@ public sealed class DownloadTaskManager
     {
         var isolation = _settings.Current.Isolation;
         string mods = ModInstallationService.ResolveMods(folder, target, file, game, loader, isolation);
-        var item = new DownloadTaskItem { Name = file.FileName, Destination = Path.Combine(mods, file.FileName) };
+        var item = new DownloadTaskItem { Name = file.FileName, Destination = Path.Combine(mods, file.FileName), IsMod = true };
         item.Work = (transport, token) =>
         {
             string currentMods = ModInstallationService.ResolveMods(folder, target, file, game, loader, isolation);
@@ -122,9 +127,10 @@ public sealed class DownloadTaskManager
         return item;
     }
 
-    /// <summary>阻止同目标的重复任务，加入列表并通知新任务提示，再交给启动入口应用传输预算。</summary>
+    /// <summary>关闭期间或目标重复时抛出 I/O 异常，不加入任务；否则通知新任务提示并启动共享传输。</summary>
     private void Add(DownloadTaskItem item)
     {
+        if (_shuttingDown) throw new IOException("启动器正在关闭，无法创建下载任务。");
         if (Tasks.Any(x => x.State is not (DownloadState.Completed or DownloadState.Cancelled) &&
             string.Equals(x.Destination, item.Destination, StringComparison.OrdinalIgnoreCase)))
             throw new IOException("相同目标已经有下载任务。");
@@ -183,9 +189,10 @@ public sealed class DownloadTaskManager
         }
     }
 
-    /// <summary>运行中暂停会取消网络与处理器，清理完成后才能继续；失败任务可用同一入口重试。</summary>
+    /// <summary>运行中暂停会取消网络与处理器，清理完成后才能继续；失败任务可重试，关闭期间忽略迟到操作。</summary>
     public void PauseOrResume(DownloadTaskItem item)
     {
+        if (_shuttingDown) return;
         if (item.State is DownloadState.Paused or DownloadState.Failed) { Start(item); return; }
         if (!item.CanPause || item.Cancellation is null) return;
         item.State = DownloadState.Pausing;
@@ -232,9 +239,13 @@ public sealed class DownloadTaskManager
         });
     }
 
-    /// <summary>关闭应用时先取消任务，再等待处理器和临时文件清理结束；避免退出后遗留后台安装进程。</summary>
-    public async Task ShutdownAsync()
+    /// <summary>关闭入口只执行一次；重复调用等待同一轮取消与清理，完成后不再接受下载或恢复操作。</summary>
+    public Task ShutdownAsync() => _shutdown ??= ShutdownCoreAsync();
+
+    /// <summary>先关闭任务入口，再取消并等待现有任务和临时文件清理，最后释放共享传输器。</summary>
+    private async Task ShutdownCoreAsync()
     {
+        _shuttingDown = true;
         foreach (var item in Tasks)
         {
             if (item.State == DownloadState.Pausing) item.State = DownloadState.Cancelling;

@@ -54,6 +54,16 @@ internal static class JavaChecks
             Check(!blockedStore.Current.AutoScanAttempted, "首次扫描标记保存失败不改变内存");
             await ThrowsAsync<UnauthorizedAccessException>(() => { blockedStore.Add([latest]); return Task.CompletedTask; }, "保存失败不更新内存");
             Check(blockedStore.Current.Runtimes.Count == 0, "保存失败保持原列表");
+            string damagedPath = Path.Combine(root, "damaged.json");
+            const string damaged = "{broken configuration";
+            File.WriteAllText(damagedPath, damaged);
+            var damagedStore = new JavaRuntimeStore(damagedPath);
+            Check(damagedStore.LoadError is not null && !damagedStore.TryBeginAutomaticScan(), "损坏配置不触发自动扫描");
+            await ThrowsAsync<IOException>(() => { damagedStore.Add([]); return Task.CompletedTask; }, "空扫描不得覆盖损坏配置");
+            await ThrowsAsync<IOException>(() => { damagedStore.Add([latest]); return Task.CompletedTask; }, "导入或安装登记不得覆盖损坏配置");
+            await ThrowsAsync<IOException>(() => { damagedStore.Select(null); return Task.CompletedTask; }, "选择自动模式不得覆盖损坏配置");
+            Check(File.ReadAllText(damagedPath) == damaged && damagedStore.LoadError is not null &&
+                damagedStore.Current.Runtimes.Count == 0, "拒绝保存后原始配置、错误提示和内存均保持不变");
             CheckRequirements();
             CheckCatalogs();
             await CheckInstallationAsync(root, latest);

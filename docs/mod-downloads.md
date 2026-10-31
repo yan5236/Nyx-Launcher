@@ -20,6 +20,8 @@
 
 当前只安装所选文件，前置卡片提供手动跳转和安装，不自动解决依赖、升级或移走旧版本，安装前应自行处理同一模组不同文件名的旧版本。前置区域是当前兼容文件的必需项目合集，不表示每个历史文件都要求同一组依赖；跳转按 Minecraft 版本和加载器筛选，不锁定某个依赖版本。兼容筛选不解析 JAR 内的最低 Loader 版本或其他依赖约束。Quilt、LiteLoader、Rift 的发布可浏览，但当前版本扫描器和游戏安装器主要支持 Fabric / Forge / NeoForge，因此这些其他加载器可能没有可选本地目标。不改变其余资源类别的浏览行为。
 
+模组下载正在排队、传输、暂停收尾或取消清理时，与游戏安装共用版本目录保护，禁止改名和删除版本。暂停完成后可修改目录；任务恢复时仍重新校验原目标，已改名或删除的目标不会被重新创建。
+
 ## 验证入口
 
 ```powershell
@@ -37,3 +39,5 @@ dotnet run --project tests/NyxLauncher.Checks --no-build -- --live-mod-install .
 同日修复部分项目无法加载：官方旧文件存在 `//data/` 链接及 `size=0`、实际文件非空的记录，先前逐项校验使整个清单失败。兼容两种历史格式后，Fabric API、Iris、Sodium、Mod Menu 的完整清单均实测通过；共下载 5 个历史文件，SHA-1 全部正确。36 项模组下载检查、36 项 Fabric API 检查及其余离线回归通过；26 项原生界面检查通过，包含游戏/加载器副标题移除、绿橙红渠道字母及实际绑定。配色截图 `mod-channel-colors.png` 使用同一文件模拟三种发布渠道，仅用于验证显示。正常 Debug x64 入口在 `.local/mod-fixed` 构建通过，0 警告、0 错误；原输出被用户运行中的旧窗口占用，未强行关闭该窗口。未验证游戏启动或 Release。
 
 2026-10-31：筛选置顶和前置导航完成，48 项模组下载检查及其余离线回归通过，包含必需依赖筛选、版本引用补全、批量去重、缺失响应、不安全编号、图标回退、超时和取消。原生 WinUI 验收通过 29 项流程检查：真实 Iris → Sodium 文件列表 → 安装完成 → 返回 Iris，恢复版本、加载器和滚动位置；覆盖前置共同滚动、阶段隐藏、NeoForge 非默认置顶、不支持的筛选项及最外层返回。验收源为 `.local/ModDependenciesUiApp.cs`，日志 `.local/mod-dependency-ui.log`，实际渲染截图 `.local/screenshots/mod-dependency-{games,loaders,iris,scrolled,sodium,back}.png`；设置和目标均为独立验收目录。正常 Debug x64 入口在 `.local/mod-dependencies-build` 构建通过，0 警告、0 错误；未验证装模组后的游戏启动、其他 Windows/DPI 或 Release。
+
+2026-10-31 审查修复：模组任务纳入版本改名/删除保护，删除执行前重新检查忙碌状态，关闭阶段拒绝新任务和恢复操作。687 项离线检查、页面结构检查及独立目录下 5 项原生 WinUI 保护检查通过；Debug x64 构建零警告、零错误。界面验收源为 `.local/AuditFixesUiApp.cs`，日志为 `.local/audit-fixes-ui.log`。未验证实网下载、实际游戏运行或 Release。

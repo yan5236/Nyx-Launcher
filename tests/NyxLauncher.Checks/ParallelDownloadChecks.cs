@@ -18,6 +18,8 @@ internal static class ParallelDownloadChecks
                 await CheckResourcesAsync(root, limits.Files, limits.Connections);
             await CheckCancellationAsync(root);
             await CheckTasksAsync(root);
+            await CheckShutdownAsync(root);
+            CheckVersionProtection(root);
             CheckSettings(root);
         }
         finally { Directory.Delete(root, true); }
@@ -150,6 +152,58 @@ internal static class ParallelDownloadChecks
         foreach (int invalid in new[] { 0, 65 })
             Check(store.Save(saved with { MaxParallelDownloads = invalid }) is not null && store.Current == saved,
                 "拒绝并行上限越界且保留配置");
+    }
+
+    /// <summary>逐状态验证游戏和模组共用版本保护；普通文件与 Java 不阻断版本修改，暂停及终态释放保护。</summary>
+    private static void CheckVersionProtection(string root)
+    {
+        var manager = new DownloadTaskManager(new(Path.Combine(root, "protection.json")), action => action());
+        foreach (string kind in new[] { "game", "mod", "java", "file" })
+        foreach (var state in Enum.GetValues<DownloadState>())
+        {
+            manager.Tasks.Clear();
+            manager.Tasks.Add(new() { Name = kind, Destination = root, IsGame = kind == "game",
+                IsMod = kind == "mod", IsJava = kind == "java", State = state });
+            bool blocked = (kind is "game" or "mod") &&
+                (state is DownloadState.Queued or DownloadState.Running or DownloadState.Pausing or DownloadState.Cancelling);
+            Check(manager.HasActiveVersionTasks == blocked, $"{kind}/{state} 的版本修改保护正确");
+        }
+    }
+
+    /// <summary>延迟取消收尾，验证关闭等待期间及完成后拒绝新任务、忽略恢复、复用关闭任务，并真正等待清理结束。</summary>
+    private static async Task CheckShutdownAsync(string root)
+    {
+        var manager = new DownloadTaskManager(new(Path.Combine(root, "shutdown.json")), action => action());
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool cleaned = false;
+        var item = new DownloadTaskItem
+        {
+            Name = "shutdown", Destination = Path.Combine(root, "shutdown"), State = DownloadState.Paused,
+            Work = async (_, token) => { entered.SetResult(); await release.Task; token.ThrowIfCancellationRequested(); },
+            Cleanup = () => cleaned = true
+        };
+        manager.Tasks.Add(item);
+        manager.PauseOrResume(item);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task closing = manager.ShutdownAsync();
+            Check(!closing.IsCompleted && !cleaned, "关闭等待正在取消的任务完成收尾");
+            Check(ReferenceEquals(closing, manager.ShutdownAsync()), "重复关闭等待同一轮清理");
+            try { manager.AddFile("https://example.test/late.jar", root); throw new Exception("关闭期间接受了新任务"); }
+            catch (IOException) { Check(manager.Tasks.Count == 1, "关闭期间拒绝新下载且不添加记录"); }
+            var late = new DownloadTaskItem { Name = "late", Destination = root, State = DownloadState.Paused,
+                Work = (_, _) => throw new Exception("关闭期间恢复了任务") };
+            manager.PauseOrResume(late);
+            Check(late.State == DownloadState.Paused && late.Cancellation is null, "关闭期间忽略迟到的恢复操作");
+            release.TrySetResult();
+            await closing.WaitAsync(TimeSpan.FromSeconds(5));
+            Check(cleaned && item.State == DownloadState.Cancelled && item.Cancellation is null, "关闭返回前完成取消和清理");
+            try { manager.AddFile("https://example.test/after.jar", root); throw new Exception("关闭后接受了新任务"); }
+            catch (IOException) { Check(manager.Tasks.Count == 1, "关闭完成后仍拒绝新下载"); }
+        }
+        finally { release.TrySetResult(); await manager.ShutdownAsync(); }
     }
 
     /// <summary>确认异步操作按取消结束，正常完成或其他异常均使检查失败。</summary>

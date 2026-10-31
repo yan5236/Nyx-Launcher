@@ -25,7 +25,7 @@ public sealed partial class MainPage : Page
         SettingsContent.Configure(settings);
         var java = new JavaRuntimeStore();
         SettingsContent.ConfigureJava(java, tasks);
-        VersionsContent.Configure(folders, settings, () => HomeContent.IsLaunching || tasks.Tasks.Any(x => x.IsGame && x.IsBusy));
+        VersionsContent.Configure(folders, settings, () => HomeContent.IsLaunching || tasks.HasActiveVersionTasks);
         HomeContent.Configure(folders, settings, _accounts, java);
         HomeContent.ManageRequested += Home_ManageRequested;
         AccountContent.Configure(_accounts);

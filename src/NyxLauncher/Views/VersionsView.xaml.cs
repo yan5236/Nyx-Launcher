@@ -10,6 +10,7 @@ namespace NyxLauncher.Views;
 public sealed partial class VersionsView : UserControl
 {
     private GameFolderStore? _folders;
+    private Func<bool>? _mutationBlocked;
     private IReadOnlyList<InstalledVersion> _versions = Array.Empty<InstalledVersion>();
     private CancellationTokenSource? _scan;
     private bool _dialogOpen;
@@ -25,10 +26,11 @@ public sealed partial class VersionsView : UserControl
         Unloaded += View_Unloaded;
     }
 
-    /// <summary>共享目录、隔离偏好与改名保护，立即显示当前路径及初始化失败信息。</summary>
+    /// <summary>共享目录、隔离偏好与改名/删除保护；保存状态检查委托，在实际修改前重新确认，初始化时显示目录错误。</summary>
     public void Configure(GameFolderStore folders, DownloadSettingsStore settings, Func<bool> mutationBlocked)
     {
         _folders = folders;
+        _mutationBlocked = mutationBlocked;
         Details.Configure(folders, settings, mutationBlocked);
         RefreshPath();
         ShowError(folders.LoadError);
@@ -223,13 +225,14 @@ public sealed partial class VersionsView : UserControl
         if (sender is Button { Tag: InstalledVersion version }) await DeleteAsync(version);
     }
 
-    /// <summary>使用共享绿色交互配色的弹窗确认后，将单个版本目录送入回收站；取消或校验失败保留当前页面，成功后返回并刷新列表，不回退为永久删除。</summary>
+    /// <summary>确认后将单个版本目录送入回收站；弹窗前及异步校验后检查运行和安装状态，忙碌时报告错误，取消或失败保留页面，不回退永久删除。</summary>
     private async Task DeleteAsync(InstalledVersion version)
     {
         if (_dialogOpen || _pageTransition is not null || _folders?.Selected is not { } folder) return;
         _dialogOpen = true;
         try
         {
+            if (_mutationBlocked?.Invoke() == true) throw new IOException("请先停止游戏并等待游戏或模组安装任务结束，再删除版本。");
             var dialog = new ContentDialog
             {
                 XamlRoot = XamlRoot, Title = "删除版本“" + version.Name + "”？",
@@ -242,6 +245,7 @@ public sealed partial class VersionsView : UserControl
             });
             if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
             string target = await Task.Run(() => InstalledVersionService.GetDeletionTarget(folder, version));
+            if (_mutationBlocked?.Invoke() == true) throw new IOException("请先停止游戏并等待游戏或模组安装任务结束，再删除版本。");
             Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(target,
                 Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
                 Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin,
