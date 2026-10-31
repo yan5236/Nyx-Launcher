@@ -18,15 +18,19 @@ public sealed record LaunchStatus(LaunchStage Stage, string Message)
 public sealed class GameLaunchSession
 {
     private readonly CancellationTokenSource _cancellation = new();
-    private readonly Queue<string> _output = new();
     private int _started;
     private volatile LaunchStatus _status = new(LaunchStage.Idle, "");
     private readonly object _stateLock = new();
     private long _lastProgress;
     private string? _accessToken;
     private GameLaunchLog? _log;
+    private GameLaunchLog? _gameLog;
     public string? LogPath => _log?.FilePath;
     public string? LogError => _log?.Error;
+    public bool Crashed { get; private set; }
+    public string? GameDirectory { get; private set; }
+    public DateTime StartedUtc { get; private set; }
+    public string? GameOutputPath => _gameLog?.FilePath;
     public LaunchStatus Status => _status;
     public event EventHandler? Changed;
 
@@ -63,6 +67,9 @@ public sealed class GameLaunchSession
             _accessToken = identity.AccessToken;
             token.ThrowIfCancellationRequested();
             process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token, identity, javaPath);
+            GameDirectory = process.StartInfo.WorkingDirectory;
+            StartedUtc = DateTime.UtcNow;
+            _gameLog = new GameLaunchLog(folder, gameOutput: true);
             token.ThrowIfCancellationRequested();
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
@@ -83,8 +90,12 @@ public sealed class GameLaunchSession
                 await Task.Delay(200, token);
             }
             process.WaitForExit();
+            token.ThrowIfCancellationRequested();
             if (!appeared || process.ExitCode != 0)
-                throw new IOException($"游戏{(appeared ? "异常退出" : "在窗口出现前退出")}（退出码 {process.ExitCode}）。\n" + RecentOutput());
+            {
+                Crashed = process.ExitCode != 0;
+                throw new IOException($"游戏{(Crashed ? "发生了崩溃" : "在窗口出现前退出")}（退出码 {process.ExitCode}）。");
+            }
             Set(LaunchStage.Exited, "游戏已退出");
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -103,7 +114,7 @@ public sealed class GameLaunchSession
             catch (Exception stop) { message += "\n停止游戏失败：" + stop.Message; }
             Set(LaunchStage.Failed, message);
         }
-        finally { process?.Dispose(); _log?.Dispose(); _cancellation.Dispose(); _accessToken = null; }
+        finally { process?.Dispose(); _gameLog?.Dispose(); _log?.Dispose(); _cancellation.Dispose(); _accessToken = null; }
     }
 
     /// <summary>先向运行窗口发送正常关闭，三秒后仍未退出才结束整个子进程树；准备阶段直接终止，完成后等待系统确认退出。</summary>
@@ -116,21 +127,18 @@ public sealed class GameLaunchSession
         await process.WaitForExitAsync();
     }
 
-    /// <summary>先删除游戏访问令牌，再保存完整输出及内存中的末尾摘要；持续排空两个管道防止游戏挂起。</summary>
+    /// <summary>先删除游戏访问令牌，再分别保存启动记录与纯游戏输出；持续排空两个管道防止游戏挂起。</summary>
     private void CaptureOutput(object sender, DataReceivedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(e.Data)) return;
         string text = Redact(e.Data, _accessToken);
         _log?.Write(text);
-        lock (_output) { _output.Enqueue(text.Length > 1000 ? text[..1000] : text); while (_output.Count > 12) _output.Dequeue(); }
+        _gameLog?.Write(text);
     }
 
     /// <summary>在截断或展示日志前抹除本次会话令牌；空令牌不执行替换。</summary>
     internal static string Redact(string text, string? accessToken) =>
         string.IsNullOrEmpty(accessToken) ? text : text.Replace(accessToken, "[已隐藏令牌]", StringComparison.Ordinal);
-
-    /// <summary>在锁内快照最近日志，避免 UI 读取时与输出回调竞争。</summary>
-    private string RecentOutput() { lock (_output) return string.Join('\n', _output); }
 
     /// <summary>取消后拒绝迟到状态；同阶段进度最多每 100 毫秒通知，避免数千文件校验淹没 UI 队列。</summary>
     private void Report(LaunchStage stage, string message)

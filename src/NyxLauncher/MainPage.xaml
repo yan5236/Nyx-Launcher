@@ -78,6 +78,9 @@
             <Grid x:Name="SettingsScroll" Visibility="Collapsed">
                 <views:SettingsView x:Name="SettingsContent" />
             </Grid>
+            <InfoBar x:Name="CrashToast" HorizontalAlignment="Right" VerticalAlignment="Top"
+                     MaxWidth="380" IsClosable="False" Severity="Informational"
+                     Message="检测到游戏崩溃，正在分析…" />
         </Grid>
     </NavigationView>
 </Page>

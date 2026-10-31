@@ -22,6 +22,7 @@ public sealed partial class HomeView : UserControl
     private int _progressGeneration;
     private bool _progressEnding;
     public event EventHandler<InstalledVersion>? ManageRequested;
+    public event EventHandler<bool>? CrashAnalysisChanged;
     public bool IsLaunching => _session is not null;
 
     /// <summary>加载首页控件，服务通过主页面注入。</summary>
@@ -109,6 +110,8 @@ public sealed partial class HomeView : UserControl
             _running = session.RunAsync(root, version, settings, account, AuthenticateAsync, _java?.Current);
             await _running;
             ShowProgress(session.Status);
+            if (!_closing && session.Status.Stage == LaunchStage.Failed)
+                await ShowFailureAsync(session);
         }
         finally
         {
@@ -116,16 +119,23 @@ public sealed partial class HomeView : UserControl
             _session = null; _running = null;
             UpdateControls(); Refresh();
         }
-        if (!_closing && session.Status.Stage == LaunchStage.Failed)
-            await ShowFailureAsync(session);
     }
 
     /// <summary>启动在其他页面失败时等待已有弹窗关闭，再显示原因；避免 WinUI 同一窗口叠加模态弹窗导致异常，关闭启动器时放弃等待。</summary>
     private async Task ShowFailureAsync(GameLaunchSession session)
     {
-        while (!_closing && VisualTreeHelper.GetOpenPopupsForXamlRoot(XamlRoot).Any(popup => popup.Child is ContentDialog))
-            await Task.Delay(100);
-        if (!_closing) await new LaunchFailureDialog(XamlRoot, session).ShowAsync();
+        if (session.Crashed) CrashAnalysisChanged?.Invoke(this, true);
+        try
+        {
+            // 给 Toast 一帧呈现时间，再在后台读取日志。
+            await Task.Delay(150);
+            var report = await Task.Run(() => GameCrashReport.Collect(session));
+            while (!_closing && VisualTreeHelper.GetOpenPopupsForXamlRoot(XamlRoot).Any(popup => popup.Child is ContentDialog))
+                await Task.Delay(100);
+            CrashAnalysisChanged?.Invoke(this, false);
+            if (!_closing) await new LaunchFailureDialog(XamlRoot, session, report).ShowAsync();
+        }
+        finally { CrashAnalysisChanged?.Invoke(this, false); }
     }
 
     /// <summary>离线身份直接创建会话，微软或外置身份验证及刷新后原子保存；失败明确终止启动，不自动弹浏览器。</summary>

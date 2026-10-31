@@ -28,6 +28,7 @@ public sealed partial class MainPage : Page
         VersionsContent.Configure(folders, settings, () => HomeContent.IsLaunching || tasks.HasActiveVersionTasks);
         HomeContent.Configure(folders, settings, _accounts, java);
         HomeContent.ManageRequested += Home_ManageRequested;
+        HomeContent.CrashAnalysisChanged += (_, analyzing) => CrashToast.IsOpen = analyzing;
         AccountContent.Configure(_accounts);
         _accounts.Changed += (_, _) => RefreshAccount();
         RefreshAccount();

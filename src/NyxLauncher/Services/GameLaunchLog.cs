@@ -11,14 +11,14 @@ internal sealed class GameLaunchLog : IDisposable
     public string? Error { get; private set; }
 
     /// <summary>在指定游戏目录的启动缓存中创建唯一 UTF-8 日志，拒绝链接路径；文件不可写时记录原因供失败弹窗显示。</summary>
-    public GameLaunchLog(string folder)
+    public GameLaunchLog(string folder, bool gameOutput = false)
     {
         try
         {
             string directory = Path.Combine(folder, ".nyx-launch", "logs");
             GameInstallationService.EnsureNoLinks(directory);
             Directory.CreateDirectory(directory);
-            string path = Path.Combine(directory, $"launch-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.log");
+            string path = Path.Combine(directory, $"{(gameOutput ? "game" : "launch")}-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.log");
             _writer = new StreamWriter(new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read), new UTF8Encoding(false)) { AutoFlush = true };
             FilePath = path;
         }

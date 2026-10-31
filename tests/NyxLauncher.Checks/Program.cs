@@ -11,6 +11,7 @@ internal static class Program
     /// <summary>运行模组、资源、Java、认证、账户、启动及下载断言；--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        CrashReportChecks.Run();
         if (args.Contains("--live-mod-install"))
         {
             await ModDownloadChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-mod-install") + 1]));
