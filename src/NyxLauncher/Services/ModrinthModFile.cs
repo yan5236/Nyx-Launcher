@@ -8,6 +8,7 @@ public sealed record ModrinthModFile(string ProjectId, string VersionId, string 
     DateTimeOffset Published, string Channel, IReadOnlyList<string> GameVersions,
     IReadOnlyList<string> Loaders, Uri Url, string Sha1, long Size)
 {
+    public IReadOnlyList<ModDependency> Dependencies { get; init; } = [];
     public string ChannelLabel => Channel switch { "release" => "正式版", "beta" => "测试版", _ => "预览版" };
     public string Badge => Channel switch { "release" => "R", "beta" => "B", _ => "A" };
     public string Detail => Published.ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + " · " + ChannelLabel;
@@ -33,7 +34,7 @@ public sealed record ModrinthModFile(string ProjectId, string VersionId, string 
 /// <summary>资源目录的模组发布查询；复用目录服务的连接、超时、响应大小限制和错误提示。</summary>
 public sealed partial class ModrinthCatalogService
 {
-    /// <summary>获取该项目全部发布并按更新日期倒序列出运行 JAR；不使用搜索结果的摘要代替文件兼容信息，主动取消向上传播。</summary>
+    /// <summary>获取项目全部发布，保留每个运行 JAR 的兼容范围和必需前置，按更新日期倒序返回；不以搜索摘要代替文件信息，主动取消向上传播。</summary>
     public async Task<IReadOnlyList<ModrinthModFile>> FetchModFilesAsync(string projectId, CancellationToken token)
     {
         if (string.IsNullOrEmpty(projectId) || !projectId.All(char.IsAsciiLetterOrDigit))
@@ -49,6 +50,7 @@ public sealed partial class ModrinthCatalogService
                 string[] loaders = version.GetProperty("loaders").EnumerateArray().Select(x => x.GetString()!)
                     .Where(LoaderIds.Contains).Distinct().ToArray();
                 if (loaders.Length == 0) continue;
+                var dependencies = ParseDependencies(version);
                 foreach (var file in version.GetProperty("files").EnumerateArray().OrderByDescending(x => x.GetProperty("primary").GetBoolean()))
                 {
                     string name = file.GetProperty("filename").GetString() ?? throw new JsonException();
@@ -58,7 +60,8 @@ public sealed partial class ModrinthCatalogService
                     var item = new ModrinthModFile(projectId, version.GetProperty("id").GetString()!, name,
                         version.GetProperty("date_published").GetDateTimeOffset(), version.GetProperty("version_type").GetString()!,
                         games, loaders, new Uri(file.GetProperty("url").GetString()!),
-                        file.GetProperty("hashes").GetProperty("sha1").GetString()!, file.GetProperty("size").GetInt64());
+                        file.GetProperty("hashes").GetProperty("sha1").GetString()!, file.GetProperty("size").GetInt64())
+                    { Dependencies = dependencies };
                     item.Validate();
                     result.Add(item);
                 }

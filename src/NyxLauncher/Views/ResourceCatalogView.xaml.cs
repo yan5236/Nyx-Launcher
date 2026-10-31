@@ -20,6 +20,10 @@ public sealed partial class ResourceCatalogView : UserControl
     private bool _active;
     private bool _updating;
     public event EventHandler<ResourceProject>? ModRequested;
+    /// <summary>已提交的精确版本筛选，供详情置顶；不读取编辑框尚未确认的草稿。</summary>
+    public string SelectedGameVersion => _gameVersion;
+    /// <summary>当前加载器的平台标识，空字符串表示全部，供详情置顶和标注。</summary>
+    public string SelectedLoader => (LoaderFilter.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
 
     /// <summary>仅模组卡片进入真实下载详情；其余资源类别继续保持目录浏览行为。</summary>
     private void ProjectList_ItemClick(object sender, ItemClickEventArgs e)

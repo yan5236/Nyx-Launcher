@@ -114,11 +114,11 @@ public sealed partial class DownloadsView : UserControl
         if (_active && CatalogPanel.Visibility == Visibility.Visible) EntryList.Focus(FocusState.Programmatic);
     }
 
-    /// <summary>打开真实模组详情并淡入淡出；保留原资源列表、分页及滚动位置，转场中忽略重复操作。</summary>
+    /// <summary>携带目录当前版本和加载器筛选打开模组详情并淡入淡出；保留原列表、分页及滚动位置，转场中忽略重复操作。</summary>
     private async void Mod_Requested(object? sender, ResourceProject project)
     {
         if (!_active || _pageRequest is not null) return;
-        ModDetailsContent.Open(project);
+        ModDetailsContent.Open(project, ResourcesContent.SelectedGameVersion, ResourcesContent.SelectedLoader);
         await SwitchPageAsync(true, ModDetailsContent);
     }
 

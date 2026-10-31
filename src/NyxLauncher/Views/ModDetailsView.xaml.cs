@@ -36,24 +36,36 @@ public sealed partial class ModDetailsView : UserControl
     public void Configure(DownloadTaskManager tasks, GameFolderStore folders, DownloadSettingsStore settings)
     { _tasks = tasks; _folders = folders; _settings = settings; }
 
-    /// <summary>进入新项目时清除上次阶段并显示真实简介和图标，随后读取该项目全部运行文件。</summary>
-    public void Open(ResourceProject project)
+    /// <summary>从目录进入时清除详情历史；外部版本和加载器只用于置顶和标注，不跳过玩家的逐级选择。</summary>
+    public void Open(ResourceProject project, string preferredGame = "", string preferredLoader = "")
+    {
+        _history.Clear();
+        _preferredGame = preferredGame;
+        _preferredLoader = preferredLoader;
+        ShowProject(project, "", "");
+    }
+
+    /// <summary>切换项目并取消旧请求和弹窗；依赖入口可传入游戏与加载器直接进入文件列表，兼容性由真实发布筛选。</summary>
+    private void ShowProject(ResourceProject project, string game, string loader)
     {
         Close();
         _active = true;
         _project = project;
         _files = [];
-        _game = _loader = "";
+        _game = game;
+        _loader = loader;
+        _dependencies = null;
         ModTitle.Text = project.Title;
         Description.Text = project.Description;
         ToolTipService.SetToolTip(Description, project.Description);
         ProjectIcon.Project = project;
         Notice.IsOpen = false;
+        UpdateBackLabel();
         RefreshChoices();
         _ = LoadAsync();
     }
 
-    /// <summary>离开页面取消在途清单并关闭版本弹窗；已创建的下载任务继续运行。</summary>
+    /// <summary>离开页面取消在途发布和前置请求并关闭版本弹窗；已创建的下载任务继续运行。</summary>
     public void Close()
     {
         _active = false;
@@ -61,18 +73,42 @@ public sealed partial class ModDetailsView : UserControl
         _request = null;
         _dialog?.Hide();
         _dialog = null;
+        CancelDependencies();
         LoadStatus.Stop();
     }
 
     /// <summary>页面卸载时释放界面请求的所有权。</summary>
     private void View_Unloaded(object sender, RoutedEventArgs e) => Close();
 
-    /// <summary>通知父页以原有双向动画返回资源列表，保留目录筛选和滚动位置。</summary>
-    private void Back_Click(object sender, RoutedEventArgs e) => BackRequested?.Invoke(this, EventArgs.Empty);
+    /// <summary>有前置跳转历史时恢复来源模组的阶段、文件和滚动位置；只有最外层详情才返回资源目录。</summary>
+    private void Back_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_history.TryPop(out var previous)) { BackRequested?.Invoke(this, EventArgs.Empty); return; }
+        Close();
+        _active = true;
+        _project = previous.Project;
+        _files = previous.Files;
+        _game = previous.Game;
+        _loader = previous.Loader;
+        _preferredGame = previous.PreferredGame;
+        _preferredLoader = previous.PreferredLoader;
+        _dependencies = previous.Dependencies;
+        ModTitle.Text = _project.Title;
+        Description.Text = _project.Description;
+        ToolTipService.SetToolTip(Description, _project.Description);
+        ProjectIcon.Project = _project;
+        Notice.IsOpen = false;
+        LoadStatus.Visibility = Visibility.Collapsed;
+        UpdateBackLabel();
+        RefreshChoices();
+        Choices.UpdateLayout();
+        FindScrollViewer(Choices)?.ChangeView(null, previous.Offset, null, true);
+    }
 
     /// <summary>仅撤回当前选择阶段，保留项目及已加载发布；文件阶段退至加载器，加载器阶段退至游戏版本。</summary>
     private void Previous_Click(object sender, RoutedEventArgs e)
     {
+        _dependencies = null;
         if (_loader.Length > 0) _loader = "";
         else _game = "";
         RefreshChoices();
@@ -132,22 +168,25 @@ public sealed partial class ModDetailsView : UserControl
         finally { if (ReferenceEquals(_request, request)) _request = null; }
     }
 
-    /// <summary>按阶段仅展示真实文件支持的游戏、加载器或全部运行文件；数字版本降序，特殊版本保留发布时间顺序，不截断列表。</summary>
+    /// <summary>按阶段展示真实文件支持的选项；外部筛选置顶并标注，其余数字版本降序，特殊版本保留发布时间顺序，文件阶段同步前置卡片。</summary>
     private void RefreshChoices()
     {
         IEnumerable<ModDetailChoice> choices;
         if (_game.Length == 0)
         {
             choices = _files.SelectMany(x => x.GameVersions).Distinct()
-                .OrderByDescending(x => Version.TryParse(x, out var v) ? v : new Version())
-                .Select(x => new ModDetailChoice(x, "", "ms-appx:///Assets/java-mojang.png", "", null));
+                .OrderByDescending(x => x == _preferredGame)
+                .ThenByDescending(x => Version.TryParse(x, out var v) ? v : new Version())
+                .Select(x => new ModDetailChoice(x, "", "ms-appx:///Assets/java-mojang.png", "", null,
+                    FilterLabel: x == _preferredGame ? "筛选版本" : ""));
             StageText.Text = "1 / 3 · 选择 Minecraft 版本";
         }
         else if (_loader.Length == 0)
         {
             choices = _files.Where(x => x.GameVersions.Contains(_game)).SelectMany(x => x.Loaders).Distinct()
+                .OrderByDescending(x => x == _preferredLoader)
                 .Select(x => new ModDetailChoice(ResourceProject.LoaderName(x), "",
-                    ResourceProject.LoaderIcon(x), "", null, x));
+                    ResourceProject.LoaderIcon(x), "", null, x, x == _preferredLoader ? "筛选加载器" : ""));
             StageText.Text = $"2 / 3 · {_game} · 选择加载器";
         }
         else
@@ -161,7 +200,9 @@ public sealed partial class ModDetailsView : UserControl
         Choices.Visibility = Visibility.Visible;
         EmptyHint.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         PreviousStep.IsEnabled = _game.Length > 0;
-        if (rows.Length > 0) Choices.ScrollIntoView(rows[0]);
+        RefreshDependencies();
+        Choices.UpdateLayout();
+        FindScrollViewer(Choices)?.ChangeView(null, 0, null, true);
         if (new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
         {
             var animation = new DoubleAnimation { From = 0, To = 1, Duration = TimeSpan.FromMilliseconds(180) };
@@ -209,8 +250,9 @@ public sealed partial class ModDetailsView : UserControl
     { Notice.Message = message; Notice.Severity = severity; Notice.IsOpen = true; }
 }
 
-/// <summary>三级卡片的显示模型；游戏和加载器只显示名称与图标，文件另显示发布渠道字母及日期和类型副标题。</summary>
-public sealed record ModDetailChoice(string Title, string Detail, string Icon, string Badge, ModrinthModFile? File, string Loader = "")
+/// <summary>三级卡片显示模型；游戏和加载器在标题同行标注外部筛选，文件另显示发布渠道字母及日期和类型副标题。</summary>
+public sealed record ModDetailChoice(string Title, string Detail, string Icon, string Badge, ModrinthModFile? File,
+    string Loader = "", string FilterLabel = "")
 {
     public Visibility IconVisibility => File is null ? Visibility.Visible : Visibility.Collapsed;
     public Visibility BadgeVisibility => File is null ? Visibility.Collapsed : Visibility.Visible;
@@ -229,5 +271,6 @@ public sealed record ModDetailChoice(string Title, string Detail, string Icon, s
         "alpha" => Windows.UI.Color.FromArgb(255, 253, 232, 235),
         _ => Windows.UI.Color.FromArgb(255, 224, 235, 214)
     });
-    public string AccessibleName => Detail.Length == 0 ? Title : Title + "，" + Detail;
+    /// <summary>将筛选标注和文件说明加入读屏名称，省略空字段及多余分隔符。</summary>
+    public string AccessibleName => string.Join("，", new[] { Title, FilterLabel, Detail }.Where(x => x.Length > 0));
 }
