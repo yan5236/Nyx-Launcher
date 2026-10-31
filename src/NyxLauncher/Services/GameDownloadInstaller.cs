@@ -81,7 +81,7 @@ internal sealed class GameDownloadInstaller(DownloadTransport transport, string 
 /// <summary>游戏清单请求使用独立版本源设置；缓冲小型 JSON 后回退，避免给解析器交付半份清单。</summary>
 internal sealed class InstallMetadataHandler(SourceStrategy strategy) : HttpMessageHandler
 {
-    private readonly HttpClient _client = new() { Timeout = TimeSpan.FromSeconds(30) };
+    private readonly HttpClient _client = DownloadHttpClient.Create(TimeSpan.FromSeconds(30));
 
     /// <summary>仅处理安装器读取清单的 GET 请求，限制为 32 MiB 并验证 JSON；两源失败保留错误原因。</summary>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
@@ -112,6 +112,6 @@ internal sealed class InstallMetadataHandler(SourceStrategy strategy) : HttpMess
         return new(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(data), RequestMessage = request };
     }
 
-    /// <summary>释放元数据请求的连接池；由安装服务随本次工作生命周期调用。</summary>
+    /// <summary>释放本批元数据客户端但保留共享连接池；由安装服务随本次工作生命周期调用。</summary>
     protected override void Dispose(bool disposing) { if (disposing) _client.Dispose(); base.Dispose(disposing); }
 }

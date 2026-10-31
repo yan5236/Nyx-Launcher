@@ -11,6 +11,7 @@ internal static class Program
     /// <summary>运行高级启动及现有业务断言；--advanced-launch 仅检查高级配置，--mcim-live 限定真实镜像验收，--local-resources 可选读取本地样本；--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--connection-pool")) { await ConnectionPoolChecks.RunAsync(); return; }
         AdvancedLaunchChecks.Run();
         if (args.Contains("--advanced-launch")) return;
         if (args.Contains("--mcim-live")) { await ResourceMirrorChecks.LiveAsync(); return; }

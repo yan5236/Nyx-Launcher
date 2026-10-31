@@ -22,7 +22,7 @@ public sealed class DownloadTransport : IDisposable
         _settings = settings;
         _connections = new(settings.MaxConnections);
         _files = new(settings.MaxParallelDownloads);
-        _http = http ?? new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        _http = http ?? DownloadHttpClient.Create(Timeout.InfiniteTimeSpan);
     }
 
     /// <summary>只接受 HTTP(S) 地址，拒绝凭据、文件协议和空主机；自定义下载不改写用户指定的地址。</summary>
@@ -204,6 +204,6 @@ public sealed class DownloadTransport : IDisposable
         if (wait > 0) await Task.Delay(TimeSpan.FromSeconds((double)wait / Stopwatch.Frequency), token);
     }
 
-    /// <summary>任务管理器退出后释放连接池和 HTTP 资源；调用前应等待所有下载结束。</summary>
+    /// <summary>释放本批客户端和并发额度，共享连接池保留供后续批次复用；调用前应等待所有下载结束。</summary>
     public void Dispose() { _http.Dispose(); _connections.Dispose(); _files.Dispose(); }
 }
