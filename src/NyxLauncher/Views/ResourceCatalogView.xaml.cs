@@ -25,10 +25,10 @@ public sealed partial class ResourceCatalogView : UserControl
     /// <summary>当前加载器的平台标识，空字符串表示全部，供详情置顶和标注。</summary>
     public string SelectedLoader => (LoaderFilter.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
 
-    /// <summary>模组和整合包卡片进入共用的三级下载详情；其余资源保持目录浏览行为。</summary>
+    /// <summary>五类资源卡片进入共用下载详情，由资源类别决定版本、加载器和文件选择步骤。</summary>
     private void ProjectList_ItemClick(object sender, ItemClickEventArgs e)
     {
-        if (_active && (_category is "mod" or "modpack") && e.ClickedItem is ResourceProject project)
+        if (_active && e.ClickedItem is ResourceProject project)
             ModRequested?.Invoke(this, project);
     }
 

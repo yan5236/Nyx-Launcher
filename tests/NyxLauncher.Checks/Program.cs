@@ -12,6 +12,8 @@ internal static class Program
     private static async Task Main(string[] args)
     {
         if (args.Contains("--live-modpacks")) { await ModpackChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-modpacks") + 1])); return; }
+        if (args.Contains("--live-resources")) { await ResourceDownloadChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-resources") + 1])); return; }
+        await ResourceDownloadChecks.RunAsync();
         ModpackChecks.Run();
         await ModpackChecks.FilesAsync();
         MemoryChecks.Run();

@@ -4,6 +4,16 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  PrimaryButtonText="选择文件夹下载" PrimaryButtonClick="ChooseDirectory_Click"
  CloseButtonText="取消" DefaultButton="Close">
+ <ContentDialog.TitleTemplate>
+  <DataTemplate>
+   <StackPanel Orientation="Horizontal" Spacing="12">
+    <Button Click="Back_Click" Visibility="{Binding BackVisibility}" ToolTipService.ToolTip="返回上一步" AutomationProperties.Name="返回上一步">
+     <FontIcon Glyph="&#xE72B;" FontSize="16"/>
+    </Button>
+    <TextBlock Text="{Binding Text}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+   </StackPanel>
+  </DataTemplate>
+ </ContentDialog.TitleTemplate>
  <Grid x:Name="DialogContent" RowSpacing="12">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <TextBlock x:Name="FileName" TextWrapping="Wrap" FontWeight="SemiBold"/>
@@ -19,11 +29,11 @@
     <ListView.ItemTemplate><DataTemplate>
      <Grid ColumnSpacing="12" AutomationProperties.Name="{Binding AccessibleName}">
       <Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <Image Source="ms-appx:///Assets/java-mojang.png" Width="32" Height="32"/>
+      <Image Loaded="Icon_Loaded" DataContextChanged="Icon_DataContextChanged" Width="32" Height="32"/>
       <StackPanel Grid.Column="1" Spacing="4">
        <TextBlock Text="{Binding Version.Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-       <TextBlock Text="{Binding Version.Detail}" FontSize="12" Foreground="#6B7A70" TextWrapping="Wrap"/>
-       <TextBlock Text="{Binding ModsPath}" FontSize="12" Foreground="#6B7A70" TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding Version.Detail}" Visibility="{Binding DetailVisibility}" FontSize="12" Foreground="#6B7A70" TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding ModsPath}" FontSize="12" Foreground="#6B7A70" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1"/>
       </StackPanel>
      </Grid>
     </DataTemplate></ListView.ItemTemplate>

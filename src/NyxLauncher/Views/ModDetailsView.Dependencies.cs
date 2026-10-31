@@ -33,7 +33,7 @@ public sealed partial class ModDetailsView
         DependencySection.Visibility = Visibility.Collapsed;
         DependencyCards.ItemsSource = null;
         DependencyRetry.Visibility = DependencyStatus.Visibility = Visibility.Collapsed;
-        if (_project?.Category == "modpack" || _game.Length == 0 || _loader.Length == 0) return;
+        if (_project?.Category != "mod" || _game.Length == 0 || _loader.Length == 0) return;
         if (_dependencies is not null) { ShowDependencies(); return; }
         var files = _files.Where(x => x.GameVersions.Contains(_game) && x.Loaders.Contains(_loader)).ToArray();
         if (!files.Any(x => x.Dependencies.Count > 0)) return;
@@ -89,7 +89,7 @@ public sealed partial class ModDetailsView
     /// <summary>返回按钮明确标识上一层模组；根详情保持原有返回目录语义，键盘和读屏名称同步更新。</summary>
     private void UpdateBackLabel()
     {
-        string label = _history.TryPeek(out var previous) ? "返回 " + previous.Project.Title : _project?.Category == "modpack" ? "返回整合包列表" : "返回模组列表";
+        string label = _history.TryPeek(out var previous) ? "返回 " + previous.Project.Title : _project?.Category == "modpack" ? "返回整合包列表" : IsResource ? "返回资源列表" : "返回模组列表";
         ToolTipService.SetToolTip(TopBackButton, label);
         AutomationProperties.SetName(TopBackButton, label);
     }

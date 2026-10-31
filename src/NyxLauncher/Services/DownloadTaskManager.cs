@@ -148,13 +148,27 @@ public sealed class DownloadTaskManager
             string currentMods = ModInstallationService.ResolveMods(folder, target, file, game, loader, isolation);
             return ModInstallationService.InstallAsync(file, currentMods, transport,
                 (done, total) => Report(item, total > 0 ? done * 100d / total : 0,
-                    $"下载模组 · {done / 1048576d:0.0} / {total / 1048576d:0.0} MiB"), token);
+                    $"下载资源 · {done / 1048576d:0.0} / {total / 1048576d:0.0} MiB"), token);
         };
         Add(item);
         return item;
     }
 
-    /// <summary>直接下载模组到用户选择的现有目录，不要求可扫描的游戏版本且不追加 mods；保留元数据、哈希和同名保护，开始及重试前检查目录仍存在。</summary>
+    /// <summary>创建资源安装任务，捕获隔离设置；开始及重试重新验证客户端和存档，复用现有传输、哈希及覆盖保护。</summary>
+    public DownloadTaskItem AddResource(ModrinthModFile file, string folder, InstalledVersion target, string game, string? world = null)
+    {
+        var isolation = _settings.Current.Isolation;
+        string directory = ResourceInstallationService.Resolve(folder, target, file, game, isolation, world);
+        var item = new DownloadTaskItem { Name = file.FileName, Destination = Path.Combine(directory, file.FileName), IsMod = true };
+        item.Work = (transport, token) => ModInstallationService.InstallAsync(file,
+            ResourceInstallationService.Resolve(folder, target, file, game, isolation, world), transport,
+            (done, total) => Report(item, total > 0 ? done * 100d / total : 0,
+                $"下载资源 · {done / 1048576d:0.0} / {total / 1048576d:0.0} MiB"), token);
+        Add(item);
+        return item;
+    }
+
+    /// <summary>直接下载模组或 ZIP 资源到用户选择的现有目录，不要求可扫描的游戏版本且不追加 mods；保留元数据、哈希和同名保护，开始及重试前检查目录仍存在。</summary>
     public DownloadTaskItem AddModToFolder(ModrinthModFile file, string folder)
     {
         file.Validate();
@@ -169,7 +183,7 @@ public sealed class DownloadTaskManager
             if (!Directory.Exists(directory)) throw new IOException("下载目录已不存在，请重新选择。");
             return ModInstallationService.InstallAsync(file, directory, transport,
                 (done, total) => Report(item, total > 0 ? done * 100d / total : 0,
-                    $"下载模组 · {done / 1048576d:0.0} / {total / 1048576d:0.0} MiB"), token);
+                    $"下载资源 · {done / 1048576d:0.0} / {total / 1048576d:0.0} MiB"), token);
         };
         Add(item);
         return item;

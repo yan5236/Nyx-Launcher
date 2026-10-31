@@ -22,6 +22,7 @@ public sealed partial class ModDetailsView : UserControl
     private string _game = "";
     private string _loader = "";
     private bool _active;
+    private bool IsResource => _project?.Category is "resourcepack" or "shader" or "datapack";
     public event EventHandler? BackRequested;
 
     /// <summary>初始化详情、失败重试和卸载清理；构造期间不访问网络。</summary>
@@ -105,7 +106,7 @@ public sealed partial class ModDetailsView : UserControl
         FindScrollViewer(Choices)?.ChangeView(null, previous.Offset, null, true);
     }
 
-    /// <summary>仅撤回当前选择阶段，保留项目及已加载发布；文件阶段退至加载器，加载器阶段退至游戏版本。</summary>
+    /// <summary>仅撤回当前选择阶段，保留项目及已加载发布；模组文件退至加载器，ZIP 资源文件直接退至游戏版本。</summary>
     private void Previous_Click(object sender, RoutedEventArgs e)
     {
         _dependencies = null;
@@ -152,10 +153,10 @@ public sealed partial class ModDetailsView : UserControl
         _request = request;
         Choices.Visibility = EmptyHint.Visibility = Visibility.Collapsed;
         LoadStatus.Visibility = Visibility.Visible;
-        LoadStatus.Start(_project.Category == "modpack" ? "整合包版本" : "模组版本");
+        LoadStatus.Start("资源版本");
         try
         {
-            var files = await _service.FetchModFilesAsync(_project.Id, request.Token, _project.Category == "modpack");
+            var files = await _service.FetchModFilesAsync(_project.Id, request.Token, _project.Category == "modpack", _project.Category);
             request.Token.ThrowIfCancellationRequested();
             _files = files;
             LoadStatus.Stop();
@@ -168,7 +169,7 @@ public sealed partial class ModDetailsView : UserControl
         finally { if (ReferenceEquals(_request, request)) _request = null; }
     }
 
-    /// <summary>按阶段展示真实文件支持的选项；外部筛选置顶并标注，其余数字版本降序，特殊版本保留发布时间顺序，文件阶段同步前置卡片。</summary>
+    /// <summary>按阶段展示真实文件支持的选项，ZIP 资源跳过加载器；外部筛选置顶并标注，其余数字版本降序，特殊版本保留发布时间顺序，文件阶段同步前置卡片。</summary>
     private void RefreshChoices()
     {
         IEnumerable<ModDetailChoice> choices;
@@ -179,9 +180,9 @@ public sealed partial class ModDetailsView : UserControl
                 .ThenByDescending(x => Version.TryParse(x, out var v) ? v : new Version())
                 .Select(x => new ModDetailChoice(x, "", "ms-appx:///Assets/java-mojang.png", "", null,
                     FilterLabel: x == _preferredGame ? "筛选版本" : ""));
-            StageText.Text = "1 / 3 · 选择 Minecraft 版本";
+            StageText.Text = $"1 / {(IsResource ? 2 : 3)} · 选择 Minecraft 版本";
         }
-        else if (_loader.Length == 0)
+        else if (!IsResource && _loader.Length == 0)
         {
             choices = _files.Where(x => x.GameVersions.Contains(_game)).SelectMany(x => x.Loaders).Distinct()
                 .OrderByDescending(x => x == _preferredLoader)
@@ -191,9 +192,9 @@ public sealed partial class ModDetailsView : UserControl
         }
         else
         {
-            choices = _files.Where(x => x.GameVersions.Contains(_game) && x.Loaders.Contains(_loader))
+            choices = _files.Where(x => x.GameVersions.Contains(_game) && (IsResource || x.Loaders.Contains(_loader)))
                 .Select(x => new ModDetailChoice(x.FileName, x.Detail, "", x.Badge, x));
-            StageText.Text = $"3 / 3 · {_game} · {ResourceProject.LoaderName(_loader)} · 选择文件";
+            StageText.Text = IsResource ? $"2 / 2 · {_game} · 选择文件" : $"3 / 3 · {_game} · {ResourceProject.LoaderName(_loader)} · 选择文件";
         }
         var rows = choices.ToArray();
         Choices.ItemsSource = rows;
@@ -220,7 +221,7 @@ public sealed partial class ModDetailsView : UserControl
         if (!_active || _dialog is not null || e.ClickedItem is not ModDetailChoice choice) return;
         Notice.IsOpen = false;
         if (_game.Length == 0) { _game = choice.Title; RefreshChoices(); return; }
-        if (_loader.Length == 0) { _loader = choice.Loader; RefreshChoices(); return; }
+        if (!IsResource && _loader.Length == 0) { _loader = choice.Loader; RefreshChoices(); return; }
         if (choice.File is not { } file || _tasks is null || _settings is null) return;
         ContentDialog? dialog = null;
         try
@@ -229,6 +230,13 @@ public sealed partial class ModDetailsView : UserControl
             if (_project?.Category == "modpack")
             {
                 dialog = new ModpackInstallDialog(XamlRoot, _tasks, folder, _project.Title, remote: file);
+                _dialog = dialog;
+                await dialog.ShowAsync();
+                return;
+            }
+            if (IsResource)
+            {
+                dialog = CreateResourceDialog(file, folder);
                 _dialog = dialog;
                 await dialog.ShowAsync();
                 return;
