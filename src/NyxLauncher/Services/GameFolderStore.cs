@@ -5,7 +5,8 @@ namespace NyxLauncher.Services;
 /// <summary>独立保存游戏目录集合及当前选择；移除仅修改配置，绝不删除游戏目录。</summary>
 public sealed class GameFolderStore
 {
-    private sealed record Settings(string[] Folders, string? Selected);
+    private sealed record Settings(string[] Folders, string? Selected, Dictionary<string, string>? SelectedVersions = null);
+    private Dictionary<string, string> _selectedVersions = new(StringComparer.OrdinalIgnoreCase);
     private readonly string _path;
     private bool _loadFailed;
     public IReadOnlyList<string> Folders { get; private set; } = Array.Empty<string>();
@@ -32,6 +33,8 @@ public sealed class GameFolderStore
                 Selected = saved.Selected is null ? null : Normalize(saved.Selected);
                 if (Selected is not null && !Folders.Contains(Selected, StringComparer.OrdinalIgnoreCase))
                     throw new JsonException("当前目录不在列表中。");
+                foreach (var entry in saved.SelectedVersions ?? [])
+                    _selectedVersions[Normalize(entry.Key)] = entry.Value;
             }
             else
             {
@@ -81,15 +84,36 @@ public sealed class GameFolderStore
         Save(remaining, string.Equals(Selected, path, StringComparison.OrdinalIgnoreCase) ? remaining.FirstOrDefault() : Selected);
     }
 
+    /// <summary>从当前目录的扫描结果恢复上次选择；旧配置、已删除或损坏的版本回退首个有效项，无有效项返回 null，不写入配置。</summary>
+    public InstalledVersion? RestoreVersion(IReadOnlyList<InstalledVersion> versions)
+    {
+        string? name = Selected is not null ? _selectedVersions.GetValueOrDefault(Selected) : null;
+        return versions.FirstOrDefault(x => x.Error is null && x.Name == name)
+            ?? versions.FirstOrDefault(x => x.Error is null);
+    }
+
+    /// <summary>保存当前目录所选版本名；空名称或未选目录时拒绝，同值不重复写盘，写入失败保留原内存并向界面抛出异常。</summary>
+    public void SelectVersion(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        if (Selected is null) throw new InvalidOperationException("尚未选择游戏目录。");
+        if (_selectedVersions.GetValueOrDefault(Selected) == name) return;
+        var selections = new Dictionary<string, string>(_selectedVersions, StringComparer.OrdinalIgnoreCase) { [Selected] = name };
+        Save(Folders.ToArray(), Selected, selections);
+    }
+
     /// <summary>先原子替换同目录配置文件，再更新内存状态；损坏配置不覆盖，I/O 异常交给界面明确提示。</summary>
-    private void Save(string[] folders, string? selected)
+    private void Save(string[] folders, string? selected, Dictionary<string, string>? selections = null)
     {
         if (_loadFailed) throw new IOException(LoadError);
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         string temporary = _path + ".tmp";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(new Settings(folders, selected)));
+        selections = (selections ?? _selectedVersions).Where(x => folders.Contains(x.Key, StringComparer.OrdinalIgnoreCase))
+            .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+        File.WriteAllText(temporary, JsonSerializer.Serialize(new Settings(folders, selected, selections)));
         File.Move(temporary, _path, true);
         Folders = folders;
         Selected = selected;
+        _selectedVersions = selections;
     }
 }

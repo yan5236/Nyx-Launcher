@@ -4,6 +4,39 @@ internal static class InstalledVersionChecks
 {
     private static int _checks;
 
+    /// <summary>用临时配置验证旧格式兼容、重启恢复、目录隔离、失效回退和写入失败保护；文件由 Run 统一清理。</summary>
+    private static void CheckVersionSelection(string root)
+    {
+        string config = Path.Combine(root, "selection.json");
+        string first = Path.Combine(root, ".minecraft");
+        string second = Path.Combine(root, "second");
+        Directory.CreateDirectory(first);
+        Directory.CreateDirectory(second);
+        File.WriteAllText(config, System.Text.Json.JsonSerializer.Serialize(new { Folders = new[] { first, second }, Selected = first }));
+        var store = new GameFolderStore(config, root);
+        InstalledVersion[] versions = [new("A", "", "", "", "", null), new("中文生存", "", "", "", "", null)];
+        Check(store.RestoreVersion(versions) == versions[0], "旧配置缺少版本选择时回退首项");
+        store.SelectVersion("中文生存");
+        store = new GameFolderStore(config, root);
+        Check(store.RestoreVersion(versions) == versions[1], "未启动游戏也能重启恢复所选版本");
+        store.Select(second);
+        Check(store.RestoreVersion(versions) == versions[0], "切换目录不沿用其他目录同名选择");
+        store.SelectVersion("A");
+        store.Select(first);
+        Check(new GameFolderStore(config, root).RestoreVersion(versions) == versions[1], "切回目录保留各自选择");
+        Check(store.RestoreVersion([versions[0]]) == versions[0], "已删除版本回退有效首项");
+        Check(store.RestoreVersion([versions[0], versions[1] with { Error = "损坏" }]) == versions[0], "损坏版本不恢复");
+        Check(store.RestoreVersion([]) is null, "空版本目录不产生选择");
+        Directory.CreateDirectory(config + ".tmp");
+        Throws<UnauthorizedAccessException>(() => store.SelectVersion("A"), "版本选择写入失败向界面报告");
+        Check(store.RestoreVersion(versions) == versions[1] && new GameFolderStore(config, root).RestoreVersion(versions) == versions[1], "写入失败保留内存与磁盘的原选择");
+        Directory.Delete(config + ".tmp");
+        store.Remove(first);
+        store.Add(first);
+        store.Select(first);
+        Check(store.RestoreVersion(versions) == versions[0], "移除目录清理对应版本选择");
+    }
+
     /// <summary>在独立临时目录验证文件夹落盘、移除无损、真实清单读取与删除边界；结束只清理本次创建的测试树。</summary>
     public static void Run()
     {
@@ -11,6 +44,7 @@ internal static class InstalledVersionChecks
         Directory.CreateDirectory(root);
         try
         {
+            CheckVersionSelection(root);
             string config = Path.Combine(root, "config", "folders.json");
             var store = new GameFolderStore(config, root);
             string defaultFolder = Path.Combine(root, ".minecraft");

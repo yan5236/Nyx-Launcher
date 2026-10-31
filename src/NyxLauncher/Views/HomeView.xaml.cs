@@ -61,20 +61,19 @@ public sealed partial class HomeView : UserControl
         Refresh();
     }
 
-    /// <summary>扫描当前目录并保留选择；运行期间不替换列表，扫描代数隔离迟到结果。</summary>
+    /// <summary>扫描当前目录并恢复已保存的版本选择，无效选择回退首项；运行期间不替换列表，扫描代数与目录校验隔离迟到结果。</summary>
     public async void Refresh()
     {
         if (_session is not null || _closing) return;
         int generation = ++_refresh;
         _scanning = true; UpdateControls();
         string? folder = _folders?.Selected;
-        string? selected = (VersionList.SelectedItem as InstalledVersion)?.Name;
         try
         {
             var versions = folder is null ? [] : await Task.Run(() => InstalledVersionService.Scan(folder).Where(x => x.Error is null).ToArray());
-            if (generation != _refresh) return;
+            if (generation != _refresh || folder != _folders?.Selected) return;
             VersionList.ItemsSource = versions;
-            VersionList.SelectedItem = versions.FirstOrDefault(x => x.Name == selected) ?? versions.FirstOrDefault();
+            VersionList.SelectedItem = _folders?.RestoreVersion(versions);
         }
         catch (Exception ex)
         {
@@ -85,8 +84,20 @@ public sealed partial class HomeView : UserControl
         finally { if (generation == _refresh) { _scanning = false; UpdateControls(); } }
     }
 
-    /// <summary>刷新版本选择对应的启动可用性，不创建进程。</summary>
-    private void Version_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateControls();
+    /// <summary>用户切换版本时立即保存到当前目录配置；扫描重绑及空选择不写盘，失败通过首页提示，仍刷新启动可用性。</summary>
+    private void Version_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_scanning && VersionList.SelectedItem is InstalledVersion version)
+        {
+            try { _folders?.SelectVersion(version.Name); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+            {
+                Status.Message = "版本选择未保存：" + ex.Message;
+                Status.Severity = InfoBarSeverity.Error; Status.IsOpen = true;
+            }
+        }
+        UpdateControls();
+    }
 
     /// <summary>请求主页面打开当前所选版本的详情；未选版本时不导航。</summary>
     private void Manage_Click(object sender, RoutedEventArgs e)
@@ -251,7 +262,7 @@ public sealed partial class HomeView : UserControl
             else LaunchButton.Resources.Remove(key);
         }
         LaunchButton.IsEnabled = !_closing && (busy ? !stopping : !_scanning && _accounts?.Selected is not null && VersionList.SelectedItem is InstalledVersion);
-        VersionList.IsEnabled = !busy && !_closing;
+        VersionList.IsEnabled = !busy && !_closing && !_scanning;
         ManageButton.IsEnabled = !_closing && VersionList.SelectedItem is InstalledVersion;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(LaunchButton, label);
     }
