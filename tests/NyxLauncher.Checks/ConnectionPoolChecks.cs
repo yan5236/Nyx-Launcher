@@ -7,6 +7,8 @@ internal static class ConnectionPoolChecks
     /// <summary>通过真实回环 TCP 验证客户端释放后下一批仍复用连接；不依赖外网或本机代理配置。</summary>
     internal static async Task RunAsync()
     {
+        string details = NetworkFailureDetails.Format(new HttpRequestException("secret-token", new SocketException(10055)));
+        if (details.Contains("secret-token") || !details.Contains("10055")) throw new Exception("诊断脱敏或错误码丢失。");
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;

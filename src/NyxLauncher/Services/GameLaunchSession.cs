@@ -112,6 +112,7 @@ public sealed class GameLaunchSession
         }
         catch (Exception ex)
         {
+            _log?.Write("失败阶段：" + Status.Stage + "\n" + NetworkFailureDetails.Format(ex));
             string message = Redact(ex.Message, _accessToken);
             try { if (started) await EndProcessAsync(process!, false); }
             catch (Exception stop) { message += "\n停止游戏失败：" + stop.Message; }

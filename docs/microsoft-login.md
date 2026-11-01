@@ -2,82 +2,32 @@
 
 ## 客户端配置
 
-当前实现使用 Microsoft.Identity.Client（MSAL.NET）4.92.0 和系统浏览器，申请个人微软账户的 `XboxLive.signin` 权限。MSAL 负责授权码、随机 state、PKCE S256、微软令牌及刷新缓存，自动处理其必要的 OIDC / 离线访问 scope；不需要也不接收客户端 secret。
+配置结构以 [config/microsoft-auth.example.json](../config/microsoft-auth.example.json) 为准。首次构建前复制为同目录的 `microsoft-auth.json`，将 ClientId 填为自己的公共客户端应用 ID，RedirectUri 填为该应用登记的本机回调；已有实际配置不要覆盖。示例 ID 只是占位值，实际配置被 Git 忽略，缺少文件时构建失败，不回退测试客户端。
 
-客户端配置保存在仓库根目录的 `config/` 中。首次构建前复制示例：
+使用面向个人微软账户的移动和桌面公共客户端，申请 Xbox 登录权限，不配置 client secret。回调只支持 HTTP localhost，登记时保留实际路径、大小写和尾斜杠形式；运行时校验 Host、端口和精确路径。授权应用配置和 Minecraft 服务访问资格是不同条件，不能仅凭 ClientId 格式有效认定登录可用。
 
-```powershell
-Copy-Item config/microsoft-auth.example.json config/microsoft-auth.json
-```
+Debug、Release 和发布均将实际 JSON 嵌入程序集，运行时不依赖开发机路径或外置配置。修改后需要重新构建；旧用户数据目录中的认证配置不再读取。客户端 ID 是公开应用标识，Git 忽略和嵌入资源不构成保密。不要填入密码、授权码、令牌或 secret。切换客户端后已有账户需要重新登录。
 
-将实际文件中的 `ClientId` 替换为自己的应用（客户端）ID，示例中的 GUID 只是占位值：
+## 认证流程
 
-```json
-{
-  "ClientId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-  "RedirectUri": "http://localhost:43871/nyxlauncher/oauth/callback"
-}
-```
+1. 添加微软账户时先绑定配置的 IPv4 回环端口，再打开系统浏览器。弹窗提供重新打开浏览器、复制链接和取消；打开失败可以使用同一次授权链接继续。
+2. MSAL 管理授权码、随机 state、PKCE S256 与令牌缓存，启动器不再实现第二套 PKCE。密码、验证码和授权同意由用户在微软页面完成。
+3. 回调校验 Host、路径和 state，拒绝重复参数、无效请求和超大请求头；无效请求不终止正确授权。取消、超时或退出释放监听，迟到结果不保存。
+4. 微软令牌换取 Xbox / XSTS 和 Minecraft 会话，核验游戏资格与真实 Java 档案，全部成功才保存并选中账户。
 
-`config/microsoft-auth.json` 已被 Git 忽略，实际 ID 不进入源码提交；`config/microsoft-auth.example.json` 随仓库提供填写结构。缺少实际配置时应用构建明确失败，不自动使用示例或旧测试 ID。
+同一时间仅处理一次微软认证，端口占用明确报错，不静默改用其他回调。回调页面只提示返回启动器，不提前宣称游戏认证成功。浏览器授权链接在完成、取消或超时后失效。
 
-Debug、Release 和 publish 均将实际 JSON 作为 `NyxLauncher.MicrosoftAuth.json` 资源嵌入主程序集。运行时读取该资源，不依赖开发机路径或额外的外置配置文件；修改配置后必须重新构建。旧的 `%LOCALAPPDATA%/NyxLauncher/microsoft-auth.json` 不再读取，也不会被删除。
+启动游戏只尝试静默获取或刷新，再验证 Xbox 与 Minecraft，不自动打开浏览器。认证、资格或网络错误均终止启动，不降级离线。重登保持原游戏 UUID，改名按 UUID 更新；其他身份通过添加入口处理。账户切换、删除和迟到刷新保护见[账户与启动](accounts-and-launch.md)。
 
-在微软应用注册的“身份验证 → 添加平台 → 移动和桌面应用程序”登记 `http://localhost:43871/nyxlauncher/oauth/callback`，精确保留路径、大小写及无尾斜杠形式。使用面向个人微软账户的公共客户端，不配置 client secret 或隐式授权。只接受 `http://localhost` 回环 URI；配置错误明确报错。localhost 的注册匹配不依赖端口，因此不同回调用路径区分；本机仍严格校验实际端口和 Host。
+## 凭据与诊断
 
-切换客户端后须在账户卡片点击“重试登录”，旧客户端的刷新缓存不能用于新应用。客户端 ID 是公开应用标识；Git 忽略防止误提交，嵌入资源用于随程序分发，均不构成保密或加密。不要在配置中填 client secret、密码、授权码或令牌。
+MSAL 缓存使用 Windows 当前用户 DPAPI 加密后与账户元数据原子保存，不持久化密码或明文令牌。复制到另一 Windows 用户不能直接解密；删除账户只清除本地缓存，不撤销授权或清理浏览器会话。
 
-## PKCE
+错误提示保留受约束的认证错误码，不直接展示可能包含敏感信息的响应。认证请求使用官方 HTTPS 端点，不走下载镜像，不关闭证书验证，不跟随认证 POST 重定向；仅本机回调使用 HTTP。请求诊断与日志导出规则见[账户与启动](accounts-and-launch.md#故障与日志)。
 
-当前公共客户端已由 MSAL 自动使用 PKCE S256，包括自定义本机回调模式：每次授权生成新的 verifier，浏览器仅接收 SHA-256 挑战值；兑换授权码时 MSAL 提交原始 `code_verifier`。应用不自行生成第二套 PKCE，不持久化 verifier，也不将其放进浏览器链接。回调仍额外校验随机 state、Host 和精确路径。
+## 维护与检查
 
-## 登录与账户生命周期
-
-1. 账户 → 添加 → 微软登录，配置资源无效时禁用微软入口并提示错误。
-2. 先独占绑定配置中的 IPv4 回环端口（当前为 `127.0.0.1:43871`），再打开系统浏览器。弹窗居中显示进度和提示，底部提供“打开浏览器”“复制链接”“取消”。自动打开失败不会结束认证，可重复尝试打开或复制同一授权链接到本机浏览器继续验证；回调完成、取消或超时后链接入口失效。微软密码、验证码及同意授权由用户在微软页面完成；启动器不读取密码页面。
-3. 回调只接受精确 Host、路径和当前 state，拒绝重复参数、同时提交 code 与 error、超大请求头；无效请求不会终止正确登录。收到回调的浏览器页面只提示返回启动器，不提前声称登录成功。
-4. 微软访问令牌依次换取 Xbox 用户票据、Minecraft RP 的 XSTS、Minecraft 令牌，核验游戏资格和真实 Java 档案。XSTS 缺少 XUID 时从 Xbox Live RP 补取声明并校验用户哈希一致。
-5. 全部成功才保存并选中账户。身份使用 Minecraft 返回的 UUID 和名称，不使用邮箱或 Xbox 昵称冒充游戏名称。返回 `msa` 会话、游戏访问令牌、XUID 和客户端 ID 给 CmlLib 启动参数。
-
-同一时间只处理一次微软认证；等待浏览器最多五分钟。关闭弹窗、按取消或退出启动器都会取消在途请求并释放端口，迟到结果不写入账户。端口被占用时明确提示，不自动改变已登记回调。IPv4 回环监听避免系统 HTTP.sys URL 注册依赖，浏览器的 localhost 连接可回落至 IPv4。
-
-真实皮肤头像独立于令牌认证：按 UUID 查询 Mojang 公开档案并从官方纹理域取图，已有账户无需重新授权。账户页与侧栏共用裁剪、帽子层叠加和本地缓存，见[账户头像](accounts-and-launch.md)。
-
-游戏启动时仅静默获取或刷新微软令牌，再重新验证 Xbox 和 Minecraft；不会自动打开浏览器。刷新失败、缺少档案、无资格、白名单拒绝或网络异常都终止此次启动，不降级为离线账户。重新登录必须保持同一个游戏 UUID；登录其他身份需使用添加入口。游戏改名按 UUID 更新原卡片。后台刷新时切换到其他账户不会被刷新结果改回；已经删除或更新的账户不能被迟到结果覆盖或复活。
-
-## 凭据与错误处理
-
-每个微软账户的 MSAL 缓存使用 `ProtectedData` / DPAPI `CurrentUser` 加密，再与账户元数据一起原子写入 `accounts.json`。其中包括用于续期的认证材料，但不保存密码和明文令牌；Minecraft 游戏访问令牌仅在本次会话内使用。复制配置到其他 Windows 用户不能直接解密，需要重新登录。删除卡片同时删除本地密文，不撤销微软侧应用授权、不清理系统浏览器登录状态。
-
-错误面板保留经过字符约束的 MSAL 错误码及 `AADSTS` 编号，避免原样展示可能含敏感数据的服务端响应。Xbox 的未建立档案、儿童账户、地区和年龄限制，Minecraft 的 403、无资格及缺失档案分别给出提示。游戏日志显示前删除本次游戏访问令牌，避免异常退出时把令牌带到界面。
-
-程序不会禁用 TLS 验证，不使用下载镜像传输认证信息。只有微软授权回调使用本机 HTTP；认证服务请求使用固定官方 HTTPS 端点且不跟随 HTTP 重定向。
-
-## 文档依据与回调兼容性
-
-- [微软 OAuth 授权码与 PKCE 文档](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow)：公共客户端不使用 secret，授权码兑换需一致回调及 PKCE verifier。
-- [MSAL 桌面交互与自定义 Web UI](https://learn.microsoft.com/en-us/entra/identity-platform/scenario-desktop-acquire-token-interactive)：使用官方 `ICustomWebUi` 接口将系统浏览器回环结果交回 MSAL，认证和 PKCE 仍由库执行。
-- [CmlLib 的 MSAL 指南](https://cmllib.github.io/CmlLib.Core-wiki/en/auth.microsoft/cmllib.core.auth.microsoft/authentication-with-msal/)与[客户端 ID 注册说明](https://cmllib.github.io/CmlLib.Core-wiki/en/auth.microsoft/xboxauthnet.game.msal/clientid/)：个人账户、Xbox scope、公共客户端回调和 Minecraft API 白名单是不同步骤。
-- [CmlLib 认证源码](https://github.com/CmlLib/CmlLib.Core.Auth.Microsoft/tree/2fd9c344ad36386eec4abbc2ddc911ca756cf66d/src)：核对 Xbox / XSTS、Minecraft 资格、档案及 `msa` 会话映射。
-
-本机验证中，MSAL 默认 HTTP.sys 监听出现 `http_listener_error` / “句柄无效”，并为路径自动附加 `/`。因此使用只监听回环地址的 TCP 适配器，严格接受用户指定的无尾斜杠路径，不修改 Windows HTTP 配置。MSAL 4.92 的 API 注释已将 `ICustomWebUi` 标为未来弃用方向；当前固定版本仍支持，正式发布及升级 MSAL 前需要复核此扩展的支持状态。适配器仅打开微软系统浏览器页面，不提供可注入密码的自制登录 UI。
-
-## 验证
-
-```powershell
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks -- --microsoft-callback
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks -- --microsoft-launch-arguments .local/download-install-qa
-.\.dotnet\dotnet.exe build NyxLauncher.slnx -c Debug
-.\scripts\Test-Prototype.ps1
-```
-
-`--microsoft-callback` 使用固定的公开发现文档、真实 MSAL 和真实 `localhost:43871` TCP 回调，不打开浏览器也不交换真实用户令牌。验证精确客户端/回调、每次不同的 S256 挑战值、浏览器不暴露 verifier、令牌兑换中的 verifier 长度/字符与 SHA-256 匹配，以及无效 state / Host / 路径 / 重复参数、拒绝授权、取消和端口释放。PKCE 兑换使用合成授权码，校验请求后返回固定 `invalid_grant`，不伪造有效会话；同时覆盖手动继续验证及结束后链接清理。离线业务检查从示例 JSON 构建测试资源，无需开发者实际 ID，并验证空、损坏和无效配置不回退。
-
-2026-10-31：实际配置从示例复制后填写本地 ID，Git 忽略检查通过；Debug 构建与 Release publish 均成功，直接检查两份主程序集确认 JSON 资源包含实际配置，输出无需外置认证 JSON。631 项离线检查、4 个 MSAL 回调场景（含 verifier 的 S256 匹配）及 2 个手动恢复/取消场景、页面结构和差异空白检查通过。通过用户授权的 ego-browser 登录态，在 Entra 的 Nyx launcher 应用中添加并确认上述移动和桌面回调，登记前没有其他回调。未执行新客户端的真实微软/Xbox/Minecraft 登录或游戏启动；已有微软账户需要重新登录。
-
-2026-10-29 弹窗调整验证：410 项业务检查、3 个 MSAL 回调场景、2 个手动恢复/取消场景、Debug 构建（0 警告/错误）及页面结构检查通过。桌面工具及备用入口因沙箱初始化失败无法启动，本次未验证实际布局截图、按钮点击、系统浏览器故障恢复或真实账户授权。
-
-`--microsoft-launch-arguments` 复用已有独立安装验收目录的四类 1.21.1 版本，以合成会话构造真实启动参数并校验身份不匹配保护，不创建游戏进程，也不输出完整命令行。2026-10-29 通过 8 项检查，确认名称、UUID、Minecraft 令牌、`msa`、XUID 和客户端 ID 进入参数。
-
-2026-10-29：322 项业务断言通过（含新增 53 项微软账户检查），覆盖合成令牌交换、错误映射、账户迁移、DPAPI 往返、原子保存和日志脱敏。Debug 构建与页面检查通过。桌面自动化因工具沙箱初始化失败未完成；用户在当前 Debug 界面点击微软登录并完成系统浏览器授权。随后只读检查确认账户文件由 1 个离线账户变为 1 个离线账户和 1 个微软账户，微软账户已选中、客户端 ID 匹配、真实玩家 UUID 与加密缓存已保存，回调端口释放且窗口保持响应。账户仅在微软、Xbox/XSTS、Minecraft 资格与档案校验全部通过后保存，因此本次真实登录链路通过。未执行微软账户游戏启动、联机、跨重启静默续期或 Release 构建。
+- [MicrosoftLoginSettings](../src/NyxLauncher/Services/MicrosoftLoginSettings.cs)：嵌入配置和校验；[项目文件](../src/NyxLauncher/NyxLauncher.csproj)：配置打包及 MSAL 版本。
+- [MicrosoftLoopbackBrowser](../src/NyxLauncher/Services/MicrosoftLoopbackBrowser.cs)：系统浏览器与 TCP 回调适配；升级 MSAL 时复核自定义回调接口兼容性。
+- [MicrosoftLoginService](../src/NyxLauncher/Services/MicrosoftLoginService.cs)、[MinecraftAuthentication](../src/NyxLauncher/Services/MinecraftAuthentication.cs)：令牌、服务端资格及档案校验。
+- [验证指南](testing.md)：离线检查、真实 MSAL 的合成回调场景和启动参数检查。合成回调通过不代表真实账户登录或续期已通过。

@@ -12,5 +12,5 @@ internal static class DownloadHttpClient
     };
 
     /// <summary>创建独立超时和取消作用域的客户端；释放客户端不销毁共享池，继续使用系统代理与默认 TLS 校验。</summary>
-    internal static HttpClient Create(TimeSpan timeout) => new(Handler, disposeHandler: false) { Timeout = timeout };
+    internal static HttpClient Create(TimeSpan timeout) => new(new NetworkDiagnosticHandler(Handler, ownsInner: false)) { Timeout = timeout };
 }

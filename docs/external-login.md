@@ -26,18 +26,6 @@
 
 外置头像缓存键包含服务器地址的 SHA-256 与角色 UUID，避免跨站同 UUID 污染；缓存存放在原有 avatars 目录。网络失败保留旧头像，无缓存时显示默认头像。当前进程同一角色复用查询，换肤后重启启动器更新。
 
-## 验证
+## 维护入口
 
-```powershell
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks -- --external-live .local/download-install-qa
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks -- --external-avatar
-```
-
-常规检查使用合成凭据验证 ALI、拖拽地址解析、多角色绑定、无角色、令牌刷新、身份一致性、加密持久化、服务器编辑删除、纹理域边界及 JVM 参数。`--external-live` 只对已有独立验收目录构建原版、Fabric、Forge、NeoForge 的启动参数，真实验证 LittleSkin 地址发现和注入器下载校验，不启动游戏。`--external-avatar` 查询首个已登录外置角色的公开皮肤，不解密令牌。
-
-2026-10-29：用户已自行输入真实账号并确认 LittleSkin 登录完成；公开角色皮肤 PNG 实网获取通过。真实多人服务器鉴权、所有游戏版本、HTTP-only 站点及 Release 安装包未验证。
-
-补充验收：410 项业务断言通过（外置登录 43 项），x64 Debug 构建零警告零错误，现有页面检查及差异空白检查通过。真实窗口确认已登录外置账户在账户页和侧栏显示同一真实头像，服务器编辑入口、返回步骤和底部“取消／登录”顺序正确。截图位于 `.local/screenshots/external-avatar-accounts.png`。选角列表已改为头像与角色名，等待用户再次输入凭据验证新布局；跨应用真实鼠标拖放尚未端到端验收，标准载荷解析已覆盖。
-
-拖放生命周期修复：系统 Drop deferral 只覆盖异步文本读取，成功或失败后均先 Complete，再执行认证导入或打开弹窗。修复此前浮标直到关闭弹窗才消失的问题。x64 Debug 构建通过；使用真实 Windows 标准文本拖放源分别拖入主页面和已打开弹窗，两次源端均返回 Copy，目标登录弹窗保持显示。截图 `.local/screenshots/external-drop-completed.png`。本次未重复账号认证或游戏启动，未用特定浏览器重复拖放。
+[ExternalLoginService](../src/NyxLauncher/Services/ExternalLoginService.cs)、[ExternalServerStore](../src/NyxLauncher/Services/ExternalServerStore.cs)、[AuthlibInjector](../src/NyxLauncher/Services/AuthlibInjector.cs)。验证入口统一见[验证指南](testing.md)。

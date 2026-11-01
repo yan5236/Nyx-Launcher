@@ -34,30 +34,8 @@ ZIP 和远程文件清单拒绝路径穿越、Windows 保留名称、备用数�
 
 点击 Java 卡片可手动固定选择，卡片左侧使用与“自动选择”相同的单选圆圈，二者互斥，重启后恢复已保存的选择。手动路径不存在、主版本不匹配或非 x64 时明确提示，不会悄悄切换另一套 Java。一次启动固定配置快照和最终路径，准备依赖与创建进程使用同一路径；期间改变列表或选择只影响下一次启动。缺失所需 Java 时提示到设置扫描、导入或安装。
 
-## 验证与上游来源
+图标来源：Mojang 渠道图标随仓库资源分发；[Temurin 标识](https://adoptium.net/images/projects/temurin-project.svg)来自 Adoptium，[Zulu 标识](https://www.azul.com/wp-content/themes/azul/assets/img/logo.svg)来自 Azul。标识用于说明下载来源，权利归各自所有者。
 
-```powershell
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks -- --java-catalog .local/java-qa
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks -- --java-live .local/java-qa
-.\.dotnet\dotnet.exe run --project tests/NyxLauncher.Checks -- --java-scan .local/java-qa
-.\scripts\Test-Prototype.ps1
-```
+## 维护入口
 
-`--java-live` 访问三个渠道的四个主版本列表，并各安装一个发行包（Mojang 25、Temurin 8、Zulu 8），验证下载任务完成、自动登记、移除记录保留文件，以及真实 `java -version`。`--java-scan` 只把本机浅扫描结果写到独立验收目录的 `shallow-scan.json`，不修改用户的 Java 配置。
-
-2026-10-29 验证：448 项业务断言通过，其中 Java 管理 38 项覆盖浅搜索深度边界、已登记深层目录、扫描去重、移除后重扫、架构、版本排序、继承、配置写入失败、SHA-256、解压穿越、取消和实际进程参数。x64 Debug 构建 0 警告/错误。三个渠道的 12 组版本列表实网通过，Mojang 25、Temurin 8 和 Zulu 8 各自完成真实下载任务、自动登记并执行 `java -version`。C/D/E/F/G 五个盘符浅扫描耗时 27.6 秒，共发现 12 个 Java（8：1 个，17：4 个，21：6 个，25：1 个）；替换前的深扫描为 594.2 秒、33 个 Java。浅扫描有意不遍历任意深度目录。
-
-通过本机 UI Automation 验证了主版本卡片、渠道图标、具体版本列表、返回保留选择、右上角关闭、主要按钮靠右及停止扫描无提示条。列表可独立滚动到底部且顶部按钮保持固定，960×600 窗口下仍可滚动；现有页面结构检查通过。未重复安装全部发行包，也未以新选择的 Java 实际启动游戏；文件夹选择器及系统动画关闭场景未验收，未构建 Release 或安装包。
-
-官方接口：[Adoptium API](https://github.com/adoptium/api.adoptium.net/blob/main/docs/cookbook.adoc)、[Azul Metadata API](https://docs.azul.com/core/install/metadata-api)、[Mojang 运行时清单](https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json)。
-
-单选提示与首次扫描修复后，共 454 项业务断言通过（Java 管理 44 项），新增覆盖空结果跨重启、旧配置迁移、修改列表保留扫描标记及写入失败。Debug 构建 0 警告/错误；实机验证手动卡片与自动选择互斥、滚动保持选择、重启恢复手动选择且不再自动扫描，验收后恢复原自动选择。
-
-同步滚动与选择刷新修复：454 项离线业务断言通过；使用独立配置与 24 张夹具卡片完成 16 项进程内真实 WinUI 检查，覆盖自动项随列表滚动、顶部操作固定、手动与自动互斥、选择和配置事件后保留 ItemsSource 及卡片实例、滚动位置不变、虚拟化返回后恢复圆圈、保存失败恢复原选择、移除更新和空列表。验收代码仅临时编译，报告位于 `.local/java-scroll-qa/result.txt`，不修改用户配置。本次未重复实网下载安装或游戏启动。
-
-主版本点选直达渠道：页面结构检查及 21 项真实 WinUI 弹窗检查通过，使用卡片自身的 UI 自动化 Invoke 模式覆盖四个主版本、默认已选 Java 21、返回后重复点选、前两步不显示下一步，以及具体发行包选择对最终安装按钮的启用约束。报告位于 `.local/java-dialog-qa/result.txt`；临时验收入口已还原，全程未创建下载任务，不修改用户配置。本次未重复实网下载安装，也未模拟实际键盘按键。
-
-主版本按钮卡片修正：移除单选列表和默认选中项，复用渠道页的普通按钮样式。页面结构检查及 26 项真实 WinUI 检查通过，覆盖四张卡片没有 SelectionItem/Toggle 模式、与渠道按钮共享样式/圆角/内边距、四个版本与返回后重复点击直接前进，以及最终安装确认。已查看首屏真实渲染图 `.local/java-button-qa/major-initial.png`；报告位于同目录 `result.txt`。临时验收入口已还原，不修改用户配置，未重复实网下载或实际键盘输入。
-
-图标来源：Mojang 使用用户提供的 `Grass_Block.png`；[Temurin 标识](https://adoptium.net/images/projects/temurin-project.svg)来自 Adoptium 官网；Zulu 使用 [Azul 官方标识](https://www.azul.com/wp-content/themes/azul/assets/img/logo.svg)。标识仅用于说明下载来源，权利归各自所有者。
+[JavaRuntime](../src/NyxLauncher/Services/JavaRuntime.cs)、[JavaRuntimeStore](../src/NyxLauncher/Services/JavaRuntimeStore.cs)、[JavaCatalogService](../src/NyxLauncher/Services/JavaCatalogService.cs)、[JavaInstallationService](../src/NyxLauncher/Services/JavaInstallationService.cs)。验证入口统一见[验证指南](testing.md)。

@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace NyxLauncher.Services;
 
-/// <summary>收集本轮游戏日志快照并给出保守诊断；不读取启动器日志、存档或账户配置。</summary>
+/// <summary>收集本轮游戏及启动诊断日志并给出保守诊断；不读取存档或账户配置。</summary>
 public sealed class GameCrashReport
 {
     public Dictionary<string, string> Logs { get; } = new();
@@ -12,9 +12,13 @@ public sealed class GameCrashReport
     public string Diagnosis { get; private set; } = "";
     public string Warning { get; private set; } = "";
 
-    /// <summary>仅收集启动后更新的游戏日志、崩溃报告和 JVM 错误；限制单文件 8 MiB，读取失败保留警告及其他可用日志。</summary>
+    /// <summary>收集本轮游戏日志及启动诊断，确保进程创建前的失败也可查看与导出；单文件限制 8 MiB，读取失败保留警告。</summary>
     public static GameCrashReport Collect(GameLaunchSession session)
-        => Collect(session.GameDirectory, session.GameOutputPath, session.StartedUtc);
+    {
+        var report = Collect(session.GameDirectory, session.GameOutputPath, session.StartedUtc);
+        if (session.LogPath is not null) report.Read(session.LogPath, "launcher.log", DateTime.MinValue);
+        return report;
+    }
 
     /// <summary>按固定目录和启动时间收集快照，便于隔离验证旧报告排除和日志导出。</summary>
     internal static GameCrashReport Collect(string? directory, string? output, DateTime startedUtc)

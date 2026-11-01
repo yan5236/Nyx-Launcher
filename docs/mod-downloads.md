@@ -1,4 +1,4 @@
-# 模组下载
+# 模组与资源安装
 
 下载 → 模组 → 点击卡片，以淡入淡出进入详情，返回时保留搜索、筛选、页码及滚动位置。顶部展示真实模组图标、名称和简介，支持复制名称及使用默认浏览器打开 Modrinth 项目详情。
 
@@ -22,27 +22,7 @@
 
 模组下载正在排队、传输、暂停收尾或取消清理时，与游戏安装共用版本目录保护，禁止改名和删除版本。暂停完成后可修改目录；任务恢复时仍重新校验原目标，已改名或删除的目标不会被重新创建。
 
-## 验证入口
-
-```powershell
-dotnet run --project tests/NyxLauncher.Checks
-./scripts/Test-Prototype.ps1
-dotnet build src/NyxLauncher/NyxLauncher.csproj -p:Platform=x64 --no-restore
-# 必须传入独立验收目录；会创建最小本地版本清单，实际下载 Sodium，不启动游戏。
-dotnet run --project tests/NyxLauncher.Checks --no-build -- --live-mod-install .local/mod-download-qa
-```
-
-2026-10-30：32 项离线模组检查通过，涵盖完整发布解析、运行附件筛选、渠道与日期、坏元数据、超时、取消、兼容和隔离目录、文件冲突、哈希失败清理、已删除版本及共享下载任务接入。6 项实网检查通过：Minecraft 1.21.1 / Fabric 的 Sodium 文件分别进入隔离和共享 `mods`，长度和 SHA-1 正确。Debug x64 构建通过，0 警告、0 错误；未验证加载模组后的游戏启动、其他 Windows/DPI 或 Release。
-
-2026-10-31：独立 WinUI 验收程序通过真实控件的 Invoke 模式，验证列表进入详情、复制名称、三级选择、文件名/日期/渠道图标、阶段撤回、原生目标弹窗、实际任务创建与完成、无兼容版本提示、返回保留搜索，以及转场中离开取消请求。实际渲染截图位于 `.local/screenshots/mod-{games,loaders,files,install-dialog,no-target}.png`，日志为 `.local/mod-download-ui.log`。桌面自动化工具因沙箱初始化失败，改用现有项目的独立应用入口与 WinUI 渲染截图方式；测试使用独立设置和目录。验收程序初次在控件加载前切换 Tab 导致测试超时，等待控件加载后通过，没有为此修改产品行为。
-
-同日修复部分项目无法加载：官方旧文件存在 `//data/` 链接及 `size=0`、实际文件非空的记录，先前逐项校验使整个清单失败。兼容两种历史格式后，Fabric API、Iris、Sodium、Mod Menu 的完整清单均实测通过；共下载 5 个历史文件，SHA-1 全部正确。36 项模组下载检查、36 项 Fabric API 检查及其余离线回归通过；26 项原生界面检查通过，包含游戏/加载器副标题移除、绿橙红渠道字母及实际绑定。配色截图 `mod-channel-colors.png` 使用同一文件模拟三种发布渠道，仅用于验证显示。正常 Debug x64 入口在 `.local/mod-fixed` 构建通过，0 警告、0 错误；原输出被用户运行中的旧窗口占用，未强行关闭该窗口。未验证游戏启动或 Release。
-
-2026-10-31：筛选置顶和前置导航完成，48 项模组下载检查及其余离线回归通过，包含必需依赖筛选、版本引用补全、批量去重、缺失响应、不安全编号、图标回退、超时和取消。原生 WinUI 验收通过 29 项流程检查：真实 Iris → Sodium 文件列表 → 安装完成 → 返回 Iris，恢复版本、加载器和滚动位置；覆盖前置共同滚动、阶段隐藏、NeoForge 非默认置顶、不支持的筛选项及最外层返回。验收源为 `.local/ModDependenciesUiApp.cs`，日志 `.local/mod-dependency-ui.log`，实际渲染截图 `.local/screenshots/mod-dependency-{games,loaders,iris,scrolled,sodium,back}.png`；设置和目标均为独立验收目录。正常 Debug x64 入口在 `.local/mod-dependencies-build` 构建通过，0 警告、0 错误；未验证装模组后的游戏启动、其他 Windows/DPI 或 Release。
-
-2026-10-31 审查修复：模组任务纳入版本改名/删除保护，删除执行前重新检查忙碌状态，关闭阶段拒绝新任务和恢复操作。687 项离线检查、页面结构检查及独立目录下 5 项原生 WinUI 保护检查通过；Debug x64 构建零警告、零错误。界面验收源为 `.local/AuditFixesUiApp.cs`，日志为 `.local/audit-fixes-ui.log`。未验证实网下载、实际游戏运行或 Release。
-
-整合包复用此三级详情，但文件确认弹窗改为版本名输入，见[整合包安装](modpack-installation.md)。
+整合包复用三级详情，但通过名称弹窗创建新实例，见[整合包安装](modpack-installation.md)。
 
 ## 资源包、光影包与数据包
 
@@ -54,12 +34,6 @@ dotnet run --project tests/NyxLauncher.Checks --no-build -- --live-mod-install .
 - 创建、开始和重试客户端安装任务时重新验证版本与存档归属；拒绝链接路径、已删除存档及不兼容版本，不会自动创建存档。活跃任务沿用版本目录保护。
 - 只下载所选 ZIP，不自动启用资源包、光影或数据包，不安装光影加载器，也不解压、修改存档内容。客户端按 Minecraft 版本匹配，不验证额外渲染器要求。
 
-2026-10-31：新增 29 项离线资源检查及现有回归通过；18 项原生 WinUI 流程检查通过，覆盖两步详情、数据包两步弹窗、存档图标、返回及三类任务路径。验收使用固定发布清单和独立目录，源码 `.local/ResourceInstallUiApp.cs`，日志 `.local/resource-install-ui.log`，截图 `.local/screenshots/resource-worlds.png`。三类真实项目 Fresh Animations、Complementary Shaders - Reimagined、VeinMiner 的发布列表与各一个 ZIP 下载通过 SHA-1 校验，输出在 `.local/resource-live`。实网验收命令：`dotnet run --project tests/NyxLauncher.Checks -- --live-resources .local/resource-live`。沙箱内 TLS 凭据不可用，沙箱外重跑通过；测试构建仍报告 NuGet 漏洞源不可达警告。未验证游戏内启用效果、系统文件夹选择器交互或 Release。
-
-同日交互修正：步骤返回移至弹窗标题左上角，移除底部独立步骤按钮；存档图标改为文件流解码真实 icon.png。使用不同于默认草方块的测试图片验收，19 项原生界面检查通过，截图已更新；缺失、损坏或超过 8 MiB 的图标回退默认显示。
-
-同日路径布局修正：保留弹窗文件名；目标路径限制为单行，超宽使用省略号；无版本详情的存档卡片折叠空行，消除名称与路径间的空白。22 项原生界面检查通过，包含文件名保留及路径单行省略。
-
 ## 本地拖入安装
 
 将 ZIP、JAR 或 MRPACK 文件拖入启动器可安装本地资源；多文件按拖入列表逐个确认。根据归档内部标记识别资源包、数据包、光影、Fabric / Quilt / Forge / NeoForge 模组以及已有的 Modrinth / MCBBS / MultiMC 整合包。整合包继续走原安装流程；其他资源直接复用下载使用的 `ModInstallDialog`，本地入口按钮为“选择文件夹安装”。不识别的文件、文件夹或类型混合的包会明确报错，不猜测安装目录。
@@ -70,21 +44,16 @@ dotnet run --project tests/NyxLauncher.Checks --no-build -- --live-mod-install .
 
 本地模组只按归档声明的加载器筛选；尚不解析游戏版本范围、最低加载器版本和前置依赖。资源包、数据包及光影亦不验证游戏格式版本，安装前需自行核对兼容性。
 
-验证入口：`dotnet run --project tests/NyxLauncher.Checks -- --local-resources E:/下载`。可选样本路径只读，检查输出位于独立临时目录，不改动玩家文件。
-
-2026-10-31：本地资源检查与现有离线回归通过；用户提供的 Fast Better Grass、Xaero Minimap、Furnicraft 三个样本均完成识别、独立目录复制与逐字节比对。19 项原生弹窗检查通过，覆盖当前版本 B 置顶、数据包返回保留排序、真实文件复制、失败保留和下载入口复用；验收源 `.local/LocalResourceUiApp.cs`、日志 `.local/local-resource-ui.log`。Debug x64 构建与页面结构检查通过。未实测资源管理器鼠标拖放、系统文件夹选择器、游戏内加载或 Release；NuGet 漏洞数据源不可达仍产生 NU1900 警告。
-
-
 ## MCIM 镜像源
 
 按 [MCIM 接入指南](https://www.mcimirror.top/guide/start/getting-started) 复用现有设置，不新增源选项：搜索、标签、项目/前置和发布列表使用“版本列表源”；图标、模组、资源包、数据包、光影、整合包及其文件和 Fabric API JAR 使用“文件下载源”。镜像优先失败回退官方，官方优先失败回退镜像；官方缓慢策略在元数据/图标三秒后并发镜像，在文件响应头超过三秒后切换镜像。下载批次仍锁定原文件策略，资源请求读取最新设置。
 
 - `api.modrinth.com` → `mod.mcimirror.top/modrinth`；`cdn.modrinth.com` → `mod.mcimirror.top`。
 - 整合包中的 `edge.forgecdn.net` 文件可走 MCIM，`mediafilez.forgecdn.net` 按文档保持原样。CurseForge 搜索入口仍未启用。
-- 统一 UA 为报备的 `Nyx-Launcher/{程序集版本号}`，当前构建为 `Nyx-Launcher/1.0.0`；覆盖 API、图标每次重定向、文件 HEAD/GET/Range。名称固定，版本随程序集发布版本更新。
+- 统一 UA 为报备的 `Nyx-Launcher/{程序集版本号}`，覆盖 API、图标每次重定向、文件 HEAD/GET/Range。名称固定，版本随程序集发布版本更新。
 - 图标跟随最多五次 HTTPS 重定向，每源保留 4 MiB、尺寸与解码限制。文件仍校验长度和 SHA-1，保留禁止覆盖、取消和原子发布规则。自定义下载链接不会改写。
 - MCIM 返回缓存，可能晚于官方；当前按所选源接受有效缓存，不把 `sync_at` 当作发布时间，也不自动判定“最新版本”。需要刚发布的版本时选官方优先。镜像 404/连接失败回退官方，双源失败继续显示错误。
 
-离线检查包含源映射边界、设置变更、UA、404 回退、图标 302、分段 HEAD/Range、损坏文件回退与临时文件清理。实网入口：`dotnet run --project tests/NyxLauncher.Checks -- --mcim-live`；该检查仅在本测试进程直连，禁止官方回退掩盖镜像故障，下载单个 Fabric API 文件至临时目录并校验 SHA-1 后清理。
+## 维护入口
 
-2026-10-31：MCIM 离线检查及完整既有离线回归通过，Debug x64 构建 0 警告、0 错误，差异空白检查通过。实网搜索曾返回有效结果、全量发布请求收到 HTTP 200，但完整图标与文件下载验收未完成；后续直连明确遭遇本机 SocketException 10055（系统缓冲区不足），未关闭证书验证或修改系统网络设置。测试项目仍有 NuGet 漏洞数据源不可达的 NU1900 警告。未验证原生 UI、游戏加载或 Release。
+[ModrinthCatalogService](../src/NyxLauncher/Services/ModrinthCatalogService.cs)、[ModInstallationService](../src/NyxLauncher/Services/ModInstallationService.cs)、[ResourceInstallationService](../src/NyxLauncher/Services/ResourceInstallationService.cs)、[LocalResourceService](../src/NyxLauncher/Services/LocalResourceService.cs)、[ResourceMirror](../src/NyxLauncher/Services/ResourceMirror.cs)。验证入口统一见[验证指南](testing.md)。

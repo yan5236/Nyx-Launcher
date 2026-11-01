@@ -26,7 +26,7 @@ public static class MicrosoftLoginService
             if (!interactive && (previous is null || !previous.IsMicrosoft || previous.ClientId != settings.ClientId))
                 throw new InvalidOperationException("登录配置已改变，请在账户页重新登录微软账户。");
             var app = PublicClientApplicationBuilder.Create(settings.ClientId).WithTenantId("consumers")
-                .WithRedirectUri(settings.RedirectUri).Build();
+                .WithRedirectUri(settings.RedirectUri).WithHttpClientFactory(new MicrosoftHttpClientFactory()).Build();
             if (!interactive && previous is not null) cache = Unprotect(previous.ProtectedTokenCache!);
             bool loaded = false;
             app.UserTokenCache.SetBeforeAccess(args =>
@@ -51,7 +51,7 @@ public static class MicrosoftLoginService
                 result = await app.AcquireTokenSilent(Scopes, cached).ExecuteAsync(deadline.Token);
             }
             deadline.Token.ThrowIfCancellationRequested();
-            using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(30) };
+            using var http = new HttpClient(new NetworkDiagnosticHandler(new HttpClientHandler { AllowAutoRedirect = false })) { Timeout = TimeSpan.FromSeconds(30) };
             var session = await MinecraftAuthentication.AuthenticateAsync(http, result.AccessToken, progress, deadline.Token);
             if (previous is not null && previous.Uuid != session.UUID)
                 throw new InvalidOperationException("本次登录的 Minecraft 账户与原账户不同，请使用添加账户入口。");
