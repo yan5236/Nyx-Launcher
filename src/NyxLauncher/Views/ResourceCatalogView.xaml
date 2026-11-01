@@ -59,10 +59,10 @@
     Margin="0,0,-20,0" Padding="0,0,20,0" ScrollViewer.VerticalScrollBarVisibility="Auto"
     AutomationProperties.Name="资源列表">
     <ListView.ItemContainerStyle>
-     <Style TargetType="ListViewItem">
+     <Style TargetType="ListViewItem" BasedOn="{StaticResource CardListItemStyle}">
       <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
       <Setter Property="Padding" Value="16"/><Setter Property="Margin" Value="0,0,0,8"/>
-      <Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+      <Setter Property="Background" Value="{ThemeResource CardBrush}"/><Setter Property="BorderBrush" Value="{ThemeResource LineBrush}"/>
       <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="6"/>
      </Style>
     </ListView.ItemContainerStyle>
@@ -74,9 +74,9 @@
        <StackPanel Grid.Column="1" Spacing="5">
         <TextBlock Text="{x:Bind Title}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
          ToolTipService.ToolTip="{x:Bind Title}"/>
-        <TextBlock Text="{x:Bind Description}" FontSize="13" Foreground="#6B7A70" TextTrimming="CharacterEllipsis"
+        <TextBlock Text="{x:Bind Description}" FontSize="13" Foreground="{ThemeResource MutedBrush}" TextTrimming="CharacterEllipsis"
          ToolTipService.ToolTip="{x:Bind Description}"/>
-        <RichTextBlock FontSize="12" Foreground="#6B7A70" TextWrapping="Wrap" IsTextSelectionEnabled="False">
+        <RichTextBlock FontSize="12" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap" IsTextSelectionEnabled="False">
          <Paragraph>
           <InlineUIContainer><StackPanel Orientation="Horizontal" Spacing="5" Margin="0,0,14,0" ToolTipService.ToolTip="下载量">
            <FontIcon Glyph="&#xE896;" FontSize="12"/><TextBlock Text="{x:Bind DownloadText}" FontSize="12"/>
@@ -106,7 +106,7 @@
     </ListView.ItemTemplate>
    </ListView>
    <views:VersionLoadStatus x:Name="LoadStatus" Visibility="Collapsed"/>
-   <TextBlock x:Name="EmptyHint" Text="没有匹配的内容" FontSize="15" Foreground="#6B7A70"
+   <TextBlock x:Name="EmptyHint" Text="没有匹配的内容" FontSize="15" Foreground="{ThemeResource MutedBrush}"
     HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
   </Grid>
  </Grid>

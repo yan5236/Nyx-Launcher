@@ -10,6 +10,17 @@ $navigation = $shell.SelectSingleNode('//ui:NavigationView', $ns)
 if ($navigation.SelectSingleNode('ui:NavigationView.PaneHeader', $ns)) {
     throw '侧栏不应包含应用品牌区域。'
 }
+if ($navigation.IsPaneToggleButtonVisible -ne 'False' -or $navigation.PaneOpening -ne 'Navigation_PaneOpening' -or
+    $navigation.PaneClosing -ne 'Navigation_PaneClosing') {
+    throw '侧栏必须支持左上角折叠按钮并同步账户入口布局。'
+}
+[xml]$window = Get-Content (Join-Path $project 'MainWindow.xaml') -Raw -Encoding utf8
+$wns = [System.Xml.XmlNamespaceManager]::new($window.NameTable)
+$wns.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$titleBar = $window.SelectSingleNode('//ui:TitleBar', $wns)
+if ($titleBar.IsPaneToggleButtonVisible -ne 'True' -or $titleBar.PaneToggleRequested -ne 'TitleBar_PaneToggleRequested') {
+    throw '折叠按钮必须位于窗口标题栏，侧栏内部不重复显示。'
+}
 $items = $navigation.SelectNodes('ui:NavigationView.MenuItems/ui:NavigationViewItem', $ns)
 if (($items | ForEach-Object { $_.Content }) -join ',' -cne '首页,版本管理,下载') {
     throw '主导航必须依次为首页、版本管理、下载。'
@@ -209,7 +220,7 @@ foreach ($loader in @('Forge', 'Fabric', 'NeoForge')) {
     $title = $install.SelectSingleNode("//ui:TextBlock[@Text='$loader']", $ins)
     $status = $install.SelectSingleNode("//ui:TextBlock[@x:Name='${loader}Status']", $ins)
     if (-not $title -or -not $status -or -not [object]::ReferenceEquals($title.ParentNode, $status.ParentNode) -or
-        $status.FontSize -ne '13' -or $status.Foreground -ne '#6B7A70' -or
+        $status.FontSize -ne '13' -or $status.Foreground -ne '{ThemeResource MutedBrush}' -or
         -not $title.ParentNode.SelectSingleNode('ui:FontIcon[@Grid.Column="3"]', $ins)) {
         throw "$loader 必须有同一行的灰色状态和右箭头。"
     }

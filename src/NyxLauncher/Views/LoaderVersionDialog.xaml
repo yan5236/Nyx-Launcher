@@ -3,7 +3,7 @@
                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                xmlns:services="using:NyxLauncher.Services"
-               HorizontalContentAlignment="Stretch" RequestedTheme="Light"
+               HorizontalContentAlignment="Stretch"
                AutomationProperties.Name="选择加载器版本">
     <Grid x:Name="DialogContent" RowSpacing="20">
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
@@ -36,7 +36,7 @@
                             <Image Source="{Binding Icon}" Width="36" Height="36" Stretch="Uniform" />
                             <StackPanel Grid.Column="1" Spacing="3">
                                 <TextBlock Text="{Binding Version}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                <TextBlock Text="{Binding Detail}" FontSize="13" Foreground="#6B7A70" />
+                                <TextBlock Text="{Binding Detail}" FontSize="13" Foreground="{ThemeResource MutedBrush}" />
                             </StackPanel>
                         </Grid>
                     </Border>

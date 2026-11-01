@@ -24,16 +24,16 @@
      <Border Style="{StaticResource CardStyle}">
       <Grid ColumnSpacing="14">
        <Grid.ColumnDefinitions><ColumnDefinition Width="40"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-       <Border Width="40" Height="40" CornerRadius="6" Background="#E0EBD6" VerticalAlignment="Center">
-        <FontIcon Glyph="{x:Bind Glyph}" FontSize="20" Foreground="#397450"/>
+       <Border Width="40" Height="40" CornerRadius="6" Background="{ThemeResource TintBrush}" VerticalAlignment="Center">
+        <FontIcon Glyph="{x:Bind Glyph}" FontSize="20" Foreground="{ThemeResource SecondaryBrush}"/>
        </Border>
        <StackPanel Grid.Column="1" Spacing="5">
         <TextBlock Text="{x:Bind Name}" FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-        <TextBlock Text="{x:Bind Detail, Mode=OneWay}" FontSize="12" Foreground="#6B7A70" TextTrimming="CharacterEllipsis"
+        <TextBlock Text="{x:Bind Detail, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource MutedBrush}" TextTrimming="CharacterEllipsis"
                    ToolTipService.ToolTip="{x:Bind Detail, Mode=OneWay}" />
         <Grid ColumnSpacing="10">
          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="40"/></Grid.ColumnDefinitions>
-         <ProgressBar Value="{x:Bind Percent, Mode=OneWay}" Maximum="100" Height="5" VerticalAlignment="Center" Foreground="#397450"/>
+         <ProgressBar Value="{x:Bind Percent, Mode=OneWay}" Maximum="100" Height="5" VerticalAlignment="Center" Foreground="{ThemeResource SecondaryBrush}"/>
          <TextBlock Grid.Column="1" Text="{x:Bind PercentText, Mode=OneWay}" FontSize="12" HorizontalAlignment="Right"/>
         </Grid>
        </StackPanel>
@@ -56,7 +56,7 @@
     </DataTemplate>
    </ListView.ItemTemplate>
   </ListView>
-  <TextBlock x:Name="Empty" Grid.Row="1" Text="暂无下载任务" Foreground="#6B7A70" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+  <TextBlock x:Name="Empty" Grid.Row="1" Text="暂无下载任务" Foreground="{ThemeResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
   <InfoBar x:Name="Error" Grid.Row="2" Severity="Error" IsClosable="True" />
  </Grid>
 </UserControl>

@@ -35,6 +35,6 @@ public sealed partial class MainPage
                 if (target is not null) destination = resource.Resolve(folder, target, isolation, destination);
                 await resource.CopyAsync(destination!);
             });
-        await dialog.ShowAsync();
+        await dialog.ShowThemedAsync();
     }
 }

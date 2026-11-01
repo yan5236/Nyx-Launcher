@@ -145,7 +145,7 @@ public sealed partial class HomeView : UserControl
             while (!_closing && VisualTreeHelper.GetOpenPopupsForXamlRoot(XamlRoot).Any(popup => popup.Child is ContentDialog))
                 await Task.Delay(100);
             CrashAnalysisChanged?.Invoke(this, false);
-            if (!_closing) await new LaunchFailureDialog(XamlRoot, session, report).ShowAsync();
+            if (!_closing) await new LaunchFailureDialog(XamlRoot, session, report).ShowThemedAsync();
         }
         finally { CrashAnalysisChanged?.Invoke(this, false); }
     }
@@ -256,6 +256,8 @@ public sealed partial class HomeView : UserControl
         var stopBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 183, 52, 52));
         LaunchButton.Background = busy ? stopBrush : (SolidColorBrush)Application.Current.Resources["AccentButtonBackground"];
         LaunchButton.BorderBrush = LaunchButton.Background;
+        var foreground = busy ? new SolidColorBrush(Microsoft.UI.Colors.White) : (SolidColorBrush)Application.Current.Resources["AccentButtonForeground"];
+        LaunchLabel.Foreground = LaunchVersionLabel.Foreground = LaunchIcon.Foreground = foreground;
         foreach (string key in new[] { "AccentButtonBackgroundPointerOver", "AccentButtonBackgroundPressed",
             "AccentButtonBorderBrushPointerOver", "AccentButtonBorderBrushPressed", "AccentButtonBackgroundDisabled" })
         {

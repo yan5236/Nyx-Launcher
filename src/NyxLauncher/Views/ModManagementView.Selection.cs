@@ -106,7 +106,7 @@ public sealed partial class ModManagementView
                 var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = $"删除 {selected.Length} 个模组？",
                     Content = new ScrollViewer { MaxHeight = 320, Content = new TextBlock { Text = string.Join("\n", selected.Select(x => x.FileName)), TextWrapping = TextWrapping.Wrap } },
                     PrimaryButtonText = "移入回收站", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close };
-                if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+                if (await dialog.ShowThemedAsync() != ContentDialogResult.Primary) return;
             }
             var failures = new List<string>();
             foreach (var mod in selected)

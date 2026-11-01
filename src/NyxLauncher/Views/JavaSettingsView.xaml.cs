@@ -172,7 +172,7 @@ public sealed partial class JavaSettingsView : UserControl
         try
         {
             _dialog = new InstallJavaDialog(XamlRoot, _tasks, _store);
-            await _dialog.ShowAsync();
+            await _dialog.ShowThemedAsync();
         }
         catch (Exception ex) { if (!_closing) ShowStatus(ex.Message, true); }
         finally { _dialog = null; if (!_closing) InstallButton.IsEnabled = true; }

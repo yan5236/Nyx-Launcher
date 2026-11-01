@@ -49,7 +49,7 @@ public sealed partial class DownloadTasksView : UserControl
     {
         if (_tasks is null || _dialogOpen) return;
         _dialogOpen = true;
-        try { await new CreateDownloadDialog(XamlRoot, _tasks).ShowAsync(); }
+        try { await new CreateDownloadDialog(XamlRoot, _tasks).ShowThemedAsync(); }
         finally { _dialogOpen = false; }
     }
 

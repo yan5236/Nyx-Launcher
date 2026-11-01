@@ -127,7 +127,7 @@ public sealed partial class AccountsView : UserControl
             bool restrict = previous is null && AccountRegionPolicy.RequiresMicrosoftOnly(_accounts!, await IsOutsideMainlandAsync());
             _dialog = new AddAccountDialog(_accounts!, previous, restrict) { XamlRoot = XamlRoot };
             if (import is not null) _dialog.Loaded += (_, _) => _dialog?.ImportServer(import);
-            await _dialog.ShowAsync();
+            await _dialog.ShowThemedAsync();
             await _dialog.StopAsync();
         }
         catch (Exception ex) { Error.Message = ex.Message; Error.IsOpen = true; }

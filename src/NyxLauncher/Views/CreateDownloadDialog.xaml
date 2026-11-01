@@ -5,13 +5,6 @@
  Title="创建下载" PrimaryButtonText="取消" SecondaryButtonText="下载"
  SecondaryButtonStyle="{StaticResource DeepButtonStyle}"
  DefaultButton="Secondary" SecondaryButtonClick="Download_Click">
- <ContentDialog.Resources>
-  <ResourceDictionary>
-   <ResourceDictionary.MergedDictionaries>
-    <ResourceDictionary Source="ms-appx:///Themes/AccentButtonResources.xaml"/>
-   </ResourceDictionary.MergedDictionaries>
-  </ResourceDictionary>
- </ContentDialog.Resources>
  <StackPanel Spacing="18" MinWidth="350">
   <TextBox x:Name="DownloadUrl" Header="下载链接" PlaceholderText="https://…/文件名.zip"
            AutomationProperties.Name="下载链接" />

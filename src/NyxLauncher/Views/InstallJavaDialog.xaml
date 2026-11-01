@@ -4,9 +4,6 @@
  xmlns:services="using:NyxLauncher.Services"
  PrimaryButtonText="取消" SecondaryButtonText="" IsSecondaryButtonEnabled="False" SecondaryButtonClick="Install_Click" SecondaryButtonStyle="{StaticResource DeepButtonStyle}"
  DefaultButton="None" HorizontalContentAlignment="Stretch" AutomationProperties.Name="安装 Java">
- <ContentDialog.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries>
-  <ResourceDictionary Source="ms-appx:///Themes/AccentButtonResources.xaml"/>
- </ResourceDictionary.MergedDictionaries></ResourceDictionary></ContentDialog.Resources>
  <StackPanel x:Name="DialogContent" Spacing="20" MinWidth="340">
   <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <Button x:Name="BackButton" Visibility="Collapsed" Click="Back_Click" Background="Transparent" BorderThickness="0" Padding="8" AutomationProperties.Name="返回上一步"><FontIcon Glyph="&#xE72B;" FontSize="18"/></Button>
@@ -25,27 +22,27 @@
    <Button Tag="Mojang" Click="Channel_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="Mojang 下载渠道">
     <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
      <Image Source="ms-appx:///Assets/java-mojang.png" Width="40" Height="40"/>
-     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="Mojang" FontWeight="SemiBold"/><TextBlock Text="Minecraft 官方游戏运行时" FontSize="12" Foreground="#6B7A70"/></StackPanel>
+     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="Mojang" FontWeight="SemiBold"/><TextBlock Text="Minecraft 官方游戏运行时" FontSize="12" Foreground="{ThemeResource MutedBrush}"/></StackPanel>
     </Grid>
    </Button>
    <Button Tag="Temurin" Click="Channel_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="Eclipse Temurin 下载渠道">
     <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
      <Image Source="ms-appx:///Assets/java-temurin.svg" Width="40" Height="40"/>
-     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="Eclipse Temurin" FontWeight="SemiBold"/><TextBlock Text="Eclipse Adoptium · JDK" FontSize="12" Foreground="#6B7A70"/></StackPanel>
+     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="Eclipse Temurin" FontWeight="SemiBold"/><TextBlock Text="Eclipse Adoptium · JDK" FontSize="12" Foreground="{ThemeResource MutedBrush}"/></StackPanel>
     </Grid>
    </Button>
    <Button Tag="Zulu" Click="Channel_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="Zulu 下载渠道">
     <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
      <Image Source="ms-appx:///Assets/java-zulu.svg" Width="44" Height="40"/>
-     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="Zulu" FontWeight="SemiBold"/><TextBlock Text="Azul Zulu · JDK" FontSize="12" Foreground="#6B7A70"/></StackPanel>
+     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="Zulu" FontWeight="SemiBold"/><TextBlock Text="Azul Zulu · JDK" FontSize="12" Foreground="{ThemeResource MutedBrush}"/></StackPanel>
     </Grid>
    </Button>
   </StackPanel>
   <StackPanel x:Name="VersionPanel" Spacing="12" Visibility="Collapsed">
-   <TextBlock x:Name="VersionHint" TextWrapping="Wrap" Foreground="#6B7A70"/>
+   <TextBlock x:Name="VersionHint" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}"/>
    <ProgressBar x:Name="VersionLoading" IsIndeterminate="True" Visibility="Collapsed"/>
    <ListView x:Name="Versions" MaxHeight="280" SelectionMode="Single" SelectionChanged="Version_SelectionChanged" AutomationProperties.Name="可用 Java 版本">
-    <ListView.ItemTemplate><DataTemplate x:DataType="services:JavaPackage"><StackPanel Spacing="4" Padding="4,6"><TextBlock Text="{x:Bind Label}"/><TextBlock Text="{x:Bind Description}" FontSize="12" Foreground="#6B7A70"/></StackPanel></DataTemplate></ListView.ItemTemplate>
+    <ListView.ItemTemplate><DataTemplate x:DataType="services:JavaPackage"><StackPanel Spacing="4" Padding="4,6"><TextBlock Text="{x:Bind Label}"/><TextBlock Text="{x:Bind Description}" FontSize="12" Foreground="{ThemeResource MutedBrush}"/></StackPanel></DataTemplate></ListView.ItemTemplate>
    </ListView>
    <Button x:Name="RetryButton" Content="重新加载版本" Click="Retry_Click" Visibility="Collapsed"/>
   </StackPanel>

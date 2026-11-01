@@ -233,7 +233,7 @@ public sealed partial class ModManagementView : UserControl
                 PrimaryButtonText = mod.Project is not null ? "Modrinth 主页" : "",
                 SecondaryButtonText = mod.Project is not null && version is not null ? "下载" : "",
                 Content = new TextBlock { Text = string.Join("\n\n", new[] { mod.Description, mod.FileName, mod.State }.Where(x => x.Length > 0)), TextWrapping = TextWrapping.Wrap } };
-            var result = await dialog.ShowAsync();
+            var result = await dialog.ShowThemedAsync();
             if (mod.Project is not { } project) return;
             if (result == ContentDialogResult.Primary)
             {
@@ -269,7 +269,7 @@ public sealed partial class ModManagementView : UserControl
         {
             var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = "删除“" + mod.Title + "”？", Content = mod.FileName,
                 PrimaryButtonText = "移入回收站", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close };
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+            if (await dialog.ShowThemedAsync() != ContentDialogResult.Primary) return;
             EnsureWritable(); ModManagementService.Validate(DirectoryPath(), mod);
             Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(mod.Path, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
                 Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin, Microsoft.VisualBasic.FileIO.UICancelOption.ThrowException);

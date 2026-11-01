@@ -27,7 +27,6 @@ public sealed class ModpackInstallDialog : ContentDialog
         _tasks = tasks; _folder = folder; _path = path; _remote = remote;
         _name = new TextBox { Header = "版本名称", Text = name, MinWidth = 320, MaxLength = 128 };
         Content = new StackPanel { Spacing = 12, Children = { _name, _error } };
-        Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("ms-appx:///Themes/AccentButtonResources.xaml") });
         _name.TextChanged += NameChanged;
         SecondaryButtonClick += Install;
         Validate();

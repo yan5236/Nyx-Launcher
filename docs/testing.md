@@ -18,6 +18,7 @@ dotnet build NyxLauncher.slnx -c Debug -p:Platform=x64
 
 | 参数 | 范围及副作用 |
 | --- | --- |
+| `--theme` | 外观配置往返、明暗配色独立、边界校验、损坏与写入失败保护 |
 | `--advanced-launch` | 内存之外的高级配置、参数与兼容组件规则 |
 | `--mod-management` | 模组目录、启停、批量摘要、兼容更新、禁用状态保留、冲突及失败保护；仅使用临时文件和协议夹具 |
 | `--connection-pool` | 本地回环连接复用及网络诊断；需要允许监听/连接回环端口 |
@@ -25,6 +26,20 @@ dotnet build NyxLauncher.slnx -c Debug -p:Platform=x64
 | `--microsoft-launch-arguments <验收目录>` | 复用已安装验收版本，以合成会话构造参数，不启动游戏 |
 | `--local-resources <样本目录>` | 读取测试源码指定文件名的样本，输出写入临时目录，不改动样本；不是任意目录批量扫描，默认检查已覆盖合成资源 |
 | `--java-scan <验收目录>` | 扫描本机 Java，结果写入验收目录，不改用户 Java 配置 |
+
+## 背景文字恢复检查
+
+在 Windows 桌面会话中执行以下命令，使用独立窗口和正式控件模板验证浅深色下添加背景、移除背景及不透明度降为零后的前景恢复，同时检查分类标签悬停、按下和选中状态、宽图实际绘制范围超出窗口布局槽时的取样坐标，以及可编辑筛选框选区的主题主色。交互检查通过切换真实模板视觉状态执行，不替代鼠标端到端验收。此入口不打开业务页面、不修改用户配置；结果写入独立输出目录的 `contrast-checks.log`，失败返回非零退出码。
+
+```powershell
+$contrastTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/BackgroundContrast.targets'
+$contrastOutput = Join-Path $PWD '.local/contrast-checks/'
+dotnet build src/NyxLauncher/NyxLauncher.csproj -c Debug -p:Platform=x64 "-p:CustomAfterMicrosoftCommonTargets=$contrastTargets" "-p:OutputPath=$contrastOutput"
+if ($LASTEXITCODE -ne 0) { throw '背景文字检查构建失败' }
+$contrastProcess = Start-Process (Join-Path $contrastOutput 'NyxLauncher.exe') -Wait -PassThru
+Get-Content (Join-Path $contrastOutput 'contrast-checks.log')
+if ($contrastProcess.ExitCode -ne 0) { throw '背景文字恢复检查失败' }
+```
 
 ## 实网与安装检查
 

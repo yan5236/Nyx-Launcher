@@ -108,7 +108,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            await new ContentDialog { XamlRoot = XamlRoot, Title = "导入失败", Content = ex.Message, CloseButtonText = "确定" }.ShowAsync();
+            await new ContentDialog { XamlRoot = XamlRoot, Title = "导入失败", Content = ex.Message, CloseButtonText = "确定" }.ShowThemedAsync();
         }
         finally { _importing = false; }
     }
@@ -163,6 +163,45 @@ public sealed partial class MainPage : Page
     {
         Navigation.SelectedItem = null;
         ShowPage("settings");
+    }
+
+    /// <summary>账户菜单使用独立的不透明主题底色，并在弹出前同步窗口实际明暗，避免弹层回退到系统主题。</summary>
+    private void AccountMenu_Opening(object sender, object args)
+    {
+        var style = new Style(typeof(MenuFlyoutPresenter))
+        {
+            BasedOn = (Style)Application.Current.Resources["OpaqueMenuPresenterStyle"]
+        };
+        style.Setters.Add(new Setter(FrameworkElement.RequestedThemeProperty, ActualTheme));
+        ((MenuFlyout)sender).MenuFlyoutPresenterStyle = style;
+    }
+
+    /// <summary>切换侧栏展开状态，供窗口标题栏调用，不改变当前选中页面。</summary>
+    public void ToggleNavigationPane() => Navigation.IsPaneOpen = !Navigation.IsPaneOpen;
+
+    /// <summary>展开左侧栏时恢复账户名称和下拉标记；保留当前页面及账户菜单实例。</summary>
+    private void Navigation_PaneOpening(NavigationView sender, object args) => UpdateAccountPane(true);
+
+    /// <summary>收起左侧栏时仅显示账户图标，使窄侧栏中的账户与设置入口仍可点击。</summary>
+    private void Navigation_PaneClosing(NavigationView sender, NavigationViewPaneClosingEventArgs args) => UpdateAccountPane(false);
+
+    /// <summary>按侧栏状态切换账户入口布局；收起时移除隐藏列间距并居中头像，菜单向窗口内侧展开，展开时恢复名称布局。</summary>
+    private void UpdateAccountPane(bool open)
+    {
+        if (AccountName is null || AccountChevron is null) return;
+        foreach (var item in new[] { HomeItem, VersionsItem, DownloadsItem })
+            item.Margin = open ? new Thickness(8, 2, 8, 2) : new Thickness(0, 2, 0, 2);
+        AccountName.Visibility = AccountChevron.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        AccountMenuLayout.ColumnSpacing = open ? 10 : 0;
+        AccountMenuLayout.ColumnDefinitions[1].Width = open ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        AccountMenuLayout.ColumnDefinitions[2].Width = open ? GridLength.Auto : new GridLength(0);
+        AccountMenuButton.Width = open ? double.NaN : Navigation.CompactPaneLength;
+        AccountMenuButton.HorizontalContentAlignment = open ? HorizontalAlignment.Stretch : HorizontalAlignment.Center;
+        AccountMenuButton.Flyout.Placement = open
+            ? Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.TopEdgeAlignedLeft
+            : Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.RightEdgeAlignedBottom;
+        AccountMenuButton.Padding = new Thickness(open ? 10 : 0);
+        AccountMenuButton.Margin = open ? new Thickness(8, 8, 8, 12) : new Thickness(0, 8, 0, 12);
     }
 
     /// <summary>显示指定页面；版本管理扫描目录，下载页加载清单，设置页激活 Java 管理，首页刷新选择。</summary>

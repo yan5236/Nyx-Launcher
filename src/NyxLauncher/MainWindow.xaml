@@ -12,13 +12,15 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid RequestedTheme="Light" Background="#F0F3EC">
+    <Grid x:Name="ThemeRoot" Background="{ThemeResource ShellBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar x:Name="AppTitleBar" Title="Nyx Launcher" />
+        <Image x:Name="WindowBackground" Grid.RowSpan="2" Stretch="UniformToFill" IsHitTestVisible="False" />
+        <TitleBar x:Name="AppTitleBar" Title="Nyx Launcher" IsPaneToggleButtonVisible="True"
+                  PaneToggleRequested="TitleBar_PaneToggleRequested"><TitleBar.IconSource><BitmapIconSource UriSource="ms-appx:///Assets/NyxLogo.png" ShowAsMonochrome="False" /></TitleBar.IconSource></TitleBar>
         <Frame x:Name="RootFrame" Grid.Row="1" />
     </Grid>
 </Window>

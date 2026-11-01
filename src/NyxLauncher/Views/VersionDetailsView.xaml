@@ -13,7 +13,7 @@
             <views:VersionIcon x:Name="HeaderIcon" Grid.Column="1" Width="48" Height="48"/>
             <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
                 <TextBlock x:Name="VersionName" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                <TextBlock x:Name="VersionInfo" FontSize="13" Foreground="#6B7A70" TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="VersionInfo" FontSize="13" Foreground="{ThemeResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
         </Grid>
         <SelectorBar x:Name="Tabs" Grid.Row="1" SelectionChanged="Tabs_SelectionChanged" AutomationProperties.Name="版本详情分类">
@@ -39,7 +39,7 @@
                         </StackPanel>
                     </Grid>
                 </Border>
-                <Rectangle Height="1" Fill="#DDE5DF"/>
+                <Rectangle Height="1" Fill="{ThemeResource LineBrush}"/>
                 <StackPanel Spacing="10">
                     <TextBlock Text="快速打开" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,2"/>
                     <Button Tag="version" Click="OpenFolder_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16,12" AutomationProperties.Name="打开版本文件夹">
@@ -55,17 +55,17 @@
                         <StackPanel Orientation="Horizontal" Spacing="12"><FontIcon Glyph="&#xE722;" FontSize="18"/><TextBlock Text="截图文件夹"/></StackPanel>
                     </Button>
                 </StackPanel>
-                <Rectangle Height="1" Fill="#DDE5DF"/>
+                <Rectangle Height="1" Fill="{ThemeResource LineBrush}"/>
                 <StackPanel Spacing="10">
-                    <TextBlock Text="危险区" FontSize="16" FontWeight="SemiBold" Foreground="#A4262C"/>
-                    <Border Style="{StaticResource CardStyle}" BorderBrush="#E3B4B1" Padding="20">
+                    <TextBlock Text="危险区" FontSize="16" FontWeight="SemiBold" Foreground="{ThemeResource DangerBrush}"/>
+                    <Border Style="{StaticResource CardStyle}" BorderBrush="{ThemeResource DangerLineBrush}" Padding="20">
                         <Grid ColumnSpacing="20">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <StackPanel Spacing="6" VerticalAlignment="Center">
                                 <TextBlock Text="删除版本" FontWeight="SemiBold"/>
-                                <TextBlock Text="将版本文件夹及其中的独立存档、模组和设置移入回收站。" Foreground="#6B7A70" TextWrapping="Wrap"/>
+                                <TextBlock Text="将版本文件夹及其中的独立存档、模组和设置移入回收站。" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
-                            <Button Grid.Column="1" Content="删除版本" Click="Delete_Click" Foreground="#A4262C" VerticalAlignment="Center" AutomationProperties.Name="删除当前版本"/>
+                            <Button Grid.Column="1" Content="删除版本" Click="Delete_Click" Foreground="{ThemeResource DangerBrush}" VerticalAlignment="Center" AutomationProperties.Name="删除当前版本"/>
                         </Grid>
                     </Border>
                 </StackPanel>

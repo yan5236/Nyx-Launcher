@@ -105,7 +105,7 @@ public sealed partial class VersionsView : UserControl
     {
         if (_folders is null || _dialogOpen) return;
         _dialogOpen = true;
-        try { await new GameFolderDialog(XamlRoot, _folders).ShowAsync(); }
+        try { await new GameFolderDialog(XamlRoot, _folders).ShowThemedAsync(); }
         finally { _dialogOpen = false; FolderButton.Focus(FocusState.Programmatic); }
         await RefreshAsync();
     }
@@ -245,11 +245,7 @@ public sealed partial class VersionsView : UserControl
                 Content = "将以下版本文件夹移入回收站，其中的独立存档、模组和设置也会一起移入。共享资源和其他版本不受影响。\n\n" + version.DirectoryPath,
                 PrimaryButtonText = "移入回收站", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close
             };
-            dialog.Resources.MergedDictionaries.Add(new ResourceDictionary
-            {
-                Source = new Uri("ms-appx:///Themes/AccentButtonResources.xaml")
-            });
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+            if (await dialog.ShowThemedAsync() != ContentDialogResult.Primary) return;
             string target = await Task.Run(() => InstalledVersionService.GetDeletionTarget(folder, version));
             if (_mutationBlocked?.Invoke() == true) throw new IOException("请先停止游戏并等待游戏或模组安装任务结束，再删除版本。");
             Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(target,

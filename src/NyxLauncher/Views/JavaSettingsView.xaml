@@ -14,13 +14,13 @@
     <TextBlock Text="Java 版本检查（x64）" FontWeight="SemiBold"/>
     <ItemsControl x:Name="Coverage">
      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="12"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-     <ItemsControl.ItemTemplate><DataTemplate><Border Background="#EFF3EC" CornerRadius="6" Padding="10,8"><TextBlock Text="{Binding}"/></Border></DataTemplate></ItemsControl.ItemTemplate>
+     <ItemsControl.ItemTemplate><DataTemplate><Border Background="{ThemeResource ShellBrush}" CornerRadius="6" Padding="10,8"><TextBlock Text="{Binding}"/></Border></DataTemplate></ItemsControl.ItemTemplate>
     </ItemsControl>
    </StackPanel>
   </Border>
   <StackPanel x:Name="Scanning" Grid.Row="2" Spacing="8" Visibility="Collapsed" Margin="0,0,16,0">
    <ProgressBar IsIndeterminate="True"/>
-   <TextBlock x:Name="ScanStatus" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="#6B7A70"/>
+   <TextBlock x:Name="ScanStatus" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{ThemeResource MutedBrush}"/>
   </StackPanel>
   <ListView x:Name="JavaList" Grid.Row="3" SelectionMode="None" IsTabStop="False" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="本地 Java 列表">
    <ListView.Header>
@@ -35,7 +35,7 @@
     <Border Style="{StaticResource CardStyle}">
      <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <RadioButton GroupName="JavaSelection" Tag="{x:Bind Runtime.Home}" IsChecked="{x:Bind IsSelected, Mode=OneWay}" Checked="Java_Checked" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{x:Bind Runtime.Title}">
-       <StackPanel Spacing="5"><TextBlock Text="{x:Bind Runtime.Title}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Runtime.Detail}" TextWrapping="Wrap" Foreground="#6B7A70" FontSize="12"/></StackPanel>
+       <StackPanel Spacing="5"><TextBlock Text="{x:Bind Runtime.Title}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Runtime.Detail}" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}" FontSize="12"/></StackPanel>
       </RadioButton>
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
        <Button Tag="{x:Bind Runtime.Home}" Click="Folder_Click" ToolTipService.ToolTip="打开文件夹" AutomationProperties.Name="打开 Java 文件夹"><FontIcon Glyph="&#xE8B7;" FontSize="16"/></Button>
@@ -44,7 +44,7 @@
      </Grid>
     </Border>
    </DataTemplate></ListView.ItemTemplate>
-   <ListView.Footer><TextBlock x:Name="Empty" Text="未发现 Java" Foreground="#6B7A70"/></ListView.Footer>
+   <ListView.Footer><TextBlock x:Name="Empty" Text="未发现 Java" Foreground="{ThemeResource MutedBrush}"/></ListView.Footer>
   </ListView>
   <InfoBar x:Name="Status" Grid.Row="4" IsClosable="True" Margin="0,0,16,0"/>
  </Grid>

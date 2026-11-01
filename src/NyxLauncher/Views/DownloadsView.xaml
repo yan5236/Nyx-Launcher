@@ -60,13 +60,13 @@
                       ScrollViewer.VerticalScrollBarVisibility="Auto"
                       AutomationProperties.Name="下载内容列表">
                 <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
+                    <Style TargetType="ListViewItem" BasedOn="{StaticResource CardListItemStyle}">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                         <Setter Property="Padding" Value="14" />
                         <Setter Property="Margin" Value="0,0,0,8" />
                         <Setter Property="MinHeight" Value="64" />
-                        <Setter Property="Background" Value="White" />
-                        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+                        <Setter Property="Background" Value="{ThemeResource CardBrush}" />
+                        <Setter Property="BorderBrush" Value="{ThemeResource LineBrush}" />
                         <Setter Property="BorderThickness" Value="1" />
                         <Setter Property="CornerRadius" Value="6" />
                     </Style>
@@ -79,24 +79,24 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <Border Background="#E0EBD6" Width="40" Height="40" CornerRadius="6"
+                            <Border Background="{ThemeResource TintBrush}" Width="40" Height="40" CornerRadius="6"
                                     VerticalAlignment="Center">
-                                <FontIcon Glyph="{x:Bind Glyph}" FontSize="20" Foreground="#397450" />
+                                <FontIcon Glyph="{x:Bind Glyph}" FontSize="20" Foreground="{ThemeResource SecondaryBrush}" />
                             </Border>
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind Title}" FontSize="18" FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{x:Bind ReleaseDate}" FontSize="13" Foreground="#6B7A70" />
+                                <TextBlock Text="{x:Bind ReleaseDate}" FontSize="13" Foreground="{ThemeResource MutedBrush}" />
                             </StackPanel>
-                            <Border Grid.Column="2" Background="#F0F3EC" CornerRadius="4"
+                            <Border Grid.Column="2" Background="{ThemeResource ShellBrush}" CornerRadius="4"
                                     Padding="8,3" VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Kind}" FontSize="12" Foreground="#5B6B60" />
+                                <TextBlock Text="{x:Bind Kind}" FontSize="12" Foreground="{ThemeResource MutedBrush}" />
                             </Border>
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
-            <TextBlock x:Name="EmptyHint" Text="没有匹配的内容" FontSize="15" Foreground="#6B7A70"
+            <TextBlock x:Name="EmptyHint" Text="没有匹配的内容" FontSize="15" Foreground="{ThemeResource MutedBrush}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        IsHitTestVisible="False" Visibility="Collapsed" />
         </Grid>

@@ -240,14 +240,14 @@ public sealed partial class ModDetailsView : UserControl
             {
                 dialog = new ModpackInstallDialog(XamlRoot, _tasks, folder, _project.Title, remote: file);
                 _dialog = dialog;
-                await dialog.ShowAsync();
+                await dialog.ShowThemedAsync();
                 return;
             }
             if (IsResource)
             {
                 dialog = CreateResourceDialog(file, folder);
                 _dialog = dialog;
-                await dialog.ShowAsync();
+                await dialog.ShowThemedAsync();
                 return;
             }
             var targets = (Directory.Exists(folder) ? InstalledVersionService.Scan(folder) : []).Where(x => ModInstallationService.IsCompatible(x, _game, _loader))
@@ -263,7 +263,7 @@ public sealed partial class ModDetailsView : UserControl
                 ShowNotice("已添加到下载任务：" + file.FileName, InfoBarSeverity.Success);
             }, preferredVersion: Directory.Exists(folder) ? _folders?.RestoreVersion(InstalledVersionService.Scan(folder))?.Name : null);
             _dialog = dialog;
-            await dialog.ShowAsync();
+            await dialog.ShowThemedAsync();
         }
         catch (Exception ex) { if (_active) ShowNotice(ex.Message, InfoBarSeverity.Error); }
         finally

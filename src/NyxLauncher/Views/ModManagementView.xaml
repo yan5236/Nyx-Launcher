@@ -41,11 +41,11 @@
         <CheckBox Loaded="SelectionBox_Loaded" MinWidth="0" VerticalAlignment="Center" AutomationProperties.Name="{Binding Title}"/>
         <Grid Grid.Column="1" Width="48" Height="48">
          <views:ResourceIcon Project="{Binding Project}" Width="48" Height="48" Opacity="{Binding ContentOpacity}"/>
-         <Rectangle Height="2" Fill="#8A918C" VerticalAlignment="Center" Visibility="{Binding DisabledLineVisibility}" IsHitTestVisible="False"/>
+         <Rectangle Height="2" Fill="{ThemeResource MutedBrush}" VerticalAlignment="Center" Visibility="{Binding DisabledLineVisibility}" IsHitTestVisible="False"/>
         </Grid>
         <StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center">
          <TextBlock Text="{Binding Title}" TextDecorations="{Binding TitleDecorations}" Opacity="{Binding ContentOpacity}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{Binding FileName}"/>
-         <TextBlock Text="{Binding Description}" Foreground="#6B7A70" TextTrimming="CharacterEllipsis"/>
+         <TextBlock Text="{Binding Description}" Foreground="{ThemeResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
         </StackPanel>
         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
          <Button Tag="{Binding}" Click="Update_Click" ToolTipService.ToolTip="{Binding UpdateLabel}" AutomationProperties.Name="{Binding UpdateLabel}" Visibility="{Binding UpdateVisibility}" Padding="8"><FontIcon Glyph="&#xE895;" FontSize="16"/></Button>
@@ -59,7 +59,7 @@
      </DataTemplate>
     </ListView.ItemTemplate>
    </ListView>
-   <TextBlock x:Name="Empty" Text="暂无模组" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" Foreground="#6B7A70"/>
+   <TextBlock x:Name="Empty" Text="暂无模组" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" Foreground="{ThemeResource MutedBrush}"/>
   </Grid>
  </Grid>
 </UserControl>

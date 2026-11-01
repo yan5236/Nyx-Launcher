@@ -5,14 +5,14 @@
  <Grid RowSpacing="16">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Button x:Name="AddButton" HorizontalAlignment="Right" Style="{StaticResource DeepButtonStyle}" Click="Add_Click" AutomationProperties.Name="添加账户">
-   <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="14"/><TextBlock Text="添加账户" Foreground="White"/></StackPanel>
+   <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="14"/><TextBlock Text="添加账户" Foreground="{ThemeResource AccentButtonForeground}"/></StackPanel>
   </Button>
   <InfoBar x:Name="Error" Grid.Row="1" Severity="Error" IsClosable="True"/>
   <Grid Grid.Row="2">
    <StackPanel x:Name="Empty" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
-    <FontIcon Glyph="&#xE77B;" FontSize="48" Foreground="#87928A"/>
-    <TextBlock Text="目前还没有账户呢，点击右上角添加" Foreground="#6B7A70" TextAlignment="Center" TextWrapping="Wrap"/>
-    <TextBlock x:Name="RegionHint" Visibility="Collapsed" MaxWidth="380" Foreground="#6B7A70" TextAlignment="Center" TextWrapping="Wrap"
+    <FontIcon Glyph="&#xE77B;" FontSize="48" Foreground="{ThemeResource MutedBrush}"/>
+    <TextBlock Text="目前还没有账户呢，点击右上角添加" Foreground="{ThemeResource MutedBrush}" TextAlignment="Center" TextWrapping="Wrap"/>
+    <TextBlock x:Name="RegionHint" Visibility="Collapsed" MaxWidth="380" Foreground="{ThemeResource MutedBrush}" TextAlignment="Center" TextWrapping="Wrap"
                Text="首次使用仅支持微软账户；添加微软账户后，离线与外置账户即可使用。"/>
    </StackPanel>
    <ListView x:Name="AccountList" SelectionMode="Single" SelectionChanged="Account_SelectionChanged" IsItemClickEnabled="True" ItemClick="Account_Click" AutomationProperties.Name="账户列表">
@@ -29,14 +29,14 @@
      </Style>
     </ListView.ItemContainerStyle>
     <ListView.ItemTemplate><DataTemplate x:DataType="views:AccountRow">
-     <Border Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6">
+     <Border Background="{ThemeResource CardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6">
      <Grid ColumnSpacing="14" MinHeight="64" Padding="0,10,14,10">
       <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="40"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-      <Border Width="3" Height="26" CornerRadius="2" Background="#397450" Visibility="{x:Bind SelectedVisibility, Mode=OneWay}"/>
+      <Border Width="3" Height="26" CornerRadius="2" Background="{ThemeResource SecondaryBrush}" Visibility="{x:Bind SelectedVisibility, Mode=OneWay}"/>
       <views:AccountAvatar Grid.Column="1" Account="{x:Bind Account}" Width="40" Height="40"/>
       <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
        <TextBlock Text="{x:Bind Name}" FontSize="17"/>
-       <TextBlock Text="{x:Bind TypeLabel}" FontSize="12" Foreground="#6B7A70"/>
+       <TextBlock Text="{x:Bind TypeLabel}" FontSize="12" Foreground="{ThemeResource MutedBrush}"/>
       </StackPanel>
       <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
        <Button Click="RetryLogin_Click" Tag="{x:Bind Account}" Width="34" Height="34" Padding="0" CornerRadius="17"

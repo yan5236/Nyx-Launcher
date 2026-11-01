@@ -23,14 +23,7 @@
      <ComboBoxItem Content="隔离所有版本" />
     </ComboBox>
    </Border>
-   <Border Style="{StaticResource CardStyle}">
-    <Grid>
-     <TextBlock Text="外观" VerticalAlignment="Center" />
-     <ComboBox SelectedIndex="0" IsEnabled="False" Width="180" HorizontalAlignment="Right" AutomationProperties.Name="外观">
-      <ComboBoxItem Content="浅色" />
-     </ComboBox>
-    </Grid>
-   </Border>
+   <views:AppearanceSettingsView />
   </StackPanel>
   </ScrollViewer>
   <ScrollViewer x:Name="DownloadPanel" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
@@ -45,7 +38,7 @@
        SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="版本列表源">
       <ComboBoxItem Content="尽量使用镜像源" /><ComboBoxItem Content="优先使用官方源，在加载缓慢时换用镜像源" /><ComboBoxItem Content="尽量使用官方源" />
      </ComboBox>
-     <TextBlock Text="优先源失败时自动尝试另一来源；混合策略在官方加载超过 3 秒时同时尝试镜像。" TextWrapping="Wrap" Foreground="#6B7A70" />
+     <TextBlock Text="优先源失败时自动尝试另一来源；混合策略在官方加载超过 3 秒时同时尝试镜像。" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}" />
     </StackPanel>
    </Border>
    <Border Style="{StaticResource CardStyle}">
@@ -59,7 +52,7 @@
      <TextBlock x:Name="SpeedLabel" />
      <Slider x:Name="Speed" Minimum="0" Maximum="100" StepFrequency="1"
        ValueChanged="Limit_ValueChanged" AutomationProperties.Name="下载速率限制，零为不限速" />
-     <TextBlock Text="并行文件数、线程数和限速由普通文件与 Minecraft 资源共用；修改后在下一批下载或空闲后继续任务时生效。" TextWrapping="Wrap" Foreground="#6B7A70" />
+     <TextBlock Text="并行文件数、线程数和限速由普通文件与 Minecraft 资源共用；修改后在下一批下载或空闲后继续任务时生效。" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}" />
     </StackPanel>
    </Border>
   </StackPanel>

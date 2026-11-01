@@ -1,6 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- WinUI 模板的交互状态在控件所在树中解析；页面和弹窗均合并此字典，防止回落到系统蓝色。 -->
+    <!-- 应用统一持有交互画刷，由 ThemeManager 原地更新；页面与弹窗不再创建独立副本。 -->
     <SolidColorBrush x:Key="AccentButtonBackground" Color="#28563B" />
     <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#346C4B" />
     <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#20452F" />

@@ -192,7 +192,7 @@ public sealed partial class InstallationView : UserControl
         _dialog = dialog;
         try
         {
-            await dialog.ShowAsync();
+            await dialog.ShowThemedAsync();
             if (_active && ReferenceEquals(_dialog, dialog) && dialog.SelectedVersion is not null)
             {
                 SelectedLoader = dialog.SelectedVersion;
@@ -225,7 +225,7 @@ public sealed partial class InstallationView : UserControl
         _dialog = dialog;
         try
         {
-            await dialog.ShowAsync();
+            await dialog.ShowThemedAsync();
             if (_active && ReferenceEquals(_dialog, dialog) && dialog.SelectedApi is not null)
             { _selectedApi = dialog.SelectedApi; RefreshRows(); }
         }

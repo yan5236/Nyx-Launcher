@@ -19,11 +19,11 @@ public sealed partial class VersionLoadStatus : UserControl
     /// <summary>交叉图标出现后停止已不可见的循环旋转，避免失败页持续消耗动画资源。</summary>
     private void Failure_Completed(object? sender, object e) => Spin.Stop();
 
-    /// <summary>清除上次错误并开始循环旋转；content 区分版本与资源，用于后续失败状态文本，默认兼容原调用。</summary>
+    /// <summary>清除上次错误、使用当前主题副色并开始循环旋转；content 区分版本与资源，用于后续失败状态文本，默认兼容原调用。</summary>
     public void Start(string content = "版本")
     {
         Stop();
-        RingBrush.Color = Color.FromArgb(255, 57, 116, 80);
+        RingBrush.Color = ((Microsoft.UI.Xaml.Media.SolidColorBrush)Application.Current.Resources["SecondaryBrush"]).Color;
         Arc.Opacity = 1;
         Cross.Opacity = 0;
         ErrorDetails.Visibility = Visibility.Collapsed;

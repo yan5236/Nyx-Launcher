@@ -10,21 +10,53 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <ResourceDictionary Source="Themes/AccentButtonResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <Color x:Key="SystemAccentColor">#397450</Color>
-            <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#397450" />
+            <SolidColorBrush x:Key="ShellBrush" Color="#F0F3EC" />
             <SolidColorBrush x:Key="PageBrush" Color="#FAFBF8" />
             <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="MenuSurfaceBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="CardHoverBrush" Color="#F2F6F3" />
+            <SolidColorBrush x:Key="CardPressedBrush" Color="#E9F0EB" />
             <SolidColorBrush x:Key="LineBrush" Color="#E3E7DF" />
+            <SolidColorBrush x:Key="TextBrush" Color="#263B30" />
+            <SolidColorBrush x:Key="MutedBrush" Color="#6B7A70" />
+            <SolidColorBrush x:Key="TintBrush" Color="#E0EBD6" />
+            <SolidColorBrush x:Key="SecondaryBrush" Color="#397450" />
+            <SolidColorBrush x:Key="DangerBrush" Color="#A4262C" />
+            <SolidColorBrush x:Key="DangerLineBrush" Color="#E3B4B1" />
+            <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#397450" />
             <Style TargetType="TextBlock">
                 <Setter Property="FontSize" Value="15" />
-                <Setter Property="Foreground" Value="#263B30" />
+                <Setter Property="Foreground" Value="{ThemeResource TextBrush}" />
             </Style>
             <Style x:Key="CardStyle" TargetType="Border">
-                <Setter Property="Background" Value="{StaticResource CardBrush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+                <Setter Property="Background" Value="{ThemeResource CardBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource LineBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="6" />
                 <Setter Property="Padding" Value="16" />
+            </Style>
+            <Style x:Key="OpaqueMenuPresenterStyle" TargetType="MenuFlyoutPresenter" BasedOn="{StaticResource DefaultMenuFlyoutPresenterStyle}">
+                <Setter Property="Background" Value="{ThemeResource MenuSurfaceBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource TextBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource LineBrush}" />
+            </Style>
+            <Style x:Key="CardListItemStyle" TargetType="ListViewItem">
+                <Setter Property="Background" Value="{ThemeResource CardBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource LineBrush}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListViewItem">
+                            <ListViewItemPresenter ContentMargin="{TemplateBinding Padding}" CornerRadius="{TemplateBinding CornerRadius}"
+                                Control.IsTemplateFocusTarget="True" ContentTransitions="{TemplateBinding ContentTransitions}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                PointerOverBackground="{ThemeResource CardHoverBrush}"
+                                PressedBackground="{ThemeResource CardPressedBrush}"
+                                DisabledOpacity="{ThemeResource ListViewItemDisabledThemeOpacity}"
+                                FocusBorderBrush="{ThemeResource SecondaryBrush}" />
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
             <Style TargetType="Button">
                 <Setter Property="FontSize" Value="15" />

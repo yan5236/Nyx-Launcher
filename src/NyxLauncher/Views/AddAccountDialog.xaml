@@ -4,13 +4,6 @@
  xmlns:views="using:NyxLauncher.Views"
  AllowDrop="True" DragOver="External_DragOver" Drop="External_Drop" PrimaryButtonText="取消" PrimaryButtonClick="Primary_Click" SecondaryButtonClick="Confirm_Click"
  SecondaryButtonStyle="{StaticResource DeepButtonStyle}" AutomationProperties.Name="添加账户">
- <ContentDialog.Resources>
-  <ResourceDictionary>
-   <ResourceDictionary.MergedDictionaries>
-    <ResourceDictionary Source="ms-appx:///Themes/AccentButtonResources.xaml"/>
-   </ResourceDictionary.MergedDictionaries>
-  </ResourceDictionary>
- </ContentDialog.Resources>
  <ContentDialog.Title>
   <StackPanel Orientation="Horizontal" Spacing="10">
    <Button x:Name="BackButton" Click="Back_Click" Visibility="Collapsed" Background="Transparent" BorderThickness="0" Padding="8"
@@ -31,22 +24,22 @@
      <Grid Width="24" Height="24" RowSpacing="3" ColumnSpacing="3">
       <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
       <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-      <Rectangle Fill="#397450"/><Rectangle Grid.Column="1" Fill="#397450"/>
-      <Rectangle Grid.Row="1" Fill="#397450"/><Rectangle Grid.Row="1" Grid.Column="1" Fill="#397450"/>
+      <Rectangle Fill="{ThemeResource SecondaryBrush}"/><Rectangle Grid.Column="1" Fill="{ThemeResource SecondaryBrush}"/>
+      <Rectangle Grid.Row="1" Fill="{ThemeResource SecondaryBrush}"/><Rectangle Grid.Row="1" Grid.Column="1" Fill="{ThemeResource SecondaryBrush}"/>
      </Grid>
-     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="微软登录"/><TextBlock x:Name="MicrosoftHint" Text="在系统浏览器中登录" FontSize="12" Foreground="#6B7A70"/></StackPanel>
+     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="微软登录"/><TextBlock x:Name="MicrosoftHint" Text="在系统浏览器中登录" FontSize="12" Foreground="{ThemeResource MutedBrush}"/></StackPanel>
     </Grid>
    </Button>
    <Button x:Name="OfflineButton" Click="Offline_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="离线账号">
     <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-     <FontIcon Glyph="&#xE77B;" FontSize="24" Foreground="#397450"/>
-     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="离线账户"/><TextBlock Text="使用本地账户名称启动游戏" FontSize="12" Foreground="#6B7A70"/></StackPanel>
+     <FontIcon Glyph="&#xE77B;" FontSize="24" Foreground="{ThemeResource SecondaryBrush}"/>
+     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="离线账户"/><TextBlock Text="使用本地账户名称启动游戏" FontSize="12" Foreground="{ThemeResource MutedBrush}"/></StackPanel>
     </Grid>
    </Button>
    <Button x:Name="ExternalButton" Click="External_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="外置登录">
     <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-     <FontIcon Glyph="&#xE774;" FontSize="24" Foreground="#397450"/>
-     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="外置登录"/><TextBlock Text="使用皮肤站账户和角色登录" FontSize="12" Foreground="#6B7A70"/></StackPanel>
+     <FontIcon Glyph="&#xE774;" FontSize="24" Foreground="{ThemeResource SecondaryBrush}"/>
+     <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="外置登录"/><TextBlock Text="使用皮肤站账户和角色登录" FontSize="12" Foreground="{ThemeResource MutedBrush}"/></StackPanel>
     </Grid>
    </Button>
   </StackPanel>
@@ -56,7 +49,7 @@
     <ProgressRing x:Name="LoginRing" IsActive="False" Width="32" Height="32" HorizontalAlignment="Center"/>
     <TextBlock x:Name="LoginStatus" TextWrapping="Wrap" TextAlignment="Center"/>
     <TextBlock x:Name="BrowserHint" Text="若浏览器未打开，请通过下面的按钮重试打开；也可复制链接，在本机浏览器中继续验证。"
-               FontSize="12" Foreground="#6B7A70" TextWrapping="Wrap" TextAlignment="Center"/>
+               FontSize="12" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center"/>
    </StackPanel>
   </Grid>
   <ContentControl x:Name="ExternalPanel" Visibility="Collapsed" HorizontalContentAlignment="Stretch" MaxWidth="460"><StackPanel Spacing="12">

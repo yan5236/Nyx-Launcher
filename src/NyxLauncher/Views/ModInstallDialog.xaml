@@ -20,10 +20,10 @@
   <Grid Grid.Row="1">
    <ListView x:Name="Targets" SelectionMode="None" IsItemClickEnabled="True" ItemClick="Target_Click"
     AutomationProperties.Name="兼容的已安装游戏版本">
-    <ListView.ItemContainerStyle><Style TargetType="ListViewItem">
+    <ListView.ItemContainerStyle><Style TargetType="ListViewItem" BasedOn="{StaticResource CardListItemStyle}">
      <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="12"/>
-     <Setter Property="Margin" Value="0,0,0,8"/><Setter Property="Background" Value="White"/>
-     <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/>
+     <Setter Property="Margin" Value="0,0,0,8"/><Setter Property="Background" Value="{ThemeResource CardBrush}"/>
+     <Setter Property="BorderBrush" Value="{ThemeResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/>
      <Setter Property="CornerRadius" Value="6"/>
     </Style></ListView.ItemContainerStyle>
     <ListView.ItemTemplate><DataTemplate>
@@ -32,14 +32,14 @@
       <Image Loaded="Icon_Loaded" DataContextChanged="Icon_DataContextChanged" Width="32" Height="32"/>
       <StackPanel Grid.Column="1" Spacing="4">
        <TextBlock Text="{Binding Version.Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-       <TextBlock Text="{Binding Version.Detail}" Visibility="{Binding DetailVisibility}" FontSize="12" Foreground="#6B7A70" TextWrapping="Wrap"/>
-       <TextBlock Text="{Binding ModsPath}" FontSize="12" Foreground="#6B7A70" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1"/>
+       <TextBlock Text="{Binding Version.Detail}" Visibility="{Binding DetailVisibility}" FontSize="12" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding ModsPath}" FontSize="12" Foreground="{ThemeResource MutedBrush}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1"/>
       </StackPanel>
      </Grid>
     </DataTemplate></ListView.ItemTemplate>
    </ListView>
    <TextBlock x:Name="EmptyHint" Text="当前游戏目录没有兼容版本，可选择文件夹下载。"
-    Visibility="Collapsed" TextWrapping="Wrap" Foreground="#6B7A70"/>
+    Visibility="Collapsed" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}"/>
   </Grid>
   <InfoBar x:Name="Error" Grid.Row="2" Severity="Error" IsOpen="False"/>
  </Grid>

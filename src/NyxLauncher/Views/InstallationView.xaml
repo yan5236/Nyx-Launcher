@@ -12,8 +12,8 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="64" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Border Background="#E0EBD6" Width="64" Height="64" CornerRadius="8">
-                    <FontIcon Glyph="&#xE7FC;" FontSize="32" Foreground="#397450" />
+                <Border Background="{ThemeResource TintBrush}" Width="64" Height="64" CornerRadius="8">
+                    <FontIcon Glyph="&#xE7FC;" FontSize="32" Foreground="{ThemeResource SecondaryBrush}" />
                 </Border>
                 <TextBox x:Name="VersionName" Grid.Column="1" FontSize="20" VerticalAlignment="Center"
                          Padding="12,10" PlaceholderText="版本名称" MaxLength="128"
@@ -22,8 +22,8 @@
                         VerticalAlignment="Center" AutomationProperties.Name="安装"
                         Style="{StaticResource DeepButtonStyle}" Click="Install_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE896;" FontSize="16" Foreground="White" />
-                        <TextBlock Text="安装" Foreground="White" />
+                        <FontIcon Glyph="&#xE896;" FontSize="16" Foreground="{ThemeResource AccentButtonForeground}" />
+                        <TextBlock Text="安装" Foreground="{ThemeResource AccentButtonForeground}" />
                     </StackPanel>
                 </Button>
             </Grid>
@@ -37,8 +37,8 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <Image Source="ms-appx:///Assets/forge.png" Width="32" Height="32" Stretch="Uniform" AutomationProperties.Name="Forge 图标" />
                         <TextBlock Grid.Column="1" Text="Forge" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock x:Name="ForgeStatus" Grid.Column="2" FontSize="13" Foreground="#6B7A70" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                        <FontIcon x:Name="ForgeAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
+                        <TextBlock x:Name="ForgeStatus" Grid.Column="2" FontSize="13" Foreground="{ThemeResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                        <FontIcon x:Name="ForgeAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="{ThemeResource MutedBrush}" />
                     </Grid>
                 </Button>
                 <Button x:Name="FabricButton" Tag="Fabric" Click="Loader_Click" IsEnabled="False"
@@ -49,8 +49,8 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <Image Source="ms-appx:///Assets/fabric.png" Width="32" Height="32" Stretch="Uniform" AutomationProperties.Name="Fabric 图标" />
                         <TextBlock Grid.Column="1" Text="Fabric" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock x:Name="FabricStatus" Grid.Column="2" FontSize="13" Foreground="#6B7A70" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                        <FontIcon x:Name="FabricAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
+                        <TextBlock x:Name="FabricStatus" Grid.Column="2" FontSize="13" Foreground="{ThemeResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                        <FontIcon x:Name="FabricAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="{ThemeResource MutedBrush}" />
                     </Grid>
                 </Button>
                 <Button x:Name="ApiButton" Click="Api_Click" IsEnabled="False"
@@ -61,8 +61,8 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <Image Source="ms-appx:///Assets/fabric.png" Width="32" Height="32" Stretch="Uniform" AutomationProperties.Name="Fabric API 图标" />
                         <TextBlock Grid.Column="1" Text="Fabric API" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock x:Name="ApiStatus" Grid.Column="2" FontSize="13" Foreground="#6B7A70" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                        <FontIcon x:Name="ApiAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
+                        <TextBlock x:Name="ApiStatus" Grid.Column="2" FontSize="13" Foreground="{ThemeResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                        <FontIcon x:Name="ApiAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="{ThemeResource MutedBrush}" />
                     </Grid>
                 </Button>
                 <Button x:Name="NeoForgeButton" Tag="NeoForge" Click="Loader_Click" IsEnabled="False"
@@ -73,8 +73,8 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <Image Source="ms-appx:///Assets/neoforge.png" Width="32" Height="32" Stretch="Uniform" AutomationProperties.Name="NeoForge 图标" />
                         <TextBlock Grid.Column="1" Text="NeoForge" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock x:Name="NeoForgeStatus" Grid.Column="2" FontSize="13" Foreground="#6B7A70" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                        <FontIcon x:Name="NeoForgeAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="#87928A" />
+                        <TextBlock x:Name="NeoForgeStatus" Grid.Column="2" FontSize="13" Foreground="{ThemeResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                        <FontIcon x:Name="NeoForgeAction" Grid.Column="3" Glyph="&#xE76C;" FontSize="14" Foreground="{ThemeResource MutedBrush}" />
                     </Grid>
                 </Button>
             </StackPanel>

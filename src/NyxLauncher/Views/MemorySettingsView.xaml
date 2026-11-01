@@ -9,14 +9,14 @@
     <RadioButton x:Name="Manual" Content="手动分配" Checked="Mode_Changed"/>
    </StackPanel>
    <Slider x:Name="Allocation" Minimum="512" Maximum="4096" StepFrequency="256" ValueChanged="Allocation_Changed" AutomationProperties.Name="游戏分配内存"/>
-   <Grid Height="20" CornerRadius="6" Background="#EDF1EE">
+   <Grid Height="20" CornerRadius="6" Background="{ThemeResource ShellBrush}">
     <Grid.ColumnDefinitions><ColumnDefinition x:Name="UsedColumn"/><ColumnDefinition x:Name="GameColumn"/><ColumnDefinition x:Name="FreeColumn"/></Grid.ColumnDefinitions>
-    <Border Background="#697B70"/><Border Grid.Column="1" Background="#59AA7B"/>
+    <Border Background="{ThemeResource MutedBrush}"/><Border Grid.Column="1" Background="{ThemeResource SecondaryBrush}"/>
    </Grid>
    <StackPanel Spacing="8">
-    <StackPanel Orientation="Horizontal" Spacing="8"><Rectangle Width="12" Height="12" Fill="#697B70"/><TextBlock x:Name="UsedLabel"/></StackPanel>
-    <StackPanel Orientation="Horizontal" Spacing="8"><Rectangle Width="12" Height="12" Fill="#59AA7B"/><TextBlock x:Name="GameLabel" TextWrapping="Wrap"/></StackPanel>
-    <TextBlock x:Name="TotalLabel" Foreground="#6B7A70"/>
+    <StackPanel Orientation="Horizontal" Spacing="8"><Rectangle Width="12" Height="12" Fill="{ThemeResource MutedBrush}"/><TextBlock x:Name="UsedLabel"/></StackPanel>
+    <StackPanel Orientation="Horizontal" Spacing="8"><Rectangle Width="12" Height="12" Fill="{ThemeResource SecondaryBrush}"/><TextBlock x:Name="GameLabel" TextWrapping="Wrap"/></StackPanel>
+    <TextBlock x:Name="TotalLabel" Foreground="{ThemeResource MutedBrush}"/>
    </StackPanel>
    <InfoBar x:Name="Error" Severity="Error" IsClosable="False"/>
   </StackPanel>

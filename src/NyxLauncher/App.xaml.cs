@@ -13,10 +13,11 @@ public partial class App : Application
         InitializeComponent();
     }
 
-    /// <summary>响应应用启动，创建并激活启动器主窗口。</summary>
+    /// <summary>响应应用启动，初始化主题画刷，再创建并激活启动器主窗口。</summary>
     /// <param name="args">系统提供的启动参数；当前骨架不处理命令行参数。</param>
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        Themes.ThemeManager.Current.Initialize();
         _window = new MainWindow();
         _window.Activate();
     }

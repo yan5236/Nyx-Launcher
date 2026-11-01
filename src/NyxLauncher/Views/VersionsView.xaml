@@ -45,7 +45,7 @@
                                             <views:VersionIcon Version="{x:Bind}" Width="52" Height="52" />
                                             <StackPanel Grid.Column="1" Spacing="7" VerticalAlignment="Center">
                                                 <TextBlock Text="{x:Bind Name}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{x:Bind Detail}" FontSize="13" Foreground="#6B7A70" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{x:Bind Detail}" FontSize="13" Foreground="{ThemeResource MutedBrush}" TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
                                         </Grid>
                                     </Button>
@@ -59,7 +59,7 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-                <TextBlock x:Name="Empty" Text="此文件夹中还没有版本" Foreground="#6B7A70" HorizontalAlignment="Center" Margin="0,40,0,0" />
+                <TextBlock x:Name="Empty" Text="此文件夹中还没有版本" Foreground="{ThemeResource MutedBrush}" HorizontalAlignment="Center" Margin="0,40,0,0" />
                 <ProgressRing x:Name="ScanProgress" Width="28" Height="28" IsActive="False" VerticalAlignment="Top" Margin="0,36,0,0" Visibility="Collapsed" />
             </Grid>
         </Grid>

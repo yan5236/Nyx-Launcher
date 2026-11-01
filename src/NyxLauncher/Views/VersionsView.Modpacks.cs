@@ -36,7 +36,7 @@ public sealed partial class VersionsView
         try
         {
             var manifest = await Task.Run(() => ModpackManifest.Read(path));
-            await new ModpackInstallDialog(XamlRoot, _packTasks, _folders?.Selected ?? "", manifest.Name, path).ShowAsync();
+            await new ModpackInstallDialog(XamlRoot, _packTasks, _folders?.Selected ?? "", manifest.Name, path).ShowThemedAsync();
         }
         catch (Exception ex) { ShowError("无法导入整合包：" + ex.Message); }
         finally { _dialogOpen = false; }

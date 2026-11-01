@@ -43,7 +43,7 @@
   <TextBlock x:Name="StatusText" Text="正在加载" FontSize="18" HorizontalAlignment="Center"
     AutomationProperties.LiveSetting="Polite" />
   <StackPanel x:Name="ErrorDetails" Spacing="16" Visibility="Collapsed">
-   <TextBlock x:Name="ErrorText" TextWrapping="Wrap" TextAlignment="Center" Foreground="#6B7A70"
+   <TextBlock x:Name="ErrorText" TextWrapping="Wrap" TextAlignment="Center" Foreground="{ThemeResource MutedBrush}"
      IsTextSelectionEnabled="True" MaxHeight="180" />
    <Button Content="重试" HorizontalAlignment="Center" Click="Retry_Click" />
   </StackPanel>

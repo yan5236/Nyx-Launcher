@@ -8,12 +8,14 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行业务断言；--mod-management、--advanced-launch、--region-restriction 定向检查对应范围；--local-resources 可选读取样本，--mcim-live、--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
+    /// <summary>运行业务断言；--theme 定向检查外观配置；--mod-management、--advanced-launch、--region-restriction 定向检查对应范围；--local-resources 可选读取样本，--mcim-live、--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
         if (args.Contains("--mod-management")) { await ModManagementChecks.RunAsync(); return; }
         if (args.Contains("--connection-pool")) { await ConnectionPoolChecks.RunAsync(); return; }
         if (args.Contains("--region-restriction")) { await RegionRestrictionChecks.RunAsync(); return; }
+        ThemeChecks.Run();
+        if (args.Contains("--theme")) return;
         AdvancedLaunchChecks.Run();
         if (args.Contains("--advanced-launch")) return;
         if (args.Contains("--mcim-live")) { await ResourceMirrorChecks.LiveAsync(); return; }
