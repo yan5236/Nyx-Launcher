@@ -71,6 +71,12 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="GamePanel" Grid.Row="3" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="16" Margin="0,0,4,0"><views:MemorySettingsView x:Name="MemoryPanel" VerticalAlignment="Top"/><views:AdvancedLaunchSettingsView x:Name="AdvancedPanel"/></StackPanel></ScrollViewer>
+        <ScrollViewer x:Name="GamePanel" Grid.Row="3" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="16" Margin="0,0,4,0">
+                <Button Content="恢复全局设置" Click="ResetGameSettings_Click" HorizontalAlignment="Right"/>
+                <views:MemorySettingsView x:Name="MemoryPanel" VerticalAlignment="Top"/>
+                <views:AdvancedLaunchSettingsView x:Name="AdvancedPanel"/>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>

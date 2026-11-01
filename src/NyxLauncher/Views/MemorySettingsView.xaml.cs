@@ -58,8 +58,6 @@ public sealed partial class MemorySettingsView : UserControl
         {
             var version = _version();
             var target = _local ? version ?? throw new IOException("尚未选择版本。") : null;
-            ResetButton.Visibility = _local ? Visibility.Visible : Visibility.Collapsed;
-            ResetButton.IsEnabled = target is not null && File.Exists(MemorySettingsStore.PathFor(target));
             var settings = MemorySettingsStore.Read(target);
             if (reloadMods || version != _previewVersion)
                 _mods = _root?.Invoke() is { } root ? MemoryAllocation.CountMods(root, version, _isolation!()) : 0;
@@ -129,10 +127,4 @@ public sealed partial class MemorySettingsView : UserControl
         catch (Exception ex) { Refresh(); Error.Message = ex.Message; Error.IsOpen = true; }
     }
 
-    /// <summary>只删除当前版本覆盖并立即显示最新全局值；失败保留并展示原配置。</summary>
-    private void Reset_Click(object sender, RoutedEventArgs e)
-    {
-        try { if (_local && _version?.Invoke() is { } version) MemorySettingsStore.Reset(version); Refresh(); }
-        catch (Exception ex) { Error.Message = ex.Message; Error.IsOpen = true; }
-    }
 }

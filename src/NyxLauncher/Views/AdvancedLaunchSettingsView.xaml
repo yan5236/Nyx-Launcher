@@ -15,7 +15,6 @@
     <CheckBox x:Name="DisableAgent" Content="禁用 LWJGL Unsafe Agent" Click="Option_Click"/>
     <CheckBox x:Name="HighPerformance" Content="使用高性能显卡" Click="Option_Click"/>
    </StackPanel>
-   <Button x:Name="ResetButton" Content="恢复全局设置" Click="Reset_Click" Visibility="Collapsed"/>
    <InfoBar x:Name="Error" Severity="Error" IsClosable="False"/>
   </StackPanel>
  </Border>

@@ -79,6 +79,24 @@ public sealed partial class VersionDetailsView : UserControl
         if (Status is not null) Status.IsOpen = false;
     }
 
+    /// <summary>删除当前版本的内存和高级启动覆盖，使后续读取持续继承全局；失败显示原因，并刷新两张卡片以反映实际保存状态。</summary>
+    private void ResetGameSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (Version is not { } version) return;
+        try
+        {
+            MemorySettingsStore.Reset(version);
+            AdvancedLaunchSettingsStore.Reset(version);
+            ShowError(null);
+        }
+        catch (Exception ex) { ShowError("未能完全恢复全局设置：" + ex.Message); }
+        finally
+        {
+            MemoryPanel.SetActive(true);
+            AdvancedPanel.SetActive(true);
+        }
+    }
+
     /// <summary>输入框按 Enter 时使用与保存按钮相同的校验与改名流程，不在每次输入时移动目录。</summary>
     private void NameInput_KeyDown(object sender, KeyRoutedEventArgs e)
     {

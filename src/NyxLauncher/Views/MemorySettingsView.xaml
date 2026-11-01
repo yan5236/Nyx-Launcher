@@ -3,11 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <Border Style="{StaticResource CardStyle}" Padding="24">
   <StackPanel Spacing="16">
-   <Grid ColumnSpacing="12">
-    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <TextBlock Text="内存分配" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
-    <Button x:Name="ResetButton" Grid.Column="1" Content="恢复全局设置" Click="Reset_Click" VerticalAlignment="Center"/>
-   </Grid>
+   <TextBlock Text="内存分配" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
    <StackPanel>
     <RadioButton x:Name="Automatic" Content="自动分配" Checked="Mode_Changed"/>
     <RadioButton x:Name="Manual" Content="手动分配" Checked="Mode_Changed"/>

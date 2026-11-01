@@ -23,7 +23,7 @@ public sealed partial class AdvancedLaunchSettingsView : UserControl
     /// <summary>获取保存目标；局部模式缺少版本时报错，防止意外写入全局。</summary>
     private InstalledVersion? Target() => _local ? _target?.Invoke() ?? throw new IOException("尚未选择版本。") : null;
 
-    /// <summary>填充当前作用域值并更新恢复按钮；坏配置保持禁写并显示错误。</summary>
+    /// <summary>填充当前作用域值；坏配置保持禁写并显示错误。</summary>
     private void Refresh()
     {
         if (_target is null) return;
@@ -39,8 +39,6 @@ public sealed partial class AdvancedLaunchSettingsView : UserControl
             DisableWrapper.IsChecked = value.DisableJavaWrapper;
             DisableAgent.IsChecked = value.DisableLwjglAgent;
             HighPerformance.IsChecked = value.HighPerformanceGpu;
-            ResetButton.Visibility = _local ? Visibility.Visible : Visibility.Collapsed;
-            ResetButton.IsEnabled = target is not null && File.Exists(AdvancedLaunchSettingsStore.PathFor(target));
             _saved = value;
             Error.IsOpen = false;
         }
@@ -68,16 +66,9 @@ public sealed partial class AdvancedLaunchSettingsView : UserControl
         {
             AdvancedLaunchSettingsStore.Save(value, Target());
             _saved = value;
-            ResetButton.IsEnabled = _local;
             Error.IsOpen = false;
         }
         catch (Exception ex) { Error.Message = ex.Message; Error.IsOpen = true; }
     }
 
-    /// <summary>移除本版本高级覆盖并刷新；不触碰其他版本与内存偏好。</summary>
-    private void Reset_Click(object sender, RoutedEventArgs e)
-    {
-        try { if (_local && Target() is { } target) AdvancedLaunchSettingsStore.Reset(target); Refresh(); }
-        catch (Exception ex) { Error.Message = ex.Message; Error.IsOpen = true; }
-    }
 }

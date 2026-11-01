@@ -21,6 +21,9 @@ internal static class MemoryChecks
             Check(MemorySettingsStore.Read(first, global).ManualMiB == 8192 && MemorySettingsStore.Read(second, global).ManualMiB == 3072, "局部覆盖不受全局更改影响且不污染其他版本");
             MemorySettingsStore.Reset(first);
             Check(MemorySettingsStore.Read(first, global).ManualMiB == 3072 && !File.Exists(MemorySettingsStore.PathFor(first)), "恢复后继承最新全局");
+            MemorySettingsStore.Save(new(false, 5120), globalPath: global);
+            Check(MemorySettingsStore.Read(first, global).ManualMiB == 5120 && !File.Exists(MemorySettingsStore.PathFor(first)), "恢复后持续跟随后续全局修改");
+            MemorySettingsStore.Save(new(false, 3072), globalPath: global);
             MemorySettingsStore.Save(new(true, 4096), first, global);
             Check(MemorySettingsStore.Read(first, global).Automatic && !MemorySettingsStore.Read(second, global).Automatic, "版本可单独自动分配");
             var renamed = first with { DirectoryPath = Path.Combine(root, "renamed") };

@@ -23,6 +23,9 @@ internal static class AdvancedLaunchChecks
             Check(AdvancedLaunchSettingsStore.Read(version, global).Collector == GarbageCollector.Z && AdvancedLaunchSettingsStore.Read(null, global) == new AdvancedLaunchSettings(), "全局与版本双向隔离");
             AdvancedLaunchSettingsStore.Reset(version);
             Check(AdvancedLaunchSettingsStore.Read(version, global) == new AdvancedLaunchSettings(), "重置继承最新全局");
+            AdvancedLaunchSettingsStore.Save(local, globalPath: global);
+            Check(AdvancedLaunchSettingsStore.Read(version, global) == local && !File.Exists(AdvancedLaunchSettingsStore.PathFor(version)), "恢复后持续跟随后续全局修改");
+            AdvancedLaunchSettingsStore.Save(new(), globalPath: global);
             AdvancedLaunchSettingsStore.Save(local, version, global);
             var renamed = version with { DirectoryPath = Path.Combine(root, "renamed") };
             Directory.Move(version.DirectoryPath, renamed.DirectoryPath);
