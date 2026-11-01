@@ -7,7 +7,7 @@
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Grid ColumnSpacing="12">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <TextBox x:Name="SearchInput" AutomationProperties.Name="搜索模组" KeyDown="Search_KeyDown"/>
+   <TextBox x:Name="SearchInput" PlaceholderText="搜索模组名或文件名" AutomationProperties.Name="搜索模组" KeyDown="Search_KeyDown"/>
    <Button Grid.Column="1" Content="搜索" Click="Search_Click"/>
   </Grid>
   <Grid Grid.Row="1" ColumnSpacing="12">
