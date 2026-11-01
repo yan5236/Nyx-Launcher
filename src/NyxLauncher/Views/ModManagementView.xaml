@@ -4,33 +4,33 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:views="using:NyxLauncher.Views">
  <Grid RowSpacing="12">
-  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Grid ColumnSpacing="12">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <TextBox x:Name="SearchInput" AutomationProperties.Name="搜索模组" KeyDown="Search_KeyDown"/>
    <Button Grid.Column="1" Content="搜索" Click="Search_Click"/>
   </Grid>
   <Grid Grid.Row="1" ColumnSpacing="12">
-   <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <TextBlock Text="状态" VerticalAlignment="Center"/>
-   <ComboBox x:Name="StateFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="State_Changed" AutomationProperties.Name="模组状态">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <TextBlock Grid.Column="1" Text="状态" VerticalAlignment="Center"/>
+   <ComboBox x:Name="StateFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="State_Changed" AutomationProperties.Name="模组状态">
     <ComboBoxItem Content="全部"/><ComboBoxItem Content="已启用"/><ComboBoxItem Content="已禁用"/>
    </ComboBox>
    <Button x:Name="InstallButton" Grid.Column="3" Content="从文件安装" Click="Install_Click"/>
    <Button Grid.Column="4" Content="下载模组" Click="Download_Click"/>
-  </Grid>
-  <StackPanel x:Name="BatchPanel" Grid.Row="2" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+  <StackPanel x:Name="BatchPanel" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
    <CheckBox x:Name="SelectAllBox" Content="全选" Click="SelectAll_Click" VerticalAlignment="Center"/>
    <Button x:Name="BatchUpdateButton" Click="BatchUpdate_Click" ToolTipService.ToolTip="更新所选模组" AutomationProperties.Name="更新所选模组" Visibility="Collapsed"><FontIcon Glyph="&#xE895;" FontSize="16"/></Button>
    <Button Click="BatchEnable_Click" ToolTipService.ToolTip="启用所选模组" AutomationProperties.Name="启用所选模组"><FontIcon Glyph="&#xE73E;" FontSize="16"/></Button>
    <Button Click="BatchDisable_Click" ToolTipService.ToolTip="禁用所选模组" AutomationProperties.Name="禁用所选模组"><FontIcon Glyph="&#xECE4;" FontSize="16"/></Button>
    <Button Click="BatchDelete_Click" ToolTipService.ToolTip="删除所选模组" AutomationProperties.Name="删除所选模组"><FontIcon Glyph="&#xE74D;" FontSize="16"/></Button>
   </StackPanel>
-  <StackPanel Grid.Row="3" Spacing="8">
+  </Grid>
+  <StackPanel Grid.Row="2" Spacing="8">
    <ProgressBar x:Name="LoadProgress" IsIndeterminate="True" Visibility="Collapsed"/>
    <InfoBar x:Name="Status" IsClosable="True" Severity="Error"/>
   </StackPanel>
-  <Grid Grid.Row="4">
+  <Grid Grid.Row="3">
    <ListView x:Name="ModList" SelectionMode="Multiple" IsMultiSelectCheckBoxEnabled="False" SelectionChanged="Mods_SelectionChanged" HorizontalContentAlignment="Stretch" AutomationProperties.Name="模组列表">
     <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,10"/></Style></ListView.ItemContainerStyle>
     <ListView.ItemTemplate>
@@ -39,9 +39,12 @@
        <Grid ColumnSpacing="12">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <CheckBox Loaded="SelectionBox_Loaded" MinWidth="0" VerticalAlignment="Center" AutomationProperties.Name="{Binding Title}"/>
-        <views:ResourceIcon Grid.Column="1" Project="{Binding Project}" Width="48" Height="48"/>
+        <Grid Grid.Column="1" Width="48" Height="48">
+         <views:ResourceIcon Project="{Binding Project}" Width="48" Height="48" Opacity="{Binding ContentOpacity}"/>
+         <Rectangle Height="2" Fill="#8A918C" VerticalAlignment="Center" Visibility="{Binding DisabledLineVisibility}" IsHitTestVisible="False"/>
+        </Grid>
         <StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center">
-         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{Binding FileName}"/>
+         <TextBlock Text="{Binding Title}" TextDecorations="{Binding TitleDecorations}" Opacity="{Binding ContentOpacity}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{Binding FileName}"/>
          <TextBlock Text="{Binding Description}" Foreground="#6B7A70" TextTrimming="CharacterEllipsis"/>
         </StackPanel>
         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">

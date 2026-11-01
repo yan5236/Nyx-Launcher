@@ -58,17 +58,27 @@ public sealed partial class ModManagementView
 
     /// <summary>只启用当前禁用的所选文件，已启用文件保持原状。</summary>
     private async void BatchEnable_Click(object sender, RoutedEventArgs e) =>
-        await RunBatchAsync(SelectedMods().Where(x => x.Disabled).ToArray(), ToggleModAsync);
+        await RunBatchAsync(SelectedMods().Where(x => x.Disabled).ToArray(), ToggleModAsync, reload: false);
 
     /// <summary>只禁用当前启用的所选文件，已禁用文件保持原状。</summary>
     private async void BatchDisable_Click(object sender, RoutedEventArgs e) =>
-        await RunBatchAsync(SelectedMods().Where(x => !x.Disabled).ToArray(), ToggleModAsync);
+        await RunBatchAsync(SelectedMods().Where(x => !x.Disabled).ToArray(), ToggleModAsync, reload: false);
 
-    /// <summary>复用单项启停的哈希与不覆盖校验，返回完成任务供串行批量调度。</summary>
+    /// <summary>校验并启停后就地替换卡片，迁移其勾选路径并保留在线摘要；单项和批量均不重新扫描或请求网络。</summary>
     private Task ToggleModAsync(InstalledMod mod, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        ModManagementService.Toggle(DirectoryPath(), mod);
+        var changed = ModManagementService.Toggle(DirectoryPath(), mod);
+        _mods = _mods.Select(x => x.Path == mod.Path ? changed : x).ToArray();
+        if (_selected.Remove(mod.Path)) _selected.Add(changed.Path);
+        int index = _visibleMods.IndexOf(mod);
+        if (index >= 0)
+        {
+            _filtering = true;
+            try { _visibleMods[index] = changed; }
+            finally { _filtering = false; }
+        }
+        Filter();
         return Task.CompletedTask;
     }
 
@@ -85,8 +95,8 @@ public sealed partial class ModManagementView
         }, confirmDelete: true);
     }
 
-    /// <summary>在同一操作锁中逐项处理快照；单项失败继续其余文件并汇总具体文件名，取消则停止，最后统一刷新实际结果。</summary>
-    private async Task RunBatchAsync(InstalledMod[] selected, Func<InstalledMod, CancellationToken, Task> action, bool confirmDelete = false)
+    /// <summary>在同一操作锁中逐项处理快照；失败继续其余文件并汇总，取消则停止，启停保留局部更新，其他操作重读结果。</summary>
+    private async Task RunBatchAsync(InstalledMod[] selected, Func<InstalledMod, CancellationToken, Task> action, bool confirmDelete = false, bool reload = true)
     {
         if (selected.Length == 0) return;
         await RunAsync(async token =>
@@ -107,6 +117,6 @@ public sealed partial class ModManagementView
                 catch (Exception ex) { failures.Add(mod.FileName + "：" + ex.Message); }
             }
             if (failures.Count > 0) throw new IOException(string.Join("\n", failures));
-        });
+        }, reload);
     }
 }

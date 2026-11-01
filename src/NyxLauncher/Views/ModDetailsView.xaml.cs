@@ -46,6 +46,15 @@ public sealed partial class ModDetailsView : UserControl
         ShowProject(project, "", "");
     }
 
+    /// <summary>从版本管理直接进入指定游戏版本和加载器的文件阶段；清除旧导航历史，无兼容发布时显示空列表而不回退到其他组合。</summary>
+    public void OpenFiles(ResourceProject project, string game, string loader)
+    {
+        _history.Clear();
+        _preferredGame = game;
+        _preferredLoader = loader;
+        ShowProject(project, game, loader);
+    }
+
     /// <summary>切换项目并取消旧请求和弹窗；依赖入口可传入游戏与加载器直接进入文件列表，兼容性由真实发布筛选。</summary>
     private void ShowProject(ResourceProject project, string game, string loader)
     {

@@ -14,6 +14,9 @@ public sealed record InstalledMod(string Path, string Sha1)
     public bool Disabled => Path.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
     public string FileName => System.IO.Path.GetFileName(Path);
     public string Title => Project?.Title ?? FileName;
+    public string TitleDecorations => Disabled ? "Strikethrough" : "None";
+    public double ContentOpacity => Disabled ? 0.45 : 1;
+    public string DisabledLineVisibility => Disabled ? "Visible" : "Collapsed";
     public string Description => Project?.Description ?? "";
     public string State => Disabled ? "已禁用" : "已启用";
     public string ToggleLabel => Disabled ? "启用" : "禁用";

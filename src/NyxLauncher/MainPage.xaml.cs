@@ -46,6 +46,7 @@ public sealed partial class MainPage : Page
         };
         VersionsContent.InstallRequested += Versions_InstallRequested;
         VersionsContent.ModDownloadRequested += Versions_ModDownloadRequested;
+        VersionsContent.ModFilesRequested += Versions_ModFilesRequested;
         Navigation.SelectedItem = HomeItem;
     }
 
@@ -54,6 +55,14 @@ public sealed partial class MainPage : Page
     {
         DownloadsContent.ShowMods();
         Navigation.SelectedItem = DownloadsItem;
+    }
+
+    /// <summary>从已安装模组详情进入下载页，并携带精确游戏版本与加载器直接显示该项目文件列表。</summary>
+    private async void Versions_ModFilesRequested(object? sender, (ResourceProject Project, InstalledVersion Version) request)
+    {
+        DownloadsContent.ShowMods();
+        Navigation.SelectedItem = DownloadsItem;
+        await DownloadsContent.ShowModFilesAsync(request.Project, request.Version);
     }
 
     /// <summary>主窗口接受认证文本和本地资源文件的复制拖拽；放下后验证格式并要求用户确认。</summary>

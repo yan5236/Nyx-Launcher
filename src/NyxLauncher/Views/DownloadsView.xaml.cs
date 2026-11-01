@@ -74,6 +74,14 @@ public sealed partial class DownloadsView : UserControl
     /// <summary>从版本管理直接选中下载页的模组分类，复用现有资源目录加载与筛选。</summary>
     public void ShowMods() => ContentSelector.SelectedItem = ContentSelector.Items[1];
 
+    /// <summary>已安装模组入口跳过版本与加载器选择，进入精确匹配的文件列表；导航离开时沿用详情取消与转场清理。</summary>
+    public async Task ShowModFilesAsync(ResourceProject project, InstalledVersion version)
+    {
+        if (!_active || _pageRequest is not null) return;
+        ModDetailsContent.OpenFiles(project, version.GameVersion, version.Loader.Split(':')[0].Trim().ToLowerInvariant());
+        await SwitchPageAsync(true, ModDetailsContent);
+    }
+
     /// <summary>页面显示时获取当前分类；离开时取消游戏和资源清单、两类详情请求与双向转场，并恢复列表层级和交互。</summary>
     public void SetActive(bool active)
     {

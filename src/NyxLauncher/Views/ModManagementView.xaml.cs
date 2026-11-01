@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.Windows.Storage.Pickers;
+using System.Collections.ObjectModel;
 using NyxLauncher.Services;
 
 namespace NyxLauncher.Views;
@@ -11,6 +12,7 @@ public sealed partial class ModManagementView : UserControl
 {
     private readonly ModrinthCatalogService _catalog = new();
     private IReadOnlyList<InstalledMod> _mods = [];
+    private readonly ObservableCollection<InstalledMod> _visibleMods = [];
     private GameFolderStore? _folders;
     private DownloadSettingsStore? _settings;
     private Func<bool>? _blocked;
@@ -20,11 +22,13 @@ public sealed partial class ModManagementView : UserControl
     private bool _active;
     private bool _busy;
     public event EventHandler? DownloadRequested;
+    public event EventHandler<(ResourceProject Project, InstalledVersion Version)>? ModFilesRequested;
 
     /// <summary>创建控件并在卸载时取消列表与文件更新请求，避免隐藏页面继续写入。</summary>
     public ModManagementView()
     {
         InitializeComponent();
+        ModList.ItemsSource = _visibleMods;
         Unloaded += (_, _) => SetActive(false);
     }
 
@@ -70,10 +74,10 @@ public sealed partial class ModManagementView : UserControl
             _mods = local; Filter(); ModList.IsEnabled = !_busy;
             var identified = await _catalog.IdentifyModsAsync(local, request.Token);
             request.Token.ThrowIfCancellationRequested();
-            _mods = identified; Filter();
+            MergeMetadata(identified, false);
             var updated = await _catalog.FindModUpdatesAsync(identified, _version!, request.Token);
             request.Token.ThrowIfCancellationRequested();
-            _mods = updated; Filter();
+            MergeMetadata(updated, true);
         }
         catch (OperationCanceledException) when (request.IsCancellationRequested) { }
         catch (Exception ex) { if (!request.IsCancellationRequested) ShowError(operationError ?? ex.Message); }
@@ -87,7 +91,17 @@ public sealed partial class ModManagementView : UserControl
         }
     }
 
-    /// <summary>按名称或文件名与启停状态筛选，不因搜索触发额外网络请求。</summary>
+    /// <summary>合并后台摘要及更新信息，保留加载期间启停操作产生的新路径和状态。</summary>
+    private void MergeMetadata(IReadOnlyList<InstalledMod> incoming, bool includeUpdates)
+    {
+        var byHash = incoming.DistinctBy(x => x.Sha1).ToDictionary(x => x.Sha1);
+        _mods = _mods.Select(mod => byHash.TryGetValue(mod.Sha1, out var info)
+            ? mod with { Project = info.Project, VersionId = info.VersionId, Published = info.Published,
+                Update = includeUpdates ? info.Update : mod.Update } : mod).ToArray();
+        Filter();
+    }
+
+    /// <summary>按名称和启停状态增量同步可见项，仅替换变化的卡片，保留其他卡片、列表实例与滚动位置。</summary>
     private void Filter()
     {
         if (ModList is null) return;
@@ -98,9 +112,21 @@ public sealed partial class ModManagementView : UserControl
         _filtering = true;
         try
         {
-            ModList.ItemsSource = matches;
+            for (int i = _visibleMods.Count - 1; i >= 0; i--)
+                if (!matches.Any(x => x.Path == _visibleMods[i].Path)) _visibleMods.RemoveAt(i);
+            for (int i = 0; i < matches.Length; i++)
+            {
+                var existing = _visibleMods.FirstOrDefault(x => x.Path == matches[i].Path);
+                if (existing is null) _visibleMods.Insert(i, matches[i]);
+                else
+                {
+                    int previousIndex = _visibleMods.IndexOf(existing);
+                    if (previousIndex != i) _visibleMods.Move(previousIndex, i);
+                    if (existing != matches[i]) _visibleMods[i] = matches[i];
+                }
+            }
             _selected.IntersectWith(matches.Select(x => x.Path));
-            foreach (var mod in matches.Where(x => _selected.Contains(x.Path))) ModList.SelectedItems.Add(mod);
+            foreach (var mod in matches.Where(x => _selected.Contains(x.Path) && !ModList.SelectedItems.Contains(x))) ModList.SelectedItems.Add(mod);
         }
         finally { _filtering = false; }
         RefreshSelection();
@@ -124,16 +150,18 @@ public sealed partial class ModManagementView : UserControl
         if (!_active || _blocked?.Invoke() == true) throw new IOException("请先停止游戏并等待安装完成。");
     }
 
-    /// <summary>串行执行文件操作，取消正在加载的旧快照；结束后恢复交互并重读本地与在线状态，失败显示必要原因。</summary>
-    private async Task RunAsync(Func<CancellationToken, Task> action)
+    /// <summary>串行执行文件操作；安装、更新和删除结束后重读文件，启停仅更新对应卡片且保留后台元数据请求，失败显示具体原因。</summary>
+    private async Task RunAsync(Func<CancellationToken, Task> action, bool reload = true)
     {
         if (_busy) return;
-        _busy = true; _load?.Cancel();
+        _busy = true;
+        if (reload) _load?.Cancel();
         using var operation = new CancellationTokenSource();
         _operation = operation;
         ModList.IsEnabled = InstallButton.IsEnabled = false;
         foreach (var control in BatchPanel.Children.OfType<Control>()) control.IsEnabled = false;
-        LoadProgress.Visibility = Visibility.Visible; Status.IsOpen = false;
+        if (reload) LoadProgress.Visibility = Visibility.Visible;
+        Status.IsOpen = false;
         string? error = null;
         try { EnsureWritable(); await action(operation.Token); }
         catch (OperationCanceledException) when (operation.IsCancellationRequested) { }
@@ -143,9 +171,10 @@ public sealed partial class ModManagementView : UserControl
             _operation = null; _busy = false;
             ModList.IsEnabled = InstallButton.IsEnabled = true;
             foreach (var control in BatchPanel.Children.OfType<Control>()) control.IsEnabled = true;
-            LoadProgress.Visibility = Visibility.Collapsed;
+            LoadProgress.Visibility = _load is null ? Visibility.Collapsed : Visibility.Visible;
         }
-        if (_active) await ReloadAsync(error);
+        if (_active && reload) await ReloadAsync(error);
+        else if (_active && error is not null) ShowError(error);
     }
 
     /// <summary>选择单个 JAR，复用本地归档识别、加载器检查与不覆盖复制，直接安装到当前版本目录。</summary>
@@ -166,7 +195,7 @@ public sealed partial class ModManagementView : UserControl
 
     /// <summary>切换单个文件启停状态，冲突或文件变化时保留原文件。</summary>
     private async void Toggle_Click(object sender, RoutedEventArgs e)
-    { if (sender is Button { Tag: InstalledMod mod }) await RunAsync(_ => { ModManagementService.Toggle(DirectoryPath(), mod); return Task.CompletedTask; }); }
+    { if (sender is Button { Tag: InstalledMod mod }) await RunAsync(token => ToggleModAsync(mod, token), reload: false); }
 
     /// <summary>按已检测的兼容发布下载并替换，发布前重新检查当前目录、游戏状态和取消状态。</summary>
     private async void Update_Click(object sender, RoutedEventArgs e)
@@ -193,14 +222,26 @@ public sealed partial class ModManagementView : UserControl
         }, token);
     }
 
-    /// <summary>用现有摘要和本地文件信息打开详情，不加载下载页的统计、图库或依赖内容。</summary>
+    /// <summary>用现有摘要打开详情；已识别模组提供浏览器主页与精确版本文件列表入口，关闭弹窗后再触发导航。</summary>
     private async void Details_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: InstalledMod mod }) return;
         try
         {
-            await new ContentDialog { XamlRoot = XamlRoot, Title = mod.Title, CloseButtonText = "关闭",
-                Content = new TextBlock { Text = string.Join("\n\n", new[] { mod.Description, mod.FileName, mod.State }.Where(x => x.Length > 0)), TextWrapping = TextWrapping.Wrap } }.ShowAsync();
+            var version = _version;
+            var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = mod.Title, CloseButtonText = "关闭",
+                PrimaryButtonText = mod.Project is not null ? "Modrinth 主页" : "",
+                SecondaryButtonText = mod.Project is not null && version is not null ? "下载" : "",
+                Content = new TextBlock { Text = string.Join("\n\n", new[] { mod.Description, mod.FileName, mod.State }.Where(x => x.Length > 0)), TextWrapping = TextWrapping.Wrap } };
+            var result = await dialog.ShowAsync();
+            if (mod.Project is not { } project) return;
+            if (result == ContentDialogResult.Primary)
+            {
+                if (!await Windows.System.Launcher.LaunchUriAsync(new Uri("https://modrinth.com/mod/" + Uri.EscapeDataString(project.Id))))
+                    ShowError("无法打开浏览器，请检查默认浏览器设置。");
+            }
+            else if (result == ContentDialogResult.Secondary && version is not null && _active)
+                ModFilesRequested?.Invoke(this, (project, version));
         }
         catch (Exception ex) { ShowError(ex.Message); }
     }

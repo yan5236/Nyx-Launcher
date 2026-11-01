@@ -18,12 +18,14 @@ public sealed partial class VersionDetailsView : UserControl
     public event EventHandler? BackRequested;
     public event EventHandler? DeleteRequested;
     public event EventHandler? ModDownloadRequested;
+    public event EventHandler<(ResourceProject Project, InstalledVersion Version)>? ModFilesRequested;
 
     /// <summary>初始化详情视图，不在构造时访问游戏文件。</summary>
     public VersionDetailsView()
     {
         InitializeComponent();
         ModsPanel.DownloadRequested += (_, _) => ModDownloadRequested?.Invoke(this, EventArgs.Empty);
+        ModsPanel.ModFilesRequested += (_, request) => ModFilesRequested?.Invoke(this, request);
     }
 
     /// <summary>共享游戏目录、隔离策略与版本启动配置；委托用于在启动或安装进行时拒绝改名。</summary>
