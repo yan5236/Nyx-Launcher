@@ -114,19 +114,20 @@ public sealed partial class ModrinthCatalogService
         { throw new HttpRequestException("资源类型暂时不可用，请重试。", ex); }
     }
 
-    /// <summary>按当前版本列表源策略读取元数据；官方慢响应三秒后并行尝试 MCIM，失败回退，取消剩余请求。</summary>
-    private Task<JsonDocument> GetAsync(string path, CancellationToken token) => SourceFallback.FetchAsync(Source(),
-        (mirror, ct) => GetSourceAsync(path, mirror, ct), TimeSpan.FromSeconds(3), token);
+    /// <summary>按版本列表源策略读取元数据；可选 JSON 请求体用于批量哈希查询，双源分别创建请求，取消剩余请求。</summary>
+    private Task<JsonDocument> GetAsync(string path, CancellationToken token, string? body = null) => SourceFallback.FetchAsync(Source(),
+        (mirror, ct) => GetSourceAsync(path, mirror, ct, body), TimeSpan.FromSeconds(3), token);
 
-    /// <summary>单源独立超时读取最多 8 MiB JSON；发送登记 UA，保留限流提示，取消不转成失败。</summary>
-    private async Task<JsonDocument> GetSourceAsync(string path, bool mirror, CancellationToken token)
+    /// <summary>单源独立超时读取最多 8 MiB JSON；可选请求体使用 POST，发送登记 UA，保留限流提示和取消语义。</summary>
+    private async Task<JsonDocument> GetSourceAsync(string path, bool mirror, CancellationToken token, string? body = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(_timeout);
         try
         {
             var url = new Uri("https://api.modrinth.com/v2/" + path);
-            using var request = new HttpRequestMessage(HttpMethod.Get, mirror ? ResourceMirror.Map(url)! : url);
+            using var request = new HttpRequestMessage(body is null ? HttpMethod.Get : HttpMethod.Post, mirror ? ResourceMirror.Map(url)! : url);
+            if (body is not null) request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
             request.Headers.UserAgent.ParseAdd(ResourceMirror.UserAgent);
             using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
             response.EnsureSuccessStatusCode();

@@ -45,7 +45,15 @@ public sealed partial class MainPage : Page
             HomeContent.Refresh();
         };
         VersionsContent.InstallRequested += Versions_InstallRequested;
+        VersionsContent.ModDownloadRequested += Versions_ModDownloadRequested;
         Navigation.SelectedItem = HomeItem;
+    }
+
+    /// <summary>模组管理下载入口先选中模组分类，再切换主导航，避免加载游戏列表。</summary>
+    private void Versions_ModDownloadRequested(object? sender, EventArgs e)
+    {
+        DownloadsContent.ShowMods();
+        Navigation.SelectedItem = DownloadsItem;
     }
 
     /// <summary>主窗口接受认证文本和本地资源文件的复制拖拽；放下后验证格式并要求用户确认。</summary>

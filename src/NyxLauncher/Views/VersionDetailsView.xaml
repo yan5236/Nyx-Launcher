@@ -71,6 +71,7 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
+        <views:ModManagementView x:Name="ModsPanel" Grid.Row="3" Visibility="Collapsed"/>
         <ScrollViewer x:Name="GamePanel" Grid.Row="3" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="16" Margin="0,0,4,0">
                 <Button Content="恢复全局设置" Click="ResetGameSettings_Click" HorizontalAlignment="Right"/>

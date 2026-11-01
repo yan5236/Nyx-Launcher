@@ -16,6 +16,7 @@ public sealed partial class VersionsView : UserControl
     private bool _dialogOpen;
     private Storyboard? _pageTransition;
     public event EventHandler? InstallRequested;
+    public event EventHandler? ModDownloadRequested;
 
     /// <summary>加载页面并连接详情返回与删除事件；业务目录由主页面在启动时注入。</summary>
     public VersionsView()
@@ -23,6 +24,7 @@ public sealed partial class VersionsView : UserControl
         InitializeComponent();
         Details.BackRequested += Details_BackRequested;
         Details.DeleteRequested += Details_DeleteRequested;
+        Details.ModDownloadRequested += (_, _) => ModDownloadRequested?.Invoke(this, EventArgs.Empty);
         Unloaded += View_Unloaded;
     }
 

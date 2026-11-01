@@ -8,9 +8,10 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行高级启动及现有业务断言；--advanced-launch 仅检查高级配置，--mcim-live 限定真实镜像验收，--local-resources 可选读取本地样本；--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
+    /// <summary>运行业务断言；--mod-management 和 --advanced-launch 分别定向检查模组管理和高级配置；--local-resources 可选读取样本，--mcim-live、--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--mod-management")) { await ModManagementChecks.RunAsync(); return; }
         if (args.Contains("--connection-pool")) { await ConnectionPoolChecks.RunAsync(); return; }
         AdvancedLaunchChecks.Run();
         if (args.Contains("--advanced-launch")) return;
@@ -19,6 +20,7 @@ internal static class Program
         if (args.Contains("--live-modpacks")) { await ModpackChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-modpacks") + 1])); return; }
         if (args.Contains("--live-resources")) { await ResourceDownloadChecks.LiveAsync(Path.GetFullPath(args[Array.IndexOf(args, "--live-resources") + 1])); return; }
         await LocalResourceChecks.RunAsync(args.Contains("--local-resources") ? args[Array.IndexOf(args, "--local-resources") + 1] : null);
+        await ModManagementChecks.RunAsync();
         await ResourceDownloadChecks.RunAsync();
         ModpackChecks.Run();
         await ModpackChecks.FilesAsync();

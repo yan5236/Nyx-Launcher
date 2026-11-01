@@ -19,6 +19,7 @@ dotnet build NyxLauncher.slnx -c Debug -p:Platform=x64
 | 参数 | 范围及副作用 |
 | --- | --- |
 | `--advanced-launch` | 内存之外的高级配置、参数与兼容组件规则 |
+| `--mod-management` | 模组目录、启停、批量摘要、兼容更新、禁用状态保留、冲突及失败保护；仅使用临时文件和协议夹具 |
 | `--connection-pool` | 本地回环连接复用及网络诊断；需要允许监听/连接回环端口 |
 | `--microsoft-callback` | 真实 MSAL 与本机 TCP 回调，使用合成授权码核对 PKCE 和无效回调；不打开浏览器或交换真实用户令牌 |
 | `--microsoft-launch-arguments <验收目录>` | 复用已安装验收版本，以合成会话构造参数，不启动游戏 |

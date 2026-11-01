@@ -17,9 +17,14 @@ public sealed partial class VersionDetailsView : UserControl
     public InstalledVersion? Version { get; private set; }
     public event EventHandler? BackRequested;
     public event EventHandler? DeleteRequested;
+    public event EventHandler? ModDownloadRequested;
 
     /// <summary>初始化详情视图，不在构造时访问游戏文件。</summary>
-    public VersionDetailsView() => InitializeComponent();
+    public VersionDetailsView()
+    {
+        InitializeComponent();
+        ModsPanel.DownloadRequested += (_, _) => ModDownloadRequested?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>共享游戏目录、隔离策略与版本启动配置；委托用于在启动或安装进行时拒绝改名。</summary>
     public void Configure(GameFolderStore folders, DownloadSettingsStore settings, Func<bool> mutationBlocked)
@@ -27,11 +32,13 @@ public sealed partial class VersionDetailsView : UserControl
         _folders = folders; _settings = settings; _mutationBlocked = mutationBlocked;
         MemoryPanel.Configure(() => Version, () => folders.Selected, () => settings.Current.Isolation, true);
         AdvancedPanel.Configure(() => Version, true);
+        ModsPanel.Configure(folders, settings, mutationBlocked);
     }
 
     /// <summary>打开选中版本并默认选择基础分类，刷新名称、元数据和两处图标；错误清单保留具体原因。</summary>
     public void Open(InstalledVersion version)
     {
+        ModsPanel.SetActive(false);
         Version = version;
         RefreshVersion();
         Tabs.SelectedItem = Tabs.Items[0];
@@ -49,11 +56,12 @@ public sealed partial class VersionDetailsView : UserControl
         HeaderIcon.Reload(); PreviewIcon.Reload();
     }
 
-    /// <summary>详情隐藏时停止内存采样，重新显示时仅激活游戏设置分类并刷新高级配置。</summary>
+    /// <summary>详情隐藏时停止内存采样及模组请求，显示时仅激活当前分类。</summary>
     public void SetActive(bool active)
     {
         MemoryPanel.SetActive(active && Tabs.SelectedItem == Tabs.Items[2]);
         AdvancedPanel.SetActive(active && Tabs.SelectedItem == Tabs.Items[2]);
+        ModsPanel.SetActive(active && Tabs.SelectedItem == Tabs.Items[1], Version);
     }
 
     /// <summary>请求父页返回版本列表，保持搜索与文件夹选择。</summary>
@@ -65,7 +73,7 @@ public sealed partial class VersionDetailsView : UserControl
         if (Version is not null && BasicPanel.IsEnabled) DeleteRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>仅基础分类显示编辑、快捷入口和危险区；游戏设置分类显示内存与高级配置，其余分类保持空白。</summary>
+    /// <summary>按分类显示基础、模组或游戏设置，并停止隐藏分类的采样和网络请求。</summary>
     private void Tabs_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (BasicPanel is not null) BasicPanel.Visibility = sender.SelectedItem == sender.Items[0] ? Visibility.Visible : Visibility.Collapsed;
@@ -77,6 +85,12 @@ public sealed partial class VersionDetailsView : UserControl
             AdvancedPanel.SetActive(active);
         }
         if (Status is not null) Status.IsOpen = false;
+        if (ModsPanel is not null)
+        {
+            bool active = sender.SelectedItem == sender.Items[1];
+            ModsPanel.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+            ModsPanel.SetActive(active, Version);
+        }
     }
 
     /// <summary>删除当前版本的内存和高级启动覆盖，使后续读取持续继承全局；失败显示原因，并刷新两张卡片以反映实际保存状态。</summary>

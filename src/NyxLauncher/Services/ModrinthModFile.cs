@@ -8,6 +8,7 @@ public sealed record ModrinthModFile(string ProjectId, string VersionId, string 
     DateTimeOffset Published, string Channel, IReadOnlyList<string> GameVersions,
     IReadOnlyList<string> Loaders, Uri Url, string Sha1, long Size)
 {
+    public string VersionNumber { get; init; } = "";
     public bool IsModpack { get; init; }
     public string Category { get; init; } = "mod";
     public bool IsResource => Category is "resourcepack" or "shader" or "datapack";
@@ -43,11 +44,19 @@ public sealed partial class ModrinthCatalogService
         if (string.IsNullOrEmpty(projectId) || !projectId.All(char.IsAsciiLetterOrDigit))
             throw new ArgumentException("模组项目编号无效。", nameof(projectId));
         using var document = await GetAsync($"project/{projectId}/version?include_changelog=false", token);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+            throw new HttpRequestException("资源版本列表暂时不可用，请重试。");
+        return ParseModFiles(document.RootElement.EnumerateArray(), projectId, modpack, category);
+    }
+
+    /// <summary>共用发布文件解析与校验，供项目历史列表和批量更新响应使用；只接受所属项目的运行文件，按发布时间倒序保留首选文件。</summary>
+    private static IReadOnlyList<ModrinthModFile> ParseModFiles(IEnumerable<JsonElement> versions, string projectId, bool modpack = false, string category = "mod")
+    {
         try
         {
             bool resource = category is "resourcepack" or "shader" or "datapack";
             var result = new List<ModrinthModFile>();
-            foreach (var version in document.RootElement.EnumerateArray())
+            foreach (var version in versions)
             {
                 if (version.GetProperty("project_id").GetString() != projectId) throw new JsonException();
                 string[] games = version.GetProperty("game_versions").EnumerateArray().Select(x => x.GetString()!).Distinct().ToArray();
@@ -65,7 +74,8 @@ public sealed partial class ModrinthCatalogService
                         version.GetProperty("date_published").GetDateTimeOffset(), version.GetProperty("version_type").GetString()!,
                         games, loaders, new Uri(file.GetProperty("url").GetString()!),
                         file.GetProperty("hashes").GetProperty("sha1").GetString()!, file.GetProperty("size").GetInt64())
-                    { Dependencies = dependencies, IsModpack = modpack, Category = category };
+                    { Dependencies = dependencies, IsModpack = modpack, Category = category,
+                        VersionNumber = version.TryGetProperty("version_number", out var number) ? number.GetString() ?? name : name };
                     item.Validate();
                     result.Add(item);
                 }
