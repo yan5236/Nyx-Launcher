@@ -9,7 +9,7 @@
    <ComboBox x:Name="Preset" Header="主题色" HorizontalAlignment="Stretch" SelectionChanged="Options_Changed" AutomationProperties.Name="主题色">
     <ComboBoxItem Content="绿色"/><ComboBoxItem Content="WinUI 经典蓝"/><ComboBoxItem Content="自定义"/>
    </ComboBox>
-   <StackPanel x:Name="CustomPanel" Spacing="12" Visibility="Collapsed">
+   <StackPanel x:Name="CustomPanel" x:Load="False" Spacing="12" Visibility="Collapsed">
     <ComboBox x:Name="ColorMode" Header="自定义配色" SelectedIndex="0" SelectionChanged="ColorMode_Changed" AutomationProperties.Name="自定义配色">
      <ComboBoxItem Content="浅色"/><ComboBoxItem Content="深色"/>
     </ComboBox>

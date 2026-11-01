@@ -24,6 +24,9 @@ public sealed class ThemeManager
     /// <summary>初始化全部共享画刷；必须在创建窗口和页面前调用。</summary>
     public void Initialize() => UpdateBrushes(false);
 
+    /// <summary>把窗口焦点状态交给背景文字取样器，不改变用户保存的主题设置。</summary>
+    public void SetForeground(bool foreground) => _contrast?.SetForeground(foreground);
+
     /// <summary>绑定窗口根节点和背景层，监听系统明暗变化；窗口生命周期内仅调用一次。</summary>
     public void Attach(FrameworkElement root, Image background, Microsoft.UI.Windowing.AppWindow? window = null)
     {

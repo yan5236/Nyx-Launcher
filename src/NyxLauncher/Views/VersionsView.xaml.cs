@@ -10,6 +10,7 @@ namespace NyxLauncher.Views;
 public sealed partial class VersionsView : UserControl
 {
     private GameFolderStore? _folders;
+    private DownloadSettingsStore? _settings;
     private Func<bool>? _mutationBlocked;
     private IReadOnlyList<InstalledVersion> _versions = Array.Empty<InstalledVersion>();
     private CancellationTokenSource? _scan;
@@ -23,10 +24,6 @@ public sealed partial class VersionsView : UserControl
     public VersionsView()
     {
         InitializeComponent();
-        Details.BackRequested += Details_BackRequested;
-        Details.DeleteRequested += Details_DeleteRequested;
-        Details.ModDownloadRequested += (_, _) => ModDownloadRequested?.Invoke(this, EventArgs.Empty);
-        Details.ModFilesRequested += (_, request) => ModFilesRequested?.Invoke(this, request);
         Unloaded += View_Unloaded;
     }
 
@@ -34,13 +31,13 @@ public sealed partial class VersionsView : UserControl
     public void Configure(GameFolderStore folders, DownloadSettingsStore settings, Func<bool> mutationBlocked)
     {
         _folders = folders;
+        _settings = settings;
         _mutationBlocked = mutationBlocked;
-        Details.Configure(folders, settings, mutationBlocked);
         RefreshPath();
         ShowError(folders.LoadError);
     }
 
-    /// <summary>进入时重新扫描磁盘；离开时取消扫描和转场并恢复列表，旧回调不能覆盖后续页面。</summary>
+    /// <summary>进入时重新扫描磁盘；离开时取消扫描和转场并释放版本列表，旧回调不能覆盖后续页面。</summary>
     public void SetActive(bool active)
     {
         _scan?.Cancel();
@@ -48,10 +45,24 @@ public sealed partial class VersionsView : UserControl
         else
         {
             StopPageTransition();
-            Details.SetActive(false);
-            Details.Visibility = Visibility.Collapsed;
+            Details?.SetActive(false);
+            if (Details is not null) Details.Visibility = Visibility.Collapsed;
             Catalog.Visibility = Visibility.Visible;
+            _versions = [];
+            VersionList.ItemsSource = null;
         }
+    }
+
+    /// <summary>首次打开版本才创建详情和各设置 Tab，并共享目录与任务保护；列表浏览不构造详情控件。</summary>
+    private void EnsureDetails()
+    {
+        if (Details is not null) return;
+        var detail = (VersionDetailsView)FindName(nameof(Details));
+        detail.Configure(_folders!, _settings!, _mutationBlocked!);
+        detail.BackRequested += Details_BackRequested;
+        detail.DeleteRequested += Details_DeleteRequested;
+        detail.ModDownloadRequested += (_, _) => ModDownloadRequested?.Invoke(this, EventArgs.Empty);
+        detail.ModFilesRequested += (_, request) => ModFilesRequested?.Invoke(this, request);
     }
 
     /// <summary>更新可截断的路径按钮，悬停可查看完整路径；没有当前目录时提示用户选择。</summary>
@@ -138,6 +149,7 @@ public sealed partial class VersionsView : UserControl
     public void OpenDetails(InstalledVersion version)
     {
         if (_pageTransition is not null || _dialogOpen) return;
+        EnsureDetails();
         Details.Open(version);
         SwitchPage(true);
     }
@@ -153,7 +165,7 @@ public sealed partial class VersionsView : UserControl
     /// <summary>详情危险区使用当前版本对象发起共享删除流程，改名后仍显示并校验最新目录。</summary>
     private async void Details_DeleteRequested(object? sender, EventArgs e)
     {
-        if (Details.Version is { } version) await DeleteAsync(version);
+        if (Details?.Version is { } version) await DeleteAsync(version);
     }
 
     /// <summary>以 220 毫秒水平位移和淡入淡出切换列表与详情；进入向左、返回向右，系统关闭动画时直接切换。</summary>
@@ -214,8 +226,9 @@ public sealed partial class VersionsView : UserControl
     {
         _pageTransition?.Stop();
         _pageTransition = null;
-        foreach (FrameworkElement page in new FrameworkElement[] { Catalog, Details })
+        foreach (var page in new FrameworkElement?[] { Catalog, Details })
         {
+            if (page is null) continue;
             page.Opacity = 1;
             page.RenderTransform = null;
             page.IsHitTestVisible = true;
@@ -252,12 +265,12 @@ public sealed partial class VersionsView : UserControl
                 Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
                 Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin,
                 Microsoft.VisualBasic.FileIO.UICancelOption.ThrowException);
-            if (Details.Visibility == Visibility.Visible) SwitchPage(false);
+            if (Details?.Visibility == Visibility.Visible) SwitchPage(false);
             await RefreshAsync();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or OperationCanceledException or System.Runtime.InteropServices.COMException)
         {
-            if (Details.Visibility == Visibility.Visible) Details.ShowError("未删除版本：" + ex.Message);
+            if (Details?.Visibility == Visibility.Visible) Details.ShowError("未删除版本：" + ex.Message);
             else ShowError("未删除版本：" + ex.Message);
         }
         finally { _dialogOpen = false; }

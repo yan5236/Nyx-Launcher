@@ -12,6 +12,7 @@ public sealed partial class MemorySettingsView : UserControl
     private Func<string?>? _root;
     private Func<IsolationMode>? _isolation;
     private bool _local, _updating;
+    private bool _active, _foreground = true;
     private MemorySettings? _settings;
     private InstalledVersion? _previewVersion;
     private int _mods;
@@ -30,22 +31,32 @@ public sealed partial class MemorySettingsView : UserControl
     public void Configure(Func<InstalledVersion?> version, Func<string?> root, Func<IsolationMode> isolation, bool local)
     { _version = version; _root = root; _isolation = isolation; _local = local; }
 
-    /// <summary>仅在当前内存板块可见时采样，打开时立即恢复最新继承状态。</summary>
+    /// <summary>记录板块可见状态，打开时读取继承设置；仅窗口前台且板块可见时持续采样。</summary>
     public void SetActive(bool active)
     {
         _timer.Stop();
-        if (active) { Refresh(true); _timer.Start(); }
+        _active = active;
+        if (active) { Refresh(true); if (_foreground) _timer.Start(); }
     }
 
-    /// <summary>每半秒只采样系统内存并更新预览，使用缓存偏好与模组数，不访问磁盘或改写手动滑块。</summary>
+    /// <summary>窗口失焦时暂停采样，重新聚焦后只恢复仍可见板块的定时器，不重扫模组或读写配置。</summary>
+    public void SetForeground(bool foreground)
+    {
+        _foreground = foreground;
+        _timer.Stop();
+        if (foreground && _active) { Refresh_Tick(null, EventArgs.Empty); _timer.Start(); }
+    }
+
+    /// <summary>每半秒用缓存偏好采样内存；忽略失焦或隐藏前已入队的回调，不访问磁盘或改写手动滑块。</summary>
     private void Refresh_Tick(object? sender, object e)
     {
+        if (!_active || !_foreground) return;
         try { RenderMemory(); }
         catch (Exception ex) { Error.Message = ex.Message; Error.IsOpen = true; }
     }
 
-    /// <summary>页面卸载时释放定时采样。</summary>
-    private void View_Unloaded(object sender, RoutedEventArgs e) => _timer.Stop();
+    /// <summary>页面卸载时清除可见状态并停止采样，后续窗口激活不会唤醒已卸载页面。</summary>
+    private void View_Unloaded(object sender, RoutedEventArgs e) => SetActive(false);
 
     /// <summary>打开页面或用户修改时读取偏好并填充控件；仅打开页面重新统计模组，失败清空缓存，避免继续展示旧版本的估算。</summary>
     private void Refresh(bool reloadMods = false)

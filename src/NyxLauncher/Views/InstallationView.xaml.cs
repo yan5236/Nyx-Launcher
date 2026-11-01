@@ -69,7 +69,7 @@ public sealed partial class InstallationView : UserControl
         _ = DetectAsync(entry.Title, strategy, _request.Token);
     }
 
-    /// <summary>放弃界面所有权，取消本页初始检测及重试并释放令牌源、关闭弹窗；迟到结果不得更新页面。</summary>
+    /// <summary>放弃界面所有权，取消检测、关闭弹窗并释放加载器与 API 清单；迟到结果不得更新页面。</summary>
     public void Close()
     {
         _active = false;
@@ -78,6 +78,11 @@ public sealed partial class InstallationView : UserControl
         _request = null;
         _dialog?.Hide();
         _dialog = null;
+        _versions.Clear();
+        _status.Clear();
+        _apiVersions = [];
+        _selectedApi = null;
+        SelectedLoader = null;
     }
 
     /// <summary>控件卸载后停止网络工作，不保留后台请求。</summary>

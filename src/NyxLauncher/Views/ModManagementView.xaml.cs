@@ -39,13 +39,20 @@ public sealed partial class ModManagementView : UserControl
         _catalog.Source = () => settings.Current.VersionSource;
     }
 
-    /// <summary>进入时读取实际目录；离开或换版本时取消旧请求，保持后续页面不受迟到结果影响。</summary>
+    /// <summary>进入时读取实际目录；离开时取消旧请求并清空模组及选择，迟到结果不得回填隐藏列表。</summary>
     public void SetActive(bool active, InstalledVersion? version = null)
     {
         if (_active == active && (!active || _version == version)) return;
         _active = active;
         _load?.Cancel(); _operation?.Cancel();
-        if (!active) return;
+        if (!active)
+        {
+            _mods = [];
+            _selected.Clear();
+            _visibleMods.Clear();
+            RefreshSelection();
+            return;
+        }
         _version = version;
         _selected.Clear();
         _mods = []; Filter();

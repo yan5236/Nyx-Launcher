@@ -68,13 +68,13 @@ public sealed partial class ResourceCatalogView : UserControl
         if (_active) _ = LoadAsync();
     }
 
-    /// <summary>显示时重新获取资源，隐藏时取消搜索及版本清单；不影响下载任务或其他页面。</summary>
+    /// <summary>显示时重新获取资源，离开分类或模块时取消搜索并释放结果卡片；保留筛选条件，不影响下载任务。</summary>
     public void SetActive(bool active)
     {
         if (_active == active) return;
         _active = active;
         if (active) _ = LoadAsync();
-        else CancelLoad();
+        else { CancelLoad(); ProjectList.ItemsSource = null; }
     }
 
     /// <summary>点击独立搜索按钮后提交输入并回到第一页；输入过程不发请求。</summary>

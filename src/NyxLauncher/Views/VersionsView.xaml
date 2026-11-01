@@ -63,6 +63,6 @@
                 <ProgressRing x:Name="ScanProgress" Width="28" Height="28" IsActive="False" VerticalAlignment="Top" Margin="0,36,0,0" Visibility="Collapsed" />
             </Grid>
         </Grid>
-        <views:VersionDetailsView x:Name="Details" Visibility="Collapsed" />
+        <views:VersionDetailsView x:Name="Details" x:Load="False" Visibility="Collapsed" />
     </Grid>
 </UserControl>

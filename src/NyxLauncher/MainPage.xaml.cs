@@ -11,11 +11,22 @@ public sealed partial class MainPage : Page
     private readonly AccountStore _accounts;
     private readonly GameFolderStore _folders;
     private readonly DownloadSettingsStore _settings;
+    private readonly JavaRuntimeStore _java;
     private bool _importing;
 
-    /// <summary>窗口关闭时停止下载、游戏、Java 扫描及账户认证，等待后台回收，不删除已完成版本。</summary>
-    public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(), AccountContent.StopAsync(), SettingsContent.StopAsync());
-    /// <summary>加载页面，共享下载和 Java 状态，初始化目录，连接安装完成与首页导航后选中首页。</summary>
+    /// <summary>下载或游戏启动期间避免主动压缩托管堆，减少后台业务被全量回收暂停的机会。</summary>
+    public bool HasMemorySensitiveWork => _tasks.Tasks.Any(task => task.IsBusy) || HomeContent.IsLaunching || _importing;
+
+    /// <summary>后台回收前卸载已经隐藏的详情控件，不创建尚未访问的模块，不影响可见页面和共享任务。</summary>
+    public void ReleaseUnusedViews()
+    {
+        DownloadsContent?.ReleaseUnusedDetails();
+    }
+
+    /// <summary>关闭时停止后台业务，只清理已经创建的账户和设置页，不为退出构造未使用的页面。</summary>
+    public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(),
+        AccountContent?.StopAsync() ?? Task.CompletedTask, SettingsContent?.StopAsync() ?? Task.CompletedTask);
+    /// <summary>只创建首页及共享业务状态，其他模块首次导航时才创建；后台安装完成仍可刷新首页。</summary>
     public MainPage()
     {
         InitializeComponent();
@@ -26,33 +37,55 @@ public sealed partial class MainPage : Page
         _accounts = new AccountStore();
         var tasks = new DownloadTaskManager(settings, action => DispatcherQueue.TryEnqueue(() => action()));
         _tasks = tasks;
-        DownloadsContent.Configure(settings, tasks, folders);
-        SettingsContent.Configure(settings);
-        var java = new JavaRuntimeStore();
-        SettingsContent.ConfigureJava(java, tasks);
-        VersionsContent.Configure(folders, settings, () => HomeContent.IsLaunching || tasks.HasActiveVersionTasks);
-        VersionsContent.ConfigureModpacks(tasks);
-        HomeContent.Configure(folders, settings, _accounts, java);
-        SettingsContent.ConfigureMemory(folders, () => HomeContent.SelectedVersion);
+        _java = new JavaRuntimeStore();
+        HomeContent.Configure(folders, settings, _accounts, _java);
         HomeContent.ManageRequested += Home_ManageRequested;
         HomeContent.CrashAnalysisChanged += (_, analyzing) => CrashToast.IsOpen = analyzing;
-        AccountContent.Configure(_accounts, new AccountRegionPolicy());
         _accounts.Changed += (_, _) => RefreshAccount();
         RefreshAccount();
         tasks.InstallationCompleted += (_, _) =>
         {
-            if (VersionsScroll.Visibility == Visibility.Visible) VersionsContent.SetActive(true);
+            if (VersionsScroll?.Visibility == Visibility.Visible) VersionsContent.SetActive(true);
             HomeContent.Refresh();
         };
-        VersionsContent.InstallRequested += Versions_InstallRequested;
-        VersionsContent.ModDownloadRequested += Versions_ModDownloadRequested;
-        VersionsContent.ModFilesRequested += Versions_ModFilesRequested;
         Navigation.SelectedItem = HomeItem;
+    }
+
+    /// <summary>首次进入指定模块时显式加载其 XAML 并注入共享服务；每个模块只配置一次，已创建页面保留筛选和后台业务状态。</summary>
+    private void EnsurePage(string page)
+    {
+        if (page == "downloads" && DownloadsContent is null)
+        {
+            FindName(nameof(DownloadsContent));
+            DownloadsContent!.Configure(_settings, _tasks, _folders);
+        }
+        else if (page == "versions" && VersionsScroll is null)
+        {
+            FindName(nameof(VersionsScroll));
+            VersionsContent.Configure(_folders, _settings, () => HomeContent.IsLaunching || _tasks.HasActiveVersionTasks);
+            VersionsContent.ConfigureModpacks(_tasks);
+            VersionsContent.InstallRequested += Versions_InstallRequested;
+            VersionsContent.ModDownloadRequested += Versions_ModDownloadRequested;
+            VersionsContent.ModFilesRequested += Versions_ModFilesRequested;
+        }
+        else if (page == "settings" && SettingsScroll is null)
+        {
+            FindName(nameof(SettingsScroll));
+            SettingsContent.Configure(_settings);
+            SettingsContent.ConfigureJava(_java, _tasks);
+            SettingsContent.ConfigureMemory(_folders, () => HomeContent.SelectedVersion);
+        }
+        else if (page == "account" && AccountContent is null)
+        {
+            FindName(nameof(AccountContent));
+            AccountContent!.Configure(_accounts, new AccountRegionPolicy());
+        }
     }
 
     /// <summary>模组管理下载入口先选中模组分类，再切换主导航，避免加载游戏列表。</summary>
     private void Versions_ModDownloadRequested(object? sender, EventArgs e)
     {
+        EnsurePage("downloads");
         DownloadsContent.ShowMods();
         Navigation.SelectedItem = DownloadsItem;
     }
@@ -60,6 +93,7 @@ public sealed partial class MainPage : Page
     /// <summary>从已安装模组详情进入下载页，并携带精确游戏版本与加载器直接显示该项目文件列表。</summary>
     private async void Versions_ModFilesRequested(object? sender, (ResourceProject Project, InstalledVersion Version) request)
     {
+        EnsurePage("downloads");
         DownloadsContent.ShowMods();
         Navigation.SelectedItem = DownloadsItem;
         await DownloadsContent.ShowModFilesAsync(request.Project, request.Version);
@@ -138,6 +172,7 @@ public sealed partial class MainPage : Page
     /// <summary>从版本管理进入游戏下载列表，更新主导航选中态并重置下载分类。</summary>
     private void Versions_InstallRequested(object? sender, EventArgs e)
     {
+        EnsurePage("downloads");
         DownloadsContent.ShowGames();
         Navigation.SelectedItem = DownloadsItem;
     }
@@ -204,19 +239,20 @@ public sealed partial class MainPage : Page
         AccountMenuButton.Margin = open ? new Thickness(8, 8, 8, 12) : new Thickness(0, 8, 0, 12);
     }
 
-    /// <summary>显示指定页面；版本管理扫描目录，下载页加载清单，设置页激活 Java 管理，首页刷新选择。</summary>
+    /// <summary>按需创建目标页并切换可见状态；只停用已创建的其他页面，不因导航遍历而构造隐藏模块。</summary>
     /// <param name="page">由本页导航提供的 home、versions、downloads、account 或 settings 标签。</param>
     private void ShowPage(string page)
     {
+        EnsurePage(page);
         ContentHost.MaxWidth = page == "home" ? double.PositiveInfinity : 1280;
         HomeScroll.Visibility = page == "home" ? Visibility.Visible : Visibility.Collapsed;
-        VersionsScroll.Visibility = page == "versions" ? Visibility.Visible : Visibility.Collapsed;
-        DownloadsContent.Visibility = page == "downloads" ? Visibility.Visible : Visibility.Collapsed;
-        AccountContent.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
-        SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
-        DownloadsContent.SetActive(page == "downloads");
-        VersionsContent.SetActive(page == "versions");
-        SettingsContent.SetActive(page == "settings");
+        if (VersionsScroll is not null) VersionsScroll.Visibility = page == "versions" ? Visibility.Visible : Visibility.Collapsed;
+        if (DownloadsContent is not null) DownloadsContent.Visibility = page == "downloads" ? Visibility.Visible : Visibility.Collapsed;
+        if (AccountContent is not null) AccountContent.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
+        if (SettingsScroll is not null) SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
+        DownloadsContent?.SetActive(page == "downloads");
+        VersionsContent?.SetActive(page == "versions");
+        SettingsContent?.SetActive(page == "settings");
         if (page == "home") HomeContent.Refresh();
     }
 }

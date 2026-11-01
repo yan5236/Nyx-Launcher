@@ -64,6 +64,17 @@ public partial class App : Application
                     contrast.SetImage(new BackgroundContrast(1, 1, new byte[] { 0, 0, 0, 255 }));
                     await Task.Delay(300);
                     Check(texts.All(t => t.Foreground is SolidColorBrush brush && brush.Color == Microsoft.UI.Colors.White), "黑图上的文字变白");
+                    content.Visibility = Visibility.Collapsed;
+                    contrast.SetForeground(false);
+                    var saved = (System.Collections.IDictionary)typeof(BackgroundTextContrast).GetField("_original", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(contrast)!;
+                    Check(texts.All(text => !saved.Contains(text)), "失焦释放隐藏子树的前景引用");
+                    content.Visibility = Visibility.Visible;
+                    contrast.Invalidate();
+                    await Task.Delay(200);
+                    Check(texts.All(text => !saved.Contains(text)), "失焦期间不重新取样");
+                    contrast.SetForeground(true);
+                    await Task.Delay(200);
+                    Check(texts.All(t => t.Foreground is SolidColorBrush brush && brush.Color == Microsoft.UI.Colors.White), "重新聚焦恢复可见文字对比");
                     foreach (var state in new[] { "UnselectedPointerOver", "UnselectedPressed", "SelectedNormal", "SelectedPointerOver", "SelectedPressed", "UnselectedNormal" })
                     {
                         Check(VisualStateManager.GoToState(tabs.Items[1], state, false), "分类状态存在：" + state);

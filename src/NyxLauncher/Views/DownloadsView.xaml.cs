@@ -12,6 +12,9 @@ public sealed partial class DownloadsView : UserControl
     private IReadOnlyList<DownloadEntry> _entries = Array.Empty<DownloadEntry>();
     private readonly VersionCatalogService _service = new();
     private DownloadSettingsStore? _settings;
+    private DownloadTaskManager? _tasks;
+    private GameFolderStore? _folders;
+    private int? _pendingCategory;
     private CancellationTokenSource? _request;
     private Storyboard? _transition;
     private Storyboard? _pageTransition;
@@ -26,10 +29,8 @@ public sealed partial class DownloadsView : UserControl
     {
         InitializeComponent();
         LoadStatus.RetryRequested += RetryRequested;
-        InstallationContent.BackRequested += Installation_BackRequested;
-        InstallationContent.TaskCreated += Installation_TaskCreated;
         ResourcesContent.ModRequested += Mod_Requested;
-        ModDetailsContent.BackRequested += Mod_BackRequested;
+        Loaded += View_Loaded;
         Unloaded += View_Unloaded;
     }
 
@@ -37,12 +38,48 @@ public sealed partial class DownloadsView : UserControl
     public void Configure(DownloadSettingsStore settings, DownloadTaskManager tasks, GameFolderStore folders)
     {
         _settings = settings;
+        _tasks = tasks;
+        _folders = folders;
         ResourcesContent.Configure(settings);
         ResourceIcon.Configure(settings);
         TasksContent.Configure(tasks);
-        InstallationContent.Configure(tasks, folders);
-        ModDetailsContent.Configure(tasks, folders, settings);
         tasks.TaskAdded += (_, _) => TaskBadge.Visibility = _showTasks && _active ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>首次进入安装详情才创建控件并连接共享任务，避免仅浏览资源时构造加载器设置界面。</summary>
+    private void EnsureInstallation()
+    {
+        if (InstallationContent is not null) return;
+        var detail = (InstallationView)FindName(nameof(InstallationContent));
+        detail.Configure(_tasks!, _folders!);
+        detail.BackRequested += Installation_BackRequested;
+        detail.TaskCreated += Installation_TaskCreated;
+    }
+
+    /// <summary>首次打开或后台卸载后创建资源详情；前台切换复用控件，下载任务始终由共享服务持有。</summary>
+    private void EnsureModDetails()
+    {
+        if (ModDetailsContent is not null) return;
+        var detail = (ModDetailsView)FindName(nameof(ModDetailsContent));
+        detail.Configure(_tasks!, _folders!, _settings!);
+        detail.BackRequested += Mod_BackRequested;
+    }
+
+    /// <summary>取消指定详情的请求并卸载整个视觉树；只接受当前实例，避免旧转场回调卸载新页面。</summary>
+    private void ReleaseDetail(FrameworkElement? detail)
+    {
+        if (detail is null) return;
+        if (ReferenceEquals(detail, InstallationContent)) InstallationContent.Close();
+        else if (ReferenceEquals(detail, ModDetailsContent)) ModDetailsContent.Release();
+        else return;
+        UnloadObject(detail);
+    }
+
+    /// <summary>持续后台空闲时卸载隐藏详情；前台切换只清空数据并复用控件，避免反复创建原生模板造成分配峰值。</summary>
+    public void ReleaseUnusedDetails()
+    {
+        if (InstallationContent?.Visibility == Visibility.Collapsed) ReleaseDetail(InstallationContent);
+        if (ModDetailsContent?.Visibility == Visibility.Collapsed) ReleaseDetail(ModDetailsContent);
     }
 
     /// <summary>任务创建后立即恢复下载列表；不切到任务页，保留右上角未读提示。</summary>
@@ -69,15 +106,31 @@ public sealed partial class DownloadsView : UserControl
     }
 
     /// <summary>安装新版本入口使用游戏分类；分类切换时沿用现有筛选重置与加载流程。</summary>
-    public void ShowGames() => ContentSelector.SelectedItem = ContentSelector.Items[0];
+    public void ShowGames() => SelectCategory(0);
 
     /// <summary>从版本管理直接选中下载页的模组分类，复用现有资源目录加载与筛选。</summary>
-    public void ShowMods() => ContentSelector.SelectedItem = ContentSelector.Items[1];
+    public void ShowMods() => SelectCategory(1);
+
+    /// <summary>尚未加载时记住跨模块要求的分类，模板加载后再选中，防止初始游戏 Tab 覆盖模组入口。</summary>
+    private void SelectCategory(int index)
+    {
+        if (!IsLoaded) _pendingCategory = index;
+        ContentSelector.SelectedItem = ContentSelector.Items[index];
+    }
+
+    /// <summary>首次模板加载完成后应用跨模块分类请求；普通重新显示沿用用户当前选择。</summary>
+    private void View_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_pendingCategory is not { } index) return;
+        _pendingCategory = null;
+        ContentSelector.SelectedItem = ContentSelector.Items[index];
+    }
 
     /// <summary>已安装模组入口跳过版本与加载器选择，进入精确匹配的文件列表；导航离开时沿用详情取消与转场清理。</summary>
     public async Task ShowModFilesAsync(ResourceProject project, InstalledVersion version)
     {
         if (!_active || _pageRequest is not null) return;
+        EnsureModDetails();
         ModDetailsContent.OpenFiles(project, version.GameVersion, version.Loader.Split(':')[0].Trim().ToLowerInvariant());
         await SwitchPageAsync(true, ModDetailsContent);
     }
@@ -99,13 +152,16 @@ public sealed partial class DownloadsView : UserControl
             _pageRequest?.Cancel();
             _pageRequest = null;
             _pageTransition?.Stop();
+            _pageTransition = null;
             ResetPage(CatalogPanel);
-            ResetPage(InstallationContent);
-            ResetPage(ModDetailsContent);
-            InstallationContent.Close();
-            ModDetailsContent.Close();
-            InstallationContent.Visibility = Visibility.Collapsed;
-            ModDetailsContent.Visibility = Visibility.Collapsed;
+            if (InstallationContent is not null) ResetPage(InstallationContent);
+            if (ModDetailsContent is not null) ResetPage(ModDetailsContent);
+            InstallationContent?.Close();
+            ModDetailsContent?.Release();
+            if (InstallationContent is not null) InstallationContent.Visibility = Visibility.Collapsed;
+            if (ModDetailsContent is not null) ModDetailsContent.Visibility = Visibility.Collapsed;
+            _entries = [];
+            EntryList.ItemsSource = null;
             CatalogPanel.Visibility = Visibility.Visible;
         }
     }
@@ -114,6 +170,7 @@ public sealed partial class DownloadsView : UserControl
     private async void EntryList_ItemClick(object sender, ItemClickEventArgs e)
     {
         if (!_active || _busy || _pageRequest is not null || _category != "game" || e.ClickedItem is not DownloadEntry entry) return;
+        EnsureInstallation();
         InstallationContent.Open(entry, _settings?.Current.VersionSource ?? SourceStrategy.OfficialWithFallback);
         await SwitchPageAsync(true);
     }
@@ -131,16 +188,19 @@ public sealed partial class DownloadsView : UserControl
     private async void Mod_Requested(object? sender, ResourceProject project)
     {
         if (!_active || _pageRequest is not null) return;
+        EnsureModDetails();
         ModDetailsContent.Open(project, ResourcesContent.SelectedGameVersion, ResourcesContent.SelectedLoader);
         await SwitchPageAsync(true, ModDetailsContent);
     }
 
-    /// <summary>关闭详情请求和弹窗，按反向淡入淡出返回保留的目录，并恢复键盘焦点。</summary>
+    /// <summary>关闭详情请求和弹窗，返回保留的目录后释放详情数据并恢复焦点；被侧栏取消的转场不得清空随后打开的新详情。</summary>
     private async void Mod_BackRequested(object? sender, EventArgs e)
     {
         if (_pageRequest is not null) return;
+        var detail = ModDetailsContent;
         ModDetailsContent.Close();
         await SwitchPageAsync(false, ModDetailsContent);
+        if (ReferenceEquals(detail, ModDetailsContent) && detail.Visibility == Visibility.Collapsed) detail.Release();
         if (_active) ResourcesContent.Focus(FocusState.Programmatic);
     }
 

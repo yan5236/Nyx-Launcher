@@ -75,7 +75,7 @@ public sealed partial class ModDetailsView : UserControl
         _ = LoadAsync();
     }
 
-    /// <summary>离开页面取消在途发布和前置请求并关闭版本弹窗；已创建的下载任务继续运行。</summary>
+    /// <summary>取消当前项目请求和弹窗，保留退场动画与内部返回需要的数据；完整退出后由 Release 释放列表和历史。下载任务继续运行。</summary>
     public void Close()
     {
         _active = false;
@@ -87,8 +87,21 @@ public sealed partial class ModDetailsView : UserControl
         LoadStatus.Stop();
     }
 
+    /// <summary>退出整个详情模块时释放依赖导航历史、项目、文件及控件绑定；不影响已经交给任务管理器的下载。</summary>
+    public void Release()
+    {
+        Close();
+        _history.Clear();
+        _project = null;
+        _files = [];
+        _dependencies = null;
+        Choices.ItemsSource = null;
+        DependencyCards.ItemsSource = null;
+        ProjectIcon.Project = null;
+    }
+
     /// <summary>页面卸载时释放界面请求的所有权。</summary>
-    private void View_Unloaded(object sender, RoutedEventArgs e) => Close();
+    private void View_Unloaded(object sender, RoutedEventArgs e) => Release();
 
     /// <summary>有前置跳转历史时恢复来源模组的阶段、文件和滚动位置；只有最外层详情才返回资源目录。</summary>
     private void Back_Click(object sender, RoutedEventArgs e)

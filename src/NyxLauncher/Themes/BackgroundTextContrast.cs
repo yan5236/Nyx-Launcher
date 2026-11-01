@@ -21,6 +21,7 @@ public sealed class BackgroundTextContrast
     private readonly SolidColorBrush _black = new(Microsoft.UI.Colors.Black);
     private readonly SolidColorBrush _white = new(Microsoft.UI.Colors.White);
     private BackgroundContrast? _sample;
+    private bool _foreground = true;
 
     /// <summary>连接窗口布局和低频更新计时器；调整前景不会改变业务控件、输入或导航状态。</summary>
     public BackgroundTextContrast(FrameworkElement root, Image image, AppWindow? window)
@@ -38,7 +39,29 @@ public sealed class BackgroundTextContrast
     public void SetImage(BackgroundContrast? sample) { Restore(); _sample = sample; Invalidate(); }
 
     /// <summary>将连续的滚动、缩放或设置变化合并为一次对比度更新。</summary>
-    public void Invalidate() { if (!_timer.IsRunning) _timer.Start(); }
+    public void Invalidate() { if (_foreground && !_timer.IsRunning) _timer.Start(); }
+
+    /// <summary>失焦时暂停取样并释放隐藏控件的前景记录，可见页面保留配色；恢复前台后重新计算。</summary>
+    public void SetForeground(bool foreground)
+    {
+        _foreground = foreground;
+        _timer.Stop();
+        if (foreground) Invalidate();
+        else
+            foreach (var element in _original.Keys.Where(element => !IsVisibleInRoot(element)).ToArray())
+            { RestoreElement(element, _original[element]); _original.Remove(element); }
+    }
+
+    /// <summary>按祖先链确认控件仍在当前窗口的可见子树内；父级隐藏或已卸载时不再保留其前景覆盖。</summary>
+    private bool IsVisibleInRoot(DependencyObject element)
+    {
+        for (DependencyObject? node = element; node is not null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (node is UIElement { Visibility: Visibility.Collapsed }) return false;
+            if (ReferenceEquals(node, _root)) return true;
+        }
+        return false;
+    }
 
     /// <summary>窗口或内容布局变化后重新采样实际文字位置，包括侧栏折叠和列表滚动。</summary>
     private void LayoutUpdated(object? sender, object args) { if (_sample is not null) Invalidate(); }
@@ -69,9 +92,10 @@ public sealed class BackgroundTextContrast
     /// <summary>根据文字所在区域的图片和祖先半透明底色选择黑白；超过 80% 覆盖的卡片和按钮使用其既有主题。</summary>
     private void Refresh(DispatcherQueueTimer sender, object args)
     {
+        if (!_foreground) return;
         if (_sample is null || _image.Source is null || _image.Opacity <= 0 || _root.ActualWidth <= 0) { Restore(); return; }
         var visited = new HashSet<FrameworkElement>();
-        foreach (var element in Descendants(_root).OfType<FrameworkElement>())
+        foreach (var element in Descendants(_root, visibleOnly: true).OfType<FrameworkElement>())
         {
             var property = ForegroundProperty(element);
             if (property is null || element.Visibility != Visibility.Visible || element.ActualWidth <= 0 || element.ActualHeight <= 0) continue;
@@ -169,13 +193,15 @@ public sealed class BackgroundTextContrast
     /// <summary>转换 WinUI 颜色为纯业务采样算法使用的 ARGB 数值。</summary>
     private static uint Argb(Color color) => (uint)(color.A << 24 | color.R << 16 | color.G << 8 | color.B);
 
-    /// <summary>遍历当前窗口的视觉树，弹出菜单属于独立且不透明的表面，不纳入此遍历。</summary>
-    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    /// <summary>取样时跳过整棵隐藏子树；收集模板视觉状态时保留完整遍历。独立弹出菜单不在此树中。</summary>
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root, bool visibleOnly = false)
     {
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
         {
-            var child = VisualTreeHelper.GetChild(root, i); yield return child;
-            foreach (var next in Descendants(child)) yield return next;
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (visibleOnly && child is UIElement { Visibility: Visibility.Collapsed }) continue;
+            yield return child;
+            foreach (var next in Descendants(child, visibleOnly)) yield return next;
         }
     }
 }

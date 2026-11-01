@@ -43,6 +43,22 @@ if ($contrastProcess.ExitCode -ne 0) { throw '背景文字恢复检查失败' }
 
 ## 实网与安装检查
 
+### 真实窗口内存生命周期
+
+`tests/NyxLauncher.UiChecks/MemoryLifecycle.targets` 替换验收入口，使用正式资源与真实主窗口执行三轮在线模组详情→侧栏首页，检查启动只创建首页、首次跨模块分类、依赖返回、发布列表弱引用回收，以及另一窗口获得焦点后的采样暂停、隐藏详情自动回收与恢复。采样结束后补验账户首次打开、版本管理入口、详情返回停止采样、版本详情复用及精确文件筛选跳转；没有本地版本时使用不落盘的版本夹具。读取本机配置但不安装游戏或保存偏好；需要桌面会话与 Modrinth 网络访问，运行期间请勿操作验收窗口。
+
+```powershell
+$memoryTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/MemoryLifecycle.targets'
+$memoryOutput = Join-Path $PWD '.local/memory-checks/'
+dotnet build src/NyxLauncher/NyxLauncher.csproj -c Release -p:Platform=x64 "-p:CustomAfterMicrosoftCommonTargets=$memoryTargets" "-p:OutputPath=$memoryOutput"
+if ($LASTEXITCODE -ne 0) { throw '内存检查构建失败' }
+$memoryProcess = Start-Process (Join-Path $memoryOutput 'NyxLauncher.exe') -Wait -PassThru
+Get-Content (Join-Path $memoryOutput 'memory-checks.log')
+if ($memoryProcess.ExitCode -ne 0) { throw '内存生命周期检查失败' }
+```
+
+日志分别记录工作集、私有提交与托管堆。`home-collected` 阶段显式 GC 用于检查可达引用，不代表正常前台回收时机；`background` 阶段由产品自己的失焦策略运行。比较前后版本时使用同一配置、同一驱动和资源数据，不能把工作集下降等同于全部内存泄漏消失。`NYX_MEMORY_BASELINE=1` 仅用于旧版本基线记录，会关闭回归断言，不应用于优化验收。
+
 下列检查必须显式选择。带目录参数的入口使用专用、可丢弃的验收目录，不能指向日常游戏目录、真实存档或已有工作文件；运行前查看对应测试实现。它们可能下载大量资源、启动进程或保留产物，不属于文档修改的默认验证。
 
 | 参数 | 范围及前置条件 |

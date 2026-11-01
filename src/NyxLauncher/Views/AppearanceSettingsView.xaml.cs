@@ -33,14 +33,19 @@ public sealed partial class AppearanceSettingsView : UserControl
     /// <summary>展示当前外观读取或背景加载错误，不覆盖编辑中的颜色。</summary>
     private void ThemeChanged() => ShowError(_themes.Store.LoadError ?? _themes.BackgroundError);
 
-    /// <summary>从已保存值刷新控件并抑制初始化事件，保存失败时用于回退。</summary>
+    /// <summary>从保存值刷新控件并抑制初始化事件；只有自定义配色才创建颜色选择器，预设配色卸载自定义控件。</summary>
     private void Refresh()
     {
         _loading = true;
         var settings = _themes.Store.Current;
         Mode.SelectedIndex = (int)settings.Mode;
         Preset.SelectedIndex = (int)settings.Preset;
-        CustomPanel.Visibility = settings.Preset == ThemePreset.Custom ? Visibility.Visible : Visibility.Collapsed;
+        if (settings.Preset == ThemePreset.Custom)
+        {
+            var panel = (StackPanel)FindName(nameof(CustomPanel));
+            panel.Visibility = Visibility.Visible;
+        }
+        else if (CustomPanel is not null) UnloadObject(CustomPanel);
         OpacitySlider.Value = settings.BackgroundOpacity * 100;
         SidebarOpacitySlider.Value = settings.SidebarOpacity * 100;
         RemoveImage.IsEnabled = settings.BackgroundPath is not null;
@@ -59,9 +64,10 @@ public sealed partial class AppearanceSettingsView : UserControl
     /// <summary>切换要编辑的浅色或深色配色，不改变实际外观模式。</summary>
     private void ColorMode_Changed(object sender, SelectionChangedEventArgs args) { if (!_loading) LoadColors(); }
 
-    /// <summary>填充选定明暗配置的三个颜色选择器，未应用的修改在切换组别时丢弃。</summary>
+    /// <summary>仅填充已经创建的颜色选择器，未应用的修改在切换组别时丢弃，不为预设配色创建编辑器。</summary>
     private void LoadColors()
     {
+        if (CustomPanel is null) return;
         var colors = ColorMode.SelectedIndex == 1 ? _themes.Store.Current.Dark : _themes.Store.Current.Light;
         Tone.Color = ThemeManager.Parse(colors.Tone);
         Primary.Color = ThemeManager.Parse(colors.Primary);

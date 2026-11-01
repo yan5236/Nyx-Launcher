@@ -64,12 +64,12 @@
                           VerticalScrollBarVisibility="Auto">
                 <views:HomeView x:Name="HomeContent" />
             </ScrollViewer>
-            <Grid x:Name="VersionsScroll" Visibility="Collapsed">
+            <Grid x:Name="VersionsScroll" x:Load="False" Visibility="Collapsed">
                 <views:VersionsView x:Name="VersionsContent" />
             </Grid>
-            <views:DownloadsView x:Name="DownloadsContent" Visibility="Collapsed" />
-            <views:AccountsView x:Name="AccountContent" Visibility="Collapsed" />
-            <Grid x:Name="SettingsScroll" Visibility="Collapsed">
+            <views:DownloadsView x:Name="DownloadsContent" x:Load="False" Visibility="Collapsed" />
+            <views:AccountsView x:Name="AccountContent" x:Load="False" Visibility="Collapsed" />
+            <Grid x:Name="SettingsScroll" x:Load="False" Visibility="Collapsed">
                 <views:SettingsView x:Name="SettingsContent" />
             </Grid>
             <InfoBar x:Name="CrashToast" HorizontalAlignment="Right" VerticalAlignment="Top"

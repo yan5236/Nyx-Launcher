@@ -18,6 +18,7 @@ public sealed partial class MainWindow : Window
         Themes.ThemeManager.Current.Attach(ThemeRoot, WindowBackground, AppWindow);
         RootFrame.Navigate(typeof(MainPage));
         AppWindow.Closing += Window_Closing;
+        InitializeMemoryLifecycle();
     }
 
     /// <summary>响应窗口标题栏左上角的折叠按钮，将切换请求交给当前主页面。</summary>
