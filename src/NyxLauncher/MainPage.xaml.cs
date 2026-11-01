@@ -36,7 +36,7 @@ public sealed partial class MainPage : Page
         SettingsContent.ConfigureMemory(folders, () => HomeContent.SelectedVersion);
         HomeContent.ManageRequested += Home_ManageRequested;
         HomeContent.CrashAnalysisChanged += (_, analyzing) => CrashToast.IsOpen = analyzing;
-        AccountContent.Configure(_accounts);
+        AccountContent.Configure(_accounts, new AccountRegionPolicy());
         _accounts.Changed += (_, _) => RefreshAccount();
         RefreshAccount();
         tasks.InstallationCompleted += (_, _) =>

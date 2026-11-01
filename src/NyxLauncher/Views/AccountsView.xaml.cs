@@ -9,21 +9,26 @@ namespace NyxLauncher.Views;
 public sealed partial class AccountsView : UserControl
 {
     private AccountStore? _accounts;
+    private AccountRegionPolicy? _region;
     private bool _refreshing;
     private AccountRow[] _rows = [];
     private AddAccountDialog? _dialog;
     private bool _closing;
+    private bool _opening;
+    private bool _outsideMainland;
 
     /// <summary>初始化账户列表；持久化服务由主页面提供。</summary>
     public AccountsView() => InitializeComponent();
 
-    /// <summary>绑定共享账户集合，订阅已保存的选择变化，并显示读取错误。</summary>
-    public void Configure(AccountStore accounts)
+    /// <summary>绑定共享账户集合，订阅已保存的选择变化；空账户时探测网络位置并显示读取错误。</summary>
+    public void Configure(AccountStore accounts, AccountRegionPolicy region)
     {
         _accounts = accounts;
+        _region = region;
         accounts.Changed += (_, _) => Refresh();
         Refresh();
         if (accounts.LoadError is string error) { Error.Message = error; Error.IsOpen = true; }
+        _ = DetectRegionAsync();
     }
 
     /// <summary>同步列表与左侧选中指示条，避免程序设置选择时再次写入配置。</summary>
@@ -41,8 +46,23 @@ public sealed partial class AccountsView : UserControl
             AccountList.SelectedItem = _rows.SingleOrDefault(x => x.Account == _accounts.Selected);
             Empty.Visibility = _accounts.Accounts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             AccountList.Visibility = _accounts.Accounts.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+            RefreshRegionHint();
         }
         finally { _refreshing = false; }
+    }
+
+    /// <summary>仅在首次空账户且确认位于大陆以外时说明只能添加微软账户；保存过账户后不再提示。</summary>
+    private void RefreshRegionHint() =>
+        RegionHint.Visibility = _outsideMainland && _accounts!.Accounts.Count == 0 && !_accounts.HasAccountHistory
+            ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>启动后按需探测网络位置；不阻塞界面，检测失败或已有账户历史时按不受限处理。</summary>
+    private async Task DetectRegionAsync()
+    {
+        if (_region is null || _accounts!.Accounts.Count > 0 || _accounts.HasAccountHistory) return;
+        try { _outsideMainland = await _region.IsOutsideMainlandAsync(); }
+        catch (Exception) { _outsideMainland = false; }
+        RefreshRegionHint();
     }
 
     /// <summary>键盘选择也立即保存；失败恢复原选中卡片并说明原因。</summary>
@@ -94,22 +114,32 @@ public sealed partial class AccountsView : UserControl
     private async void Add_Click(object sender, RoutedEventArgs e)
         => await ShowAccountDialogAsync(null);
 
-    /// <summary>共用添加和重登弹窗，防止重复打开；异常仍留在账户页，窗口关闭后不接受新的登录。</summary>
+    /// <summary>共用添加和重登弹窗，防止重复打开；新建账户前确认区域限制，异常仍留在账户页，窗口关闭后不接受新的登录。</summary>
     private async Task ShowAccountDialogAsync(GameAccount? previous, string? import = null)
     {
-        if (_closing || _dialog is not null) return;
+        if (_closing || _dialog is not null || _opening) return;
+        _opening = true;
         Error.IsOpen = false;
         Error.Severity = InfoBarSeverity.Error;
         AddButton.IsEnabled = false;
         try
         {
-            _dialog = new AddAccountDialog(_accounts!, previous) { XamlRoot = XamlRoot };
+            bool restrict = previous is null && AccountRegionPolicy.RequiresMicrosoftOnly(_accounts!, await IsOutsideMainlandAsync());
+            _dialog = new AddAccountDialog(_accounts!, previous, restrict) { XamlRoot = XamlRoot };
             if (import is not null) _dialog.Loaded += (_, _) => _dialog?.ImportServer(import);
             await _dialog.ShowAsync();
             await _dialog.StopAsync();
         }
         catch (Exception ex) { Error.Message = ex.Message; Error.IsOpen = true; }
-        finally { _dialog = null; AddButton.IsEnabled = !_closing; }
+        finally { _opening = false; _dialog = null; AddButton.IsEnabled = !_closing; }
+    }
+
+    /// <summary>仅首次空账户需要确认网络位置；已有账户或保存历史立即放行，检测失败也不阻止本地账户类型。</summary>
+    private async Task<bool> IsOutsideMainlandAsync()
+    {
+        if (_region is null || _accounts!.Accounts.Count > 0 || _accounts.HasAccountHistory) return false;
+        try { return await _region.IsOutsideMainlandAsync(); }
+        catch (Exception) { return false; }
     }
 
     /// <summary>从主窗口拖放导入服务器；已有添加弹窗时复用，避免叠加模态窗口。</summary>

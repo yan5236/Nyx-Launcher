@@ -23,6 +23,9 @@
  <StackPanel x:Name="StepContent" Spacing="16" MinWidth="340" MinHeight="210">
   <StackPanel.RenderTransform><TranslateTransform x:Name="StepTranslation"/></StackPanel.RenderTransform>
   <StackPanel x:Name="Types" Spacing="10">
+   <InfoBar x:Name="RegionNotice" Severity="Informational" IsOpen="False" IsClosable="False"
+            Title="首次使用仅支持微软账户"
+            Message="添加微软账户后，离线与外置账户即可使用。"/>
    <Button x:Name="MicrosoftButton" Click="Microsoft_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="微软登录">
     <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
      <Grid Width="24" Height="24" RowSpacing="3" ColumnSpacing="3">

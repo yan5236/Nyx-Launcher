@@ -15,8 +15,8 @@ public sealed partial class AddAccountDialog
     private ExternalTokens? _externalTokens;
     private string _externalStep = "servers";
 
-    /// <summary>进入服务器目录，默认 LittleSkin 可直接进入凭据输入。</summary>
-    private void External_Click(object sender, RoutedEventArgs e) => ShowServers();
+    /// <summary>进入服务器目录，默认 LittleSkin 可直接进入凭据输入；区域限制期间不进入。</summary>
+    private void External_Click(object sender, RoutedEventArgs e) { if (_restricted) return; ShowServers(); }
 
     /// <summary>切换外置登录步骤和底部操作，并沿用其他登录步骤的平移淡入；返回使用相反方向。</summary>
     private void ShowExternalStep(string step, bool forward = true)
@@ -162,10 +162,10 @@ public sealed partial class AddAccountDialog
         }
     }
 
-    /// <summary>验证标准卡片并去重导入后进入登录；重登或忙碌时不打断当前认证。</summary>
+    /// <summary>验证标准卡片并去重导入后进入登录；区域限制、重登或忙碌时不打断当前认证。</summary>
     public void ImportServer(string text)
     {
-        if (_loginCancellation is not null || _previous is not null || _closed) return;
+        if (_restricted || _loginCancellation is not null || _previous is not null || _closed) return;
         ShowServers();
         StartExternal(async token =>
         {
@@ -176,14 +176,15 @@ public sealed partial class AddAccountDialog
         });
     }
 
-    /// <summary>浏览器标准文本拖拽使用复制语义；忙碌或重登时不接受导入。</summary>
+    /// <summary>浏览器标准文本拖拽使用复制语义；区域限制、忙碌或重登时不接受导入。</summary>
     private void External_DragOver(object sender, DragEventArgs e)
-    { e.Handled = true; if (_loginCancellation is null && _previous is null && e.DataView.Contains(StandardDataFormats.Text)) e.AcceptedOperation = DataPackageOperation.Copy; }
+    { e.Handled = true; if (!_restricted && _loginCancellation is null && _previous is null && e.DataView.Contains(StandardDataFormats.Text)) e.AcceptedOperation = DataPackageOperation.Copy; }
 
-    /// <summary>仅在读取文本期间持有系统拖放延迟，读取后立即释放再导入；异常同样结束拖放，避免浮标残留。</summary>
+    /// <summary>仅在读取文本期间持有系统拖放延迟，读取后立即释放再导入；区域限制或异常时同样结束拖放，避免浮标残留。</summary>
     private async void External_Drop(object sender, DragEventArgs e)
     {
         e.Handled = true;
+        if (_restricted) return;
         try
         {
             string text;

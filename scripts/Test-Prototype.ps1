@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
 $project = Join-Path $PSScriptRoot '../src/NyxLauncher'
 [xml]$shell = Get-Content (Join-Path $project 'MainPage.xaml') -Raw -Encoding utf8
 $ns = [System.Xml.XmlNamespaceManager]::new($shell.NameTable)
@@ -243,15 +243,21 @@ if ($list.IsItemClickEnabled -ne 'True' -or $list.ItemClick -ne 'EntryList_ItemC
 [xml]$accountDialog = Get-Content (Join-Path $project 'Views/AddAccountDialog.xaml') -Raw -Encoding utf8
 $accountNs = [System.Xml.XmlNamespaceManager]::new($accountDialog.NameTable)
 $accountNs.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$accountNs.AddNamespace('x', $xns)
 if ($accountDialog.DocumentElement.PrimaryButtonText -ne '取消' -or
     $accountDialog.DocumentElement.SecondaryButtonClick -ne 'Confirm_Click' -or
     -not $accountDialog.SelectSingleNode('//ui:ContentDialog.Title//ui:Button[@Click="Back_Click"]', $accountNs)) {
     throw '账户弹窗必须左取消、右确认，返回按钮在标题左侧。'
 }
-# 微软入口可触发真实授权，并提供取消期间的阶段展示；外置登录仍保留不可用状态。
+# 微软入口可触发真实授权，并提供取消期间的阶段展示；离线与外置入口由区域限制在运行时决定。
 if (-not $accountDialog.SelectSingleNode('//ui:Button[@Click="Microsoft_Click" and not(@IsEnabled="False")]', $accountNs) -or
     -not $accountDialog.SelectSingleNode('//ui:ProgressRing[@IsActive="False"]', $accountNs)) {
     throw '微软账户必须具有可用入口及认证进度区域。'
+}
+if (-not $accountDialog.SelectSingleNode('//ui:InfoBar[@x:Name="RegionNotice" and @IsOpen="False" and @IsClosable="False"]', $accountNs) -or
+    -not $accountDialog.SelectSingleNode('//ui:Button[@x:Name="OfflineButton" and not(@IsEnabled="False")]', $accountNs) -or
+    -not $accountDialog.SelectSingleNode('//ui:Button[@x:Name="ExternalButton" and not(@IsEnabled="False")]', $accountNs)) {
+    throw '账户弹窗必须提供运行时区域限制说明，离线与外置入口默认可用。'
 }
 if ($install.SelectSingleNode('//ui:Button[@x:Name="ApiButton"]', $ins).GetAttribute('Margin') -notin @('', '0')) {
     throw 'Fabric API 卡片必须与加载器卡片左侧对齐。'
@@ -280,4 +286,4 @@ foreach ($file in $xamlFiles) {
         }
     }
 }
-Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、详情危险区、设置 Tab/源策略/滑块范围及图片资源。'
+Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、详情危险区、设置 Tab/源策略/滑块范围、账户区域限制说明及图片资源。'

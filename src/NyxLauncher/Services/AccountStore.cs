@@ -10,12 +10,15 @@ public sealed class AccountStore
     public IReadOnlyList<GameAccount> Accounts { get; private set; } = [];
     public GameAccount? Selected { get; private set; }
     public string? LoadError { get; private set; }
+    /// <summary>此前是否保存过账户；空文件也代表删除过账户，用于区分首次使用与清空后的空列表。</summary>
+    public bool HasAccountHistory { get; private set; }
     public event EventHandler? Changed;
 
     /// <summary>读取账户配置并验证名称、重复项及当前选择；损坏文件保留原状，后续写入会报错。</summary>
     public AccountStore(string? path = null)
     {
         _path = path ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NyxLauncher", "accounts.json");
+        HasAccountHistory = File.Exists(_path);
         try
         {
             if (!File.Exists(_path)) return;
@@ -100,6 +103,7 @@ public sealed class AccountStore
             File.Move(temporary, _path, true);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        HasAccountHistory = true;
         Accounts = accounts;
         Selected = selected;
         Changed?.Invoke(this, EventArgs.Empty);

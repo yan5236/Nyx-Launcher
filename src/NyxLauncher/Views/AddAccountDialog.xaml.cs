@@ -10,6 +10,7 @@ namespace NyxLauncher.Views;
 public sealed partial class AddAccountDialog : ContentDialog
 {
     private readonly AccountStore _accounts;
+    private readonly bool _restricted;
     private Storyboard? _transition;
     private readonly GameAccount? _previous;
     private CancellationTokenSource? _loginCancellation;
@@ -18,13 +19,21 @@ public sealed partial class AddAccountDialog : ContentDialog
     private Uri? _authorizationUri;
     private bool _openingBrowser;
 
-    /// <summary>注入账户存储和可选重登身份；验证内嵌客户端配置，配置失败仅禁用微软入口，关闭会取消登录。</summary>
-    public AddAccountDialog(AccountStore accounts, GameAccount? previous = null)
+    /// <summary>注入账户存储和可选重登身份；首次空账户位于大陆以外时禁用离线与外置入口，配置失败仅禁用微软入口。</summary>
+    public AddAccountDialog(AccountStore accounts, GameAccount? previous = null, bool restrictLocalAccounts = false)
     {
-        InitializeComponent(); _accounts = accounts; _previous = previous;
+        InitializeComponent(); _accounts = accounts; _previous = previous; _restricted = restrictLocalAccounts && previous is null;
         try { MicrosoftLoginSettings.Load(); MicrosoftHint.Text = "在系统浏览器中登录"; }
         catch (Exception ex) { MicrosoftButton.IsEnabled = false; Error.Message = ex.Message; Error.IsOpen = true; }
         Closed += (_, _) => { _authorizationUri = null; _externalTokens = null; ExternalPassword.Password = ""; _closed = true; _transition?.Stop(); _loginCancellation?.Cancel(); };
+        if (_restricted)
+        {
+            OfflineButton.IsEnabled = false;
+            ExternalButton.IsEnabled = false;
+            RegionNotice.IsOpen = true;
+            ToolTipService.SetToolTip(OfflineButton, "添加微软账户后可用。");
+            ToolTipService.SetToolTip(ExternalButton, "添加微软账户后可用。");
+        }
         if (previous?.IsExternal == true)
         {
             Loaded += (_, _) => ShowCredentials(new ExternalServer(previous.AuthServerName!, previous.AuthServer!));
@@ -132,9 +141,10 @@ public sealed partial class AddAccountDialog : ContentDialog
         if (_loginTask is not null) await _loginTask;
     }
 
-    /// <summary>进入离线输入步骤并移动键盘焦点，允许 Enter 确认和返回类型选择。</summary>
+    /// <summary>进入离线输入步骤并移动键盘焦点，允许 Enter 确认和返回类型选择；区域限制期间不进入。</summary>
     private void Offline_Click(object sender, RoutedEventArgs e)
     {
+        if (_restricted) return;
         DialogTitle.Text = "添加离线账户"; Types.Visibility = Visibility.Collapsed; AccountName.Visibility = Visibility.Visible;
         BackButton.Visibility = Visibility.Visible;
         SecondaryButtonText = "确定"; DefaultButton = ContentDialogButton.Secondary;

@@ -12,6 +12,8 @@
    <StackPanel x:Name="Empty" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
     <FontIcon Glyph="&#xE77B;" FontSize="48" Foreground="#87928A"/>
     <TextBlock Text="目前还没有账户呢，点击右上角添加" Foreground="#6B7A70" TextAlignment="Center" TextWrapping="Wrap"/>
+    <TextBlock x:Name="RegionHint" Visibility="Collapsed" MaxWidth="380" Foreground="#6B7A70" TextAlignment="Center" TextWrapping="Wrap"
+               Text="首次使用仅支持微软账户；添加微软账户后，离线与外置账户即可使用。"/>
    </StackPanel>
    <ListView x:Name="AccountList" SelectionMode="Single" SelectionChanged="Account_SelectionChanged" IsItemClickEnabled="True" ItemClick="Account_Click" AutomationProperties.Name="账户列表">
     <ListView.ItemContainerStyle>
