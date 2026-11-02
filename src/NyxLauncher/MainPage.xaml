@@ -29,6 +29,9 @@
             <NavigationViewItem x:Name="DownloadsItem" Content="下载" Tag="downloads">
                 <NavigationViewItem.Icon><FontIcon Glyph="&#xE896;" /></NavigationViewItem.Icon>
             </NavigationViewItem>
+            <NavigationViewItem x:Name="WardrobeItem" Content="衣柜" Tag="wardrobe">
+                <NavigationViewItem.Icon><ImageIcon><ImageIcon.Source><SvgImageSource UriSource="ms-appx:///Assets/hanger.svg" /></ImageIcon.Source></ImageIcon></NavigationViewItem.Icon>
+            </NavigationViewItem>
         </NavigationView.MenuItems>
         <NavigationView.PaneFooter>
             <Button x:Name="AccountMenuButton" Margin="8,8,8,12" Padding="10" HorizontalAlignment="Stretch"
@@ -69,6 +72,7 @@
             </Grid>
             <views:DownloadsView x:Name="DownloadsContent" x:Load="False" Visibility="Collapsed" />
             <views:AccountsView x:Name="AccountContent" x:Load="False" Visibility="Collapsed" />
+            <views:WardrobeView x:Name="WardrobeContent" x:Load="False" Visibility="Collapsed" />
             <Grid x:Name="SettingsScroll" x:Load="False" Visibility="Collapsed">
                 <views:SettingsView x:Name="SettingsContent" />
             </Grid>

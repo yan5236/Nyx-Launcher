@@ -25,7 +25,8 @@ public sealed partial class MainPage : Page
 
     /// <summary>关闭时停止后台业务，只清理已经创建的账户和设置页，不为退出构造未使用的页面。</summary>
     public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(),
-        AccountContent?.StopAsync() ?? Task.CompletedTask, SettingsContent?.StopAsync() ?? Task.CompletedTask);
+        AccountContent?.StopAsync() ?? Task.CompletedTask, SettingsContent?.StopAsync() ?? Task.CompletedTask,
+        WardrobeContent?.StopAsync() ?? Task.CompletedTask);
     /// <summary>只创建首页及共享业务状态，其他模块首次导航时才创建；后台安装完成仍可刷新首页。</summary>
     public MainPage()
     {
@@ -54,6 +55,11 @@ public sealed partial class MainPage : Page
     /// <summary>首次进入指定模块时显式加载其 XAML 并注入共享服务；每个模块只配置一次，已创建页面保留筛选和后台业务状态。</summary>
     private void EnsurePage(string page)
     {
+        if (page == "wardrobe" && WardrobeContent is null)
+        {
+            FindName(nameof(WardrobeContent));
+            WardrobeContent!.Configure(_accounts);
+        }
         if (page == "downloads" && DownloadsContent is null)
         {
             FindName(nameof(DownloadsContent));
@@ -224,7 +230,7 @@ public sealed partial class MainPage : Page
     private void UpdateAccountPane(bool open)
     {
         if (AccountName is null || AccountChevron is null) return;
-        foreach (var item in new[] { HomeItem, VersionsItem, DownloadsItem })
+        foreach (var item in new[] { HomeItem, VersionsItem, DownloadsItem, WardrobeItem })
             item.Margin = open ? new Thickness(8, 2, 8, 2) : new Thickness(0, 2, 0, 2);
         AccountName.Visibility = AccountChevron.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         AccountMenuLayout.ColumnSpacing = open ? 10 : 0;
@@ -240,7 +246,7 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>按需创建目标页并切换可见状态；只停用已创建的其他页面，不因导航遍历而构造隐藏模块。</summary>
-    /// <param name="page">由本页导航提供的 home、versions、downloads、account 或 settings 标签。</param>
+    /// <param name="page">由本页导航提供的 home、versions、downloads、wardrobe、account 或 settings 标签。</param>
     private void ShowPage(string page)
     {
         EnsurePage(page);
@@ -249,10 +255,12 @@ public sealed partial class MainPage : Page
         if (VersionsScroll is not null) VersionsScroll.Visibility = page == "versions" ? Visibility.Visible : Visibility.Collapsed;
         if (DownloadsContent is not null) DownloadsContent.Visibility = page == "downloads" ? Visibility.Visible : Visibility.Collapsed;
         if (AccountContent is not null) AccountContent.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
+        if (WardrobeContent is not null) WardrobeContent.Visibility = page == "wardrobe" ? Visibility.Visible : Visibility.Collapsed;
         if (SettingsScroll is not null) SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent?.SetActive(page == "downloads");
         VersionsContent?.SetActive(page == "versions");
         SettingsContent?.SetActive(page == "settings");
+        WardrobeContent?.SetActive(page == "wardrobe");
         if (page == "home") HomeContent.Refresh();
     }
 }

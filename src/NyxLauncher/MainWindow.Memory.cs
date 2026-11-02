@@ -29,10 +29,11 @@ public sealed partial class MainWindow
         if (!foreground && !_closing && Environment.TickCount64 - _lastCollection >= 60000) _idleCollection.Start();
     }
 
-    /// <summary>只在焦点变化时遍历现有控件，将窗口状态传给内存预览；不切换页面或重新读取配置。</summary>
+    /// <summary>只在焦点变化时遍历现有控件，将窗口状态传给内存采样和衣柜动画；不切换页面或重新读取配置。</summary>
     private static void SetMemoryForeground(DependencyObject element, bool foreground)
     {
         if (element is MemorySettingsView memory) memory.SetForeground(foreground);
+        if (element is SkinPreview preview) preview.SetForeground(foreground);
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
             SetMemoryForeground(VisualTreeHelper.GetChild(element, i), foreground);
     }

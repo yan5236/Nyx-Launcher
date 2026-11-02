@@ -22,8 +22,8 @@ if ($titleBar.IsPaneToggleButtonVisible -ne 'True' -or $titleBar.PaneToggleReque
     throw '折叠按钮必须位于窗口标题栏，侧栏内部不重复显示。'
 }
 $items = $navigation.SelectNodes('ui:NavigationView.MenuItems/ui:NavigationViewItem', $ns)
-if (($items | ForEach-Object { $_.Content }) -join ',' -cne '首页,版本管理,下载') {
-    throw '主导航必须依次为首页、版本管理、下载。'
+if (($items | ForEach-Object { $_.Content }) -join ',' -cne '首页,版本管理,下载,衣柜') {
+    throw '主导航必须依次为首页、版本管理、下载、衣柜。'
 }
 if ($navigation.IsSettingsVisible -ne 'False') {
     throw '设置入口只能放在账户弹层中。'

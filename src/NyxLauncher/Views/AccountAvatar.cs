@@ -13,6 +13,7 @@ public sealed class AccountAvatar : UserControl
     private readonly Image _image = new();
     private int _generation;
     private static readonly Dictionary<string, Task<byte[]?>> Requests = [];
+    private static event Action<string>? SkinInvalidated;
     public static readonly DependencyProperty AccountProperty = DependencyProperty.Register(nameof(Account), typeof(GameAccount),
         typeof(AccountAvatar), new PropertyMetadata(null, AccountChanged));
     public GameAccount? Account { get => (GameAccount?)GetValue(AccountProperty); set => SetValue(AccountProperty, value); }
@@ -26,15 +27,26 @@ public sealed class AccountAvatar : UserControl
     public AccountAvatar()
     {
         Content = _image;
-        Loaded += (_, _) => Refresh();
-        Unloaded += (_, _) => _generation++;
+        Loaded += (_, _) => { SkinInvalidated += OnSkinInvalidated; Refresh(); };
+        Unloaded += (_, _) => { SkinInvalidated -= OnSkinInvalidated; _generation++; };
     }
+
+    /// <summary>官方换肤成功后用已确认的 PNG 更新进程缓存并通知同身份头像；解码异常由刷新路径处理，不影响应用结果。</summary>
+    public static void UpdateMicrosoft(string uuid, byte[] png)
+    {
+        MinecraftSkinService.ValidateUuid(uuid);
+        Requests[uuid] = DecodeAsync(png); SkinInvalidated?.Invoke(uuid);
+    }
+
+    /// <summary>仅刷新匹配的微软身份，外置与其他账户不受影响；失败继续保留旧头像缓存。</summary>
+    private void OnSkinInvalidated(string uuid)
+    { if (Account is { IsMicrosoft: true } account && account.Uuid == uuid) Refresh(); }
 
     /// <summary>账户绑定变化后仅刷新已经加载的控件，尚未加载的卡片由 Loaded 统一处理。</summary>
     private static void AccountChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     { if (sender is AccountAvatar avatar && avatar.IsLoaded) avatar.Refresh(); }
 
-    /// <summary>先显示本地头像，再异步获取皮肤；代数隔离切换/卸载后的迟到结果，头像失败不影响登录和启动。</summary>
+    /// <summary>先显示本地头像，再异步获取皮肤；代数隔离迟到结果，旧请求失败不得移除换肤后的新缓存，头像失败不影响登录和启动。</summary>
     private async void Refresh()
     {
         int generation = ++_generation;
@@ -57,10 +69,11 @@ public sealed class AccountAvatar : UserControl
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+        Task<byte[]?>? request = null;
         try
         {
             // 同一 UI 线程中的所有头像共用一次请求，避免侧栏和卡片重复查询同一个档案。
-            if (!Requests.TryGetValue(key, out var request)) Requests[key] = request = DownloadAsync(uuid, server, key);
+            if (!Requests.TryGetValue(key, out request)) Requests[key] = request = DownloadAsync(uuid, server, key);
             byte[]? pixels = await request;
             if (generation != _generation) return;
             if (pixels is null) _image.Source = new BitmapImage(new Uri(fallback));
@@ -68,7 +81,7 @@ public sealed class AccountAvatar : UserControl
         }
         catch (Exception)
         {
-            Requests.Remove(key);
+            if (Requests.TryGetValue(key, out var current) && ReferenceEquals(current, request)) Requests.Remove(key);
             // 皮肤加载属于可选显示，失败时保留已显示的缓存或默认头像。
         }
     }
@@ -102,13 +115,7 @@ public sealed class AccountAvatar : UserControl
             try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             return null;
         }
-        using var memory = new MemoryStream(png);
-        using var input = memory.AsRandomAccessStream();
-        var decoder = await BitmapDecoder.CreateAsync(BitmapDecoder.PngDecoderId, input);
-        SkinAvatarPixels.ValidateSize((int)decoder.PixelWidth, (int)decoder.PixelHeight);
-        var data = await decoder.GetPixelDataAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Straight, new BitmapTransform(),
-            ExifOrientationMode.IgnoreExifOrientation, ColorManagementMode.DoNotColorManage);
-        byte[] pixels = SkinAvatarPixels.Create(data.DetachPixelData(), (int)decoder.PixelWidth, (int)decoder.PixelHeight);
+        byte[] pixels = (await DecodeAsync(png))!;
         string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
@@ -120,5 +127,17 @@ public sealed class AccountAvatar : UserControl
         catch (UnauthorizedAccessException) { }
         finally { try { File.Delete(temporary); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
         return pixels;
+    }
+
+    /// <summary>把 PNG 解码为合成帽子层的头像像素；非法尺寸或格式向调用方报告，供下载和已应用皮肤共用。</summary>
+    private static async Task<byte[]?> DecodeAsync(byte[] png)
+    {
+        using var memory = new MemoryStream(png);
+        using var input = memory.AsRandomAccessStream();
+        var decoder = await BitmapDecoder.CreateAsync(BitmapDecoder.PngDecoderId, input);
+        SkinAvatarPixels.ValidateSize((int)decoder.PixelWidth, (int)decoder.PixelHeight);
+        var data = await decoder.GetPixelDataAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Straight, new BitmapTransform(),
+            ExifOrientationMode.IgnoreExifOrientation, ColorManagementMode.DoNotColorManage);
+        return SkinAvatarPixels.Create(data.DetachPixelData(), (int)decoder.PixelWidth, (int)decoder.PixelHeight);
     }
 }

@@ -19,6 +19,7 @@ dotnet build NyxLauncher.slnx -c Debug -p:Platform=x64
 | 参数 | 范围及副作用 |
 | --- | --- |
 | `--theme` | 外观配置往返、明暗配色独立、边界校验、损坏与写入失败保护 |
+| `--wardrobe` | 衣柜副本与索引、PNG 校验、账户限制、官方请求格式与模型投影；只使用合成纹理和协议夹具 |
 | `--advanced-launch` | 内存之外的高级配置、参数与兼容组件规则 |
 | `--mod-management` | 模组目录、启停、批量摘要、兼容更新、禁用状态保留、冲突及失败保护；仅使用临时文件和协议夹具 |
 | `--connection-pool` | 本地回环连接复用及网络诊断；需要允许监听/连接回环端口 |
@@ -42,6 +43,24 @@ if ($contrastProcess.ExitCode -ne 0) { throw '背景文字恢复检查失败' }
 ```
 
 ## 实网与安装检查
+
+### 衣柜原生界面
+
+`tests/NyxLauncher.UiChecks/Wardrobe.targets` 替换应用入口，在隔离目录中建立测试身份和皮肤，检查真实控件的账户过滤、卡片选择、搜索、应用中状态、成功后原地更新与选择保留、头像同步、主色上传按钮悬停、右下角提示、走动暂停、缩放边界、相机复位及前后台生命周期；通过 `RenderTargetBitmap` 保存浅深色页面。此检查不替代真实鼠标拖动或系统文件选择器验收。
+
+```powershell
+$wardrobeTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/Wardrobe.targets'
+$wardrobeOutput = Join-Path $PWD '.local/wardrobe-checks/app/'
+dotnet build src/NyxLauncher/NyxLauncher.csproj -c Debug -p:Platform=x64 "-p:CustomAfterMicrosoftCommonTargets=$wardrobeTargets" "-p:OutputPath=$wardrobeOutput"
+if ($LASTEXITCODE -ne 0) { throw '衣柜检查构建失败' }
+$wardrobeProcess = Start-Process (Join-Path $wardrobeOutput 'NyxLauncher.exe') -Wait -PassThru
+Get-Content (Join-Path $wardrobeOutput 'wardrobe-checks.log')
+if ($wardrobeProcess.ExitCode -ne 0) { throw '衣柜界面检查失败' }
+```
+
+运行验收程序前显式设置 `NYX_WARDROBE_LIVE=1` 可追加真实微软账户读取：使用正式嵌入配置静默认证，刷新本地认证缓存并加载真实皮肤和全部披风，但不修改远端穿戴。需要已有有效微软账户，截图可能包含玩家名称及纹理，产物只保留在忽略目录。完成后移除该环境变量。远端应用仍需另行验证，协议夹具通过不代表已更改真实账户。
+
+衣柜分类回归需往返切换皮肤与披风，断言列表内容、选择清除和预览的两个纹理槽；不能只检查卡片数量或仅设置子项 `IsSelected`。同时检查加载结束及离开页面后转圈停止。真实鼠标验收应覆盖选中卡片后切换分类再选卡片，确认不会把披风渲染到人物皮肤上。
 
 ### 真实窗口内存生命周期
 
