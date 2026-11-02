@@ -57,6 +57,32 @@ function Find-TextBlockByText([string]$path, [string]$text) {
 if (Find-TextBlockByText (Join-Path $project 'Views/HomeView.xaml') '首页') {
     throw '首页不应保留页面标题。'
 }
+
+# 首页启动台：世界画面承托固定尺寸控制台，版本用选择器切换，不显示账户、Java 或目录等信息。
+[xml]$homeDoc = Get-Content (Join-Path $project 'Views/HomeView.xaml') -Raw -Encoding utf8
+$homeNs = [System.Xml.XmlNamespaceManager]::new($homeDoc.NameTable)
+$homeNs.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$homeNs.AddNamespace('x', $xns)
+$launch = $homeDoc.SelectSingleNode("//ui:Button[@x:Name='LaunchButton']", $homeNs)
+if (-not $launch -or $launch.Width -ne '196' -or $launch.Height -ne '56' -or
+    $launch.Style -ne '{StaticResource DeepButtonStyle}' -or -not $launch.SelectSingleNode('ui:StackPanel', $homeNs)) {
+    throw '首页启动按钮必须固定尺寸并复用主色样式，最大化后不能拉伸。'
+}
+$selector = $homeDoc.SelectSingleNode("//ui:ComboBox[@x:Name='VersionList']", $homeNs)
+if (-not $selector -or $selector.SelectionChanged -ne 'Version_SelectionChanged' -or
+    -not $selector.SelectSingleNode('ui:ComboBox.ItemTemplate', $homeNs)) {
+    throw '首页版本选择必须使用带项目模板的原生选择器。'
+}
+if (-not $homeDoc.SelectSingleNode("//ui:ProgressBar[@x:Name='StageProgress']", $homeNs) -or
+    -not $homeDoc.SelectSingleNode("//ui:TextBlock[@x:Name='StageLabel']", $homeNs)) {
+    throw '首页必须显示启动阶段和进度。'
+}
+if ($homeDoc.SelectSingleNode("//ui:ToggleButton|//ui:ToggleSwitch", $homeNs)) {
+    throw '首页不应放置装饰性开关。'
+}
+foreach ($word in @('Java', '账户', '游戏目录', '星夜', '星空')) {
+    if ($homeDoc.OuterXml.Contains($word)) { throw "首页不应显示与启动无关的信息：$word" }
+}
 if (Find-TextBlockByText (Join-Path $project 'Views/VersionsView.xaml') '版本管理') {
     throw '版本管理页不应保留页面标题。'
 }
@@ -298,3 +324,4 @@ foreach ($file in $xamlFiles) {
     }
 }
 Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、详情危险区、设置 Tab/源策略/滑块范围、账户区域限制说明及图片资源。'
+

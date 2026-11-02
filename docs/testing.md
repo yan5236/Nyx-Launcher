@@ -44,6 +44,20 @@ if ($contrastProcess.ExitCode -ne 0) { throw '背景文字恢复检查失败' }
 
 ## 实网与安装检查
 
+### 首页界面
+
+`tests/NyxLauncher.UiChecks/Home.targets` 替换应用入口，用临时目录中的合成版本与离线账户加载真实首页，检查默认窗口与最大化下的画面、控制台和启动按钮尺寸，版本选择器列表，启动进度接管选择器并交还，窄窗口隐藏次要按钮，以及没有已安装版本时的空选择器与禁用启动按钮；同时确认首页没有账户、Java 或目录文字。截图写入输出目录，不读取或修改用户的游戏目录与账户配置。
+
+```powershell
+$homeTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/Home.targets'
+$homeOutput = Join-Path $PWD '.local/home-checks/'
+dotnet build src/NyxLauncher/NyxLauncher.csproj -c Debug -p:Platform=x64 "-p:CustomAfterMicrosoftCommonTargets=$homeTargets" "-p:OutputPath=$homeOutput"
+if ($LASTEXITCODE -ne 0) { throw '首页界面检查构建失败' }
+$homeProcess = Start-Process (Join-Path $homeOutput 'NyxLauncher.exe') -Wait -PassThru
+Get-Content (Join-Path $homeOutput 'home-checks.log')
+if ($homeProcess.ExitCode -ne 0) { throw '首页界面检查失败' }
+```
+
 ### 衣柜原生界面
 
 `tests/NyxLauncher.UiChecks/Wardrobe.targets` 替换应用入口，在隔离目录中建立测试身份和皮肤，检查真实控件的账户过滤、卡片选择、搜索、应用中状态、成功后原地更新与选择保留、头像同步、主色上传按钮悬停、右下角提示、走动暂停、缩放边界、相机复位及前后台生命周期；通过 `RenderTargetBitmap` 保存浅深色页面。此检查不替代真实鼠标拖动或系统文件选择器验收。

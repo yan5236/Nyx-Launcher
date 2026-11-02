@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -6,7 +7,7 @@ using NyxLauncher.Services;
 
 namespace NyxLauncher.Views;
 
-/// <summary>首页版本选择、详情导航及启动进度；窗口出现后收起反馈，仅保留停止入口。</summary>
+/// <summary>首页启动台：世界画面、版本选择器与启动进度；窗口缩放只改变画面尺寸，控件保持固定像素。</summary>
 public sealed partial class HomeView : UserControl
 {
     public InstalledVersion? SelectedVersion => VersionList.SelectedItem as InstalledVersion;
@@ -27,31 +28,23 @@ public sealed partial class HomeView : UserControl
     public bool IsLaunching => _session is not null;
 
     /// <summary>加载首页控件，服务通过主页面注入。</summary>
-    public HomeView() => InitializeComponent();
+    public HomeView()
+    {
+        InitializeComponent();
+    }
 
-    /// <summary>按首页可用宽高调整图片和三列启动区；控件等宽伸展，限制字体放大幅度，窄窗口仍可垂直滚动。</summary>
+    /// <summary>按内容区可用宽高设定启动画面与控制台尺寸；控件、字体和间距不随窗口放大，最大化后仅画面变大。</summary>
     public void ResizeLayout(double width, double height)
     {
         if (width <= 0 || height <= 0) return;
-        double scale = Math.Clamp(width / 775, 1, 1.4);
-        HeroImage.Height = Math.Max(220, Math.Min(width * 0.5, height * 0.62));
-        VersionList.Height = LaunchButton.Height = ManageButton.Height = 72 * scale;
-        LaunchArea.ColumnSpacing = 16 * scale;
-        ProgressSpace.Height = 64 * scale;
-        VersionList.FontSize = 15 * scale;
-        LaunchLabel.FontSize = ManageLabel.FontSize = LaunchIcon.FontSize = ManageIcon.FontSize = 16 * scale;
-        StageLabel.FontSize = LaunchVersionLabel.FontSize = 12 * scale;
-    }
-
-    /// <summary>同步缩放版本模板内的图标和两行文字；只处理本页固定的图标与文本布局，选中项和下拉项使用同一比例。</summary>
-    private void VersionCard_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        var card = (Grid)sender;
-        double scale = VersionList.FontSize / 15;
-        ((VersionIcon)card.Children[0]).Width = ((VersionIcon)card.Children[0]).Height = 32 * scale;
-        var labels = (StackPanel)card.Children[1];
-        ((TextBlock)labels.Children[0]).FontSize = 15 * scale;
-        ((TextBlock)labels.Children[1]).FontSize = 11 * scale;
+        Root.MinHeight = height;
+        double cardWidth = Math.Min(width, 1600);
+        // 内容区顶部已有 20 像素留白，上下各留 30 像素时画面在视觉上居中。
+        double cardHeight = Math.Max(340, Math.Min(height - 40, Math.Max(360, cardWidth * 0.78)));
+        StageCard.Width = cardWidth;
+        StageCard.Height = cardHeight;
+        Deck.Width = Math.Min(800, Math.Max(280, cardWidth - 44));
+        ManageButton.Visibility = cardWidth >= 620 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>共用目录、隔离、账户与 Java 状态；切换选择只影响下一次启动。</summary>
@@ -105,6 +98,9 @@ public sealed partial class HomeView : UserControl
     {
         if (VersionList.SelectedItem is InstalledVersion version) ManageRequested?.Invoke(this, version);
     }
+
+    /// <summary>读取系统动画开关，不使用额外设置项。</summary>
+    private static bool AnimationsEnabled() => new Windows.UI.ViewManagement.UISettings().AnimationsEnabled;
 
     /// <summary>锁定版本、身份和 Java 快照启动会话；再次点击停止，失败在会话回收后弹出原因与日志入口。</summary>
     private async void Launch_Click(object sender, RoutedEventArgs e)
@@ -175,16 +171,17 @@ public sealed partial class HomeView : UserControl
         ShowProgress(_session!.Status); UpdateControls();
     });
 
-    /// <summary>每次启动重置进度代数并从上方滑入；旧退出动画和延迟不能隐藏新会话。</summary>
+    /// <summary>启动时让选择器淡出、进度淡入；每次启动重置进度代数，旧退出动画和延迟不能隐藏新会话。</summary>
     private void BeginProgress()
     {
         _progressGeneration++; _progressEnding = false;
-        StageLabel.Text = "准备启动"; StageProgress.Value = 0;
+        StageLabel.Text = "准备启动"; StageProgress.Value = 0; ProgressPercent.Text = "0%";
+        VersionList.Visibility = Visibility.Collapsed;
         LaunchProgress.Visibility = Visibility.Visible;
         AnimateProgress(true);
     }
 
-    /// <summary>显示真实阶段和阶段里程碑；等待窗口停留在 94%，窗口出现后填满，停止或退出直接收起。</summary>
+    /// <summary>显示真实阶段、进度和百分比；等待窗口停留在 94%，窗口出现后填满，停止或退出直接收起。</summary>
     private void ShowProgress(LaunchStatus status)
     {
         if (status.Stage is LaunchStage.Running or LaunchStage.Stopping or LaunchStage.Exited or LaunchStage.Failed)
@@ -196,6 +193,7 @@ public sealed partial class HomeView : UserControl
         StageLabel.Text = status.Message;
         ToolTipService.SetToolTip(StageLabel, status.Message);
         StageProgress.Value = status.Progress;
+        ProgressPercent.Text = Math.Round(status.Progress) + "%";
     }
 
     /// <summary>成功时短暂停留在完成进度，再向下淡出；快速重启或关闭时通过代数丢弃旧延迟。</summary>
@@ -205,22 +203,23 @@ public sealed partial class HomeView : UserControl
         int generation = _progressGeneration;
         if (completed)
         {
-            StageProgress.Value = 100; StageLabel.Text = "启动完成";
+            StageProgress.Value = 100; StageLabel.Text = "启动完成"; ProgressPercent.Text = "100%";
             await Task.Delay(300);
         }
         if (generation != _progressGeneration) return;
         AnimateProgress(false);
     }
 
-    /// <summary>复用现有 220 毫秒平移淡入节奏，离场向下淡出且保持预留空间；尊重系统动画开关。</summary>
+    /// <summary>复用现有 220 毫秒平移淡入节奏，离场向下淡出；结束时把位置交还版本选择器，尊重系统动画开关。</summary>
     private void AnimateProgress(bool entering)
     {
         _progressAnimation?.Stop();
-        if (!new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
+        if (!AnimationsEnabled())
         {
             LaunchProgress.Opacity = entering ? 1 : 0;
             LaunchProgress.Visibility = entering ? Visibility.Visible : Visibility.Collapsed;
             ProgressTranslation.Y = 0;
+            if (!entering) VersionList.Visibility = Visibility.Visible;
             return;
         }
         var opacity = new DoubleAnimation { From = entering ? 0 : 1, To = entering ? 1 : 0, Duration = TimeSpan.FromMilliseconds(220) };
@@ -236,28 +235,28 @@ public sealed partial class HomeView : UserControl
         int generation = _progressGeneration;
         animation.Completed += (_, _) =>
         {
-            if (!entering && generation == _progressGeneration) LaunchProgress.Visibility = Visibility.Collapsed;
+            if (entering || generation != _progressGeneration) return;
+            LaunchProgress.Visibility = Visibility.Collapsed;
+            VersionList.Visibility = Visibility.Visible;
         };
         _progressAnimation = animation;
         animation.Begin();
     }
 
-    /// <summary>正常启动复用全局绿色按钮资源，运行中使用红色停止状态；同步启动可用性、版本锁定和两行按钮文字，副标题始终显示当前选择或本次运行版本。</summary>
+    /// <summary>正常启动复用全局绿色按钮资源，运行中使用红色停止状态；同步启动可用性、选择器和按钮文字。</summary>
     private void UpdateControls()
     {
         if (LaunchButton is null) return;
         bool busy = _session is not null;
         bool stopping = _session?.Status.Stage == LaunchStage.Stopping;
         string label = stopping ? "正在停止…" : busy ? (_session!.Status.Stage == LaunchStage.Running ? "停止运行" : "停止") : "启动游戏";
-        LaunchVersionLabel.Text = (VersionList.SelectedItem as InstalledVersion)?.Name ?? "请先选择版本";
-        ToolTipService.SetToolTip(LaunchButton, LaunchVersionLabel.Text);
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(LaunchButton, LaunchVersionLabel.Text);
-        LaunchLabel.Text = label; LaunchIcon.Glyph = busy ? "\uE71A" : "\uE768";
+        LaunchLabel.Text = label;
+        LaunchIcon.Glyph = busy ? "\uE71A" : "\uE768";
         var stopBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 183, 52, 52));
         LaunchButton.Background = busy ? stopBrush : (SolidColorBrush)Application.Current.Resources["AccentButtonBackground"];
         LaunchButton.BorderBrush = LaunchButton.Background;
         var foreground = busy ? new SolidColorBrush(Microsoft.UI.Colors.White) : (SolidColorBrush)Application.Current.Resources["AccentButtonForeground"];
-        LaunchLabel.Foreground = LaunchVersionLabel.Foreground = LaunchIcon.Foreground = foreground;
+        LaunchLabel.Foreground = LaunchIcon.Foreground = foreground;
         foreach (string key in new[] { "AccentButtonBackgroundPointerOver", "AccentButtonBackgroundPressed",
             "AccentButtonBorderBrushPointerOver", "AccentButtonBorderBrushPressed", "AccentButtonBackgroundDisabled" })
         {
@@ -267,7 +266,7 @@ public sealed partial class HomeView : UserControl
         LaunchButton.IsEnabled = !_closing && (busy ? !stopping : !_scanning && _accounts?.Selected is not null && VersionList.SelectedItem is InstalledVersion);
         VersionList.IsEnabled = !busy && !_closing && !_scanning;
         ManageButton.IsEnabled = !_closing && VersionList.SelectedItem is InstalledVersion;
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(LaunchButton, label);
+        AutomationProperties.SetName(LaunchButton, label);
     }
 
     /// <summary>关闭时取消启动或停止游戏并等待回收，期间禁止刷新和再次启动。</summary>
@@ -277,3 +276,5 @@ public sealed partial class HomeView : UserControl
         if (_running is not null) await _running;
     }
 }
+
+
