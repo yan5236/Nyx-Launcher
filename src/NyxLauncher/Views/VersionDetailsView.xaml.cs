@@ -37,10 +37,11 @@ public sealed partial class VersionDetailsView : UserControl
         ModsPanel.Configure(folders, settings, mutationBlocked);
     }
 
-    /// <summary>打开选中版本并默认选择基础分类，刷新名称、元数据和两处图标；错误清单保留具体原因。</summary>
+    /// <summary>打开选中版本并默认选择基础分类，取消旧版本导出，刷新名称、元数据和图标；错误清单保留具体原因。</summary>
     public void Open(InstalledVersion version)
     {
         ModsPanel.SetActive(false);
+        SetExportActive(false);
         Version = version;
         RefreshVersion();
         Tabs.SelectedItem = Tabs.Items[0];
@@ -58,12 +59,13 @@ public sealed partial class VersionDetailsView : UserControl
         HeaderIcon.Reload(); PreviewIcon.Reload();
     }
 
-    /// <summary>详情隐藏时停止内存采样及模组请求，显示时仅激活当前分类。</summary>
+    /// <summary>详情隐藏时停止内存采样、模组请求与导出工作并释放导出树；显示时仅激活当前分类。</summary>
     public void SetActive(bool active)
     {
         MemoryPanel.SetActive(active && Tabs.SelectedItem == Tabs.Items[2]);
         AdvancedPanel.SetActive(active && Tabs.SelectedItem == Tabs.Items[2]);
         ModsPanel.SetActive(active && Tabs.SelectedItem == Tabs.Items[1], Version);
+        SetExportActive(active && Tabs.SelectedItem == Tabs.Items[3]);
     }
 
     /// <summary>请求父页返回版本列表，保持搜索与文件夹选择。</summary>
@@ -75,7 +77,7 @@ public sealed partial class VersionDetailsView : UserControl
         if (Version is not null && BasicPanel.IsEnabled) DeleteRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>按分类显示基础、模组或游戏设置，并停止隐藏分类的采样和网络请求。</summary>
+    /// <summary>按分类显示基础、模组、游戏设置或导出，并停止隐藏分类的采样、网络请求与导出事务。</summary>
     private void Tabs_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (BasicPanel is not null) BasicPanel.Visibility = sender.SelectedItem == sender.Items[0] ? Visibility.Visible : Visibility.Collapsed;
@@ -87,11 +89,29 @@ public sealed partial class VersionDetailsView : UserControl
             AdvancedPanel.SetActive(active);
         }
         if (Status is not null) Status.IsOpen = false;
+        if (ExportHost is not null) SetExportActive(sender.SelectedItem == sender.Items[3]);
         if (ModsPanel is not null)
         {
             bool active = sender.SelectedItem == sender.Items[1];
             ModsPanel.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
             ModsPanel.SetActive(active, Version);
+        }
+    }
+
+    /// <summary>导出页按需创建并读取实际隔离目录；离开时取消工作并回收控件，不在其他标签保留文件树。</summary>
+    private void SetExportActive(bool active)
+    {
+        ExportHost.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+        if (!active)
+        {
+            (ExportHost.Content as ModpackExportView)?.Deactivate();
+            ExportHost.Content = null;
+        }
+        else if (ExportHost.Content is null && Version is { } version && _folders?.Selected is { } folder && _settings is not null)
+        {
+            var view = new ModpackExportView();
+            ExportHost.Content = view;
+            view.Open(version, folder, _settings.Current, _mutationBlocked);
         }
     }
 

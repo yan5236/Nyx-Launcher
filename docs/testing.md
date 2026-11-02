@@ -18,6 +18,7 @@ dotnet build NyxLauncher.slnx -c Debug -p:Platform=x64
 
 | 参数 | 范围及副作用 |
 | --- | --- |
+| `--modpack-export` | 三格式导出往返、选择与半选、资源策略、网络失败、路径和覆盖保护、取消清理；使用临时文件及 HTTP 夹具 |
 | `--theme` | 外观配置往返、明暗配色独立、边界校验、损坏与写入失败保护 |
 | `--wardrobe` | 衣柜副本与索引、PNG 校验、账户限制、官方请求格式与模型投影；只使用合成纹理和协议夹具 |
 | `--advanced-launch` | 内存之外的高级配置、参数与兼容组件规则 |
@@ -43,6 +44,20 @@ if ($contrastProcess.ExitCode -ne 0) { throw '背景文字恢复检查失败' }
 ```
 
 ## 实网与安装检查
+
+### 整合包导出界面
+
+`tests/NyxLauncher.UiChecks/ModpackExport.targets` 使用临时游戏目录验证真实控件的目录展开、父子勾选和半选、资源选项互斥、格式限制、实际 ZIP 生成、成功 Toast 和离开页释放文件树，并保存浅深色截图。它不调用系统保存对话框或打开资源管理器，不替代真实平台上传与第三方启动器导入验收。
+
+```powershell
+$exportTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/ModpackExport.targets'
+$exportOutput = Join-Path $PWD '.local/export-checks/'
+dotnet build src/NyxLauncher/NyxLauncher.csproj -c Debug -p:Platform=x64 "-p:CustomAfterMicrosoftCommonTargets=$exportTargets" "-p:OutputPath=$exportOutput"
+if ($LASTEXITCODE -ne 0) { throw '导出界面检查构建失败' }
+$exportProcess = Start-Process (Join-Path $exportOutput 'NyxLauncher.exe') -Wait -PassThru -WindowStyle Hidden
+Get-Content (Join-Path $exportOutput 'export-checks.log')
+if ($exportProcess.ExitCode -ne 0) { throw '导出界面检查失败' }
+```
 
 ### 首页界面
 

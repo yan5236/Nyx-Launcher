@@ -8,9 +8,10 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行业务断言；--wardrobe 定向验证衣柜，--theme 检查外观；--mod-management、--advanced-launch、--region-restriction 检查对应范围；--local-resources 可选读取样本，--mcim-live、--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
+    /// <summary>运行业务断言；--modpack-export 检查离线整合包导出；--wardrobe、--theme、--mod-management、--advanced-launch、--region-restriction 检查对应范围；--local-resources 可选读取样本，--mcim-live、--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--modpack-export")) { await ModpackExportChecks.RunAsync(); return; }
         if (args.Contains("--wardrobe")) { await WardrobeChecks.RunAsync(); return; }
         if (args.Contains("--mod-management")) { await ModManagementChecks.RunAsync(); return; }
         if (args.Contains("--connection-pool")) { await ConnectionPoolChecks.RunAsync(); return; }
@@ -27,6 +28,7 @@ internal static class Program
         await ModManagementChecks.RunAsync();
         await ResourceDownloadChecks.RunAsync();
         ModpackChecks.Run();
+        await ModpackExportChecks.RunAsync();
         await ModpackChecks.FilesAsync();
         MemoryChecks.Run();
         CrashReportChecks.Run();

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl x:Class="NyxLauncher.Views.ModpackExportView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid>
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+   <StackPanel x:Name="Form" Spacing="16" Margin="0,0,4,8">
+    <Border Style="{StaticResource CardStyle}" Padding="20">
+     <Grid RowSpacing="10" ColumnSpacing="16">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <TextBlock Text="整合包名" VerticalAlignment="Center"/><TextBox x:Name="PackName" Grid.Column="1" MaxLength="256" AutomationProperties.Name="整合包名"/>
+      <TextBlock Text="作者" Grid.Row="1" VerticalAlignment="Center"/><TextBox x:Name="Author" Grid.Row="1" Grid.Column="1" MaxLength="256" AutomationProperties.Name="作者"/>
+      <TextBlock Text="版本" Grid.Row="2" VerticalAlignment="Center"/><TextBox x:Name="PackVersion" Grid.Row="2" Grid.Column="1" Text="1.0.0" MaxLength="256" AutomationProperties.Name="整合包版本"/>
+      <TextBlock Text="整合包类型" Grid.Row="3" VerticalAlignment="Center"/>
+      <ComboBox x:Name="Format" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="Format_Changed" AutomationProperties.Name="整合包类型">
+       <ComboBoxItem Content="Modrinth 整合包"/><ComboBoxItem Content="MCBBS 整合包"/><ComboBoxItem Content="MultiMC 整合包"/>
+      </ComboBox>
+      <TextBlock Text="导出路径" Grid.Row="4" VerticalAlignment="Center"/>
+      <Button x:Name="Destination" Grid.Row="4" Grid.Column="1" Click="Destination_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" MinHeight="32" Padding="12,6" AutomationProperties.Name="选择导出文件夹">
+       <TextBlock x:Name="DestinationPath" TextTrimming="CharacterEllipsis"/>
+      </Button>
+     </Grid>
+    </Border>
+    <Border Style="{StaticResource CardStyle}" Padding="8" MinHeight="240">
+     <StackPanel x:Name="FileTree" Spacing="2"/>
+    </Border>
+    <Border Style="{StaticResource CardStyle}" Padding="16">
+     <StackPanel Spacing="8">
+      <CheckBox x:Name="Bundle" Content="打包资源文件" Checked="Bundle_Changed" Unchecked="Bundle_Changed"/>
+      <CheckBox x:Name="OnlyModrinth" Content="只打包 Modrinth 资源"/>
+      <InfoBar x:Name="BundleWarning" Severity="Warning" IsClosable="False" Message="警告，你打包了资源文件，建议只在无法连接 Modrinth 的情况下使用，打包出的整合包公开发布可能会违反模组协议！"/>
+      <TextBlock x:Name="FormatHint" Text="此格式需要内置所选资源文件。" Visibility="Collapsed" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap"/>
+     </StackPanel>
+    </Border>
+    <InfoBar x:Name="Status" IsClosable="True"/>
+    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <TextBlock x:Name="Progress" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+     <Button x:Name="Cancel" Grid.Column="1" Content="取消" Click="Cancel_Click" Visibility="Collapsed"/>
+     <Button x:Name="Export" Grid.Column="2" Content="导出" Click="Export_Click" Style="{StaticResource DeepButtonStyle}" MinWidth="120"
+       Background="{ThemeResource AccentButtonBackground}" Foreground="{ThemeResource AccentButtonForeground}" BorderBrush="{ThemeResource AccentButtonBorderBrush}"/>
+    </Grid>
+   </StackPanel>
+  </ScrollViewer>
+  <InfoBar x:Name="SuccessToast" HorizontalAlignment="Right" VerticalAlignment="Bottom" MaxWidth="440" Severity="Success" IsClosable="True"
+    Tapped="Toast_Tapped" IsTabStop="True" KeyDown="Toast_KeyDown" AutomationProperties.Name="导出成功，点击或按回车定位文件"/>
+ </Grid>
+</UserControl>
