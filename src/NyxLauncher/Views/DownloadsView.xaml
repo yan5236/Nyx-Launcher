@@ -7,7 +7,6 @@
     <Grid x:Name="CatalogPanel" RowSpacing="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -31,77 +30,80 @@
         </Grid>
         </Grid>
 
-        <Grid x:Name="SearchControls" Grid.Row="1" ColumnSpacing="12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <AutoSuggestBox x:Name="SearchBox" PlaceholderText="搜索游戏版本" QueryIcon="Find"
-                            FontSize="15" VerticalAlignment="Center"
-                            TextChanged="SearchBox_TextChanged"
-                            AutomationProperties.Name="搜索下载内容" />
-            <ComboBox x:Name="TypeFilter" Grid.Column="1" MinWidth="140" SelectedIndex="1"
-                      FontSize="15" VerticalAlignment="Center"
-                      SelectionChanged="TypeFilter_SelectionChanged"
-                      AutomationProperties.Name="版本类型筛选">
-                <ComboBoxItem Content="全部类型" />
-                <ComboBoxItem Content="正式版" />
-                <ComboBoxItem Content="快照版" />
-                <ComboBoxItem Content="远古版" />
-                <ComboBoxItem Content="愚人节版" />
-            </ComboBox>
-        </Grid>
+        <views:TabContentPanel x:Name="TabBody" Grid.Row="1" RowSpacing="16">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <Grid x:Name="SearchControls" ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <AutoSuggestBox x:Name="SearchBox" PlaceholderText="搜索游戏版本" QueryIcon="Find"
+                                FontSize="15" VerticalAlignment="Center"
+                                TextChanged="SearchBox_TextChanged"
+                                AutomationProperties.Name="搜索下载内容" />
+                <ComboBox x:Name="TypeFilter" Grid.Column="1" MinWidth="140" SelectedIndex="1"
+                          FontSize="15" VerticalAlignment="Center"
+                          SelectionChanged="TypeFilter_SelectionChanged"
+                          AutomationProperties.Name="版本类型筛选">
+                    <ComboBoxItem Content="全部类型" />
+                    <ComboBoxItem Content="正式版" />
+                    <ComboBoxItem Content="快照版" />
+                    <ComboBoxItem Content="远古版" />
+                    <ComboBoxItem Content="愚人节版" />
+                </ComboBox>
+            </Grid>
 
-        <Grid x:Name="ContentGrid" Grid.Row="2">
-            <views:VersionLoadStatus x:Name="LoadStatus" Visibility="Collapsed" />
-            <!-- 将滚动条移入页面右侧留白，等量内边距保持卡片与搜索栏对齐。 -->
-            <ListView x:Name="EntryList" SelectionMode="Single" IsItemClickEnabled="True" ItemClick="EntryList_ItemClick"
-                      Margin="0,0,-20,0" Padding="0,0,20,0"
-                      ScrollViewer.VerticalScrollBarVisibility="Auto"
-                      AutomationProperties.Name="下载内容列表">
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem" BasedOn="{StaticResource CardListItemStyle}">
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        <Setter Property="Padding" Value="14" />
-                        <Setter Property="Margin" Value="0,0,0,8" />
-                        <Setter Property="MinHeight" Value="64" />
-                        <Setter Property="Background" Value="{ThemeResource CardBrush}" />
-                        <Setter Property="BorderBrush" Value="{ThemeResource LineBrush}" />
-                        <Setter Property="BorderThickness" Value="1" />
-                        <Setter Property="CornerRadius" Value="6" />
-                    </Style>
-                </ListView.ItemContainerStyle>
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="views:DownloadEntry">
-                        <Grid ColumnSpacing="14" AutomationProperties.Name="{x:Bind Title}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="40" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Background="{ThemeResource TintBrush}" Width="40" Height="40" CornerRadius="6"
-                                    VerticalAlignment="Center">
-                                <FontIcon Glyph="{x:Bind Glyph}" FontSize="20" Foreground="{ThemeResource SecondaryBrush}" />
-                            </Border>
-                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Title}" FontSize="18" FontWeight="SemiBold"
-                                           TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{x:Bind ReleaseDate}" FontSize="13" Foreground="{ThemeResource MutedBrush}" />
-                            </StackPanel>
-                            <Border Grid.Column="2" Background="{ThemeResource ShellBrush}" CornerRadius="4"
-                                    Padding="8,3" VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Kind}" FontSize="12" Foreground="{ThemeResource MutedBrush}" />
-                            </Border>
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-            <TextBlock x:Name="EmptyHint" Text="没有匹配的内容" FontSize="15" Foreground="{ThemeResource MutedBrush}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                       IsHitTestVisible="False" Visibility="Collapsed" />
-        </Grid>
-        <views:ResourceCatalogView x:Name="ResourcesContent" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed" />
-        <views:DownloadTasksView x:Name="TasksContent" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed" />
+            <Grid x:Name="ContentGrid" Grid.Row="1">
+                <views:VersionLoadStatus x:Name="LoadStatus" Visibility="Collapsed" />
+                <!-- 将滚动条移入页面右侧留白，等量内边距保持卡片与搜索栏对齐。 -->
+                <ListView x:Name="EntryList" SelectionMode="Single" IsItemClickEnabled="True" ItemClick="EntryList_ItemClick"
+                          Margin="0,0,-20,0" Padding="0,0,20,0"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                          AutomationProperties.Name="下载内容列表">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem" BasedOn="{StaticResource CardListItemStyle}">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="14" />
+                            <Setter Property="Margin" Value="0,0,0,8" />
+                            <Setter Property="MinHeight" Value="64" />
+                            <Setter Property="Background" Value="{ThemeResource CardBrush}" />
+                            <Setter Property="BorderBrush" Value="{ThemeResource LineBrush}" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="CornerRadius" Value="6" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="views:DownloadEntry">
+                            <Grid ColumnSpacing="14" AutomationProperties.Name="{x:Bind Title}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="40" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Background="{ThemeResource TintBrush}" Width="40" Height="40" CornerRadius="6"
+                                        VerticalAlignment="Center">
+                                    <FontIcon Glyph="{x:Bind Glyph}" FontSize="20" Foreground="{ThemeResource SecondaryBrush}" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Title}" FontSize="18" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{x:Bind ReleaseDate}" FontSize="13" Foreground="{ThemeResource MutedBrush}" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="{ThemeResource ShellBrush}" CornerRadius="4"
+                                        Padding="8,3" VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Kind}" FontSize="12" Foreground="{ThemeResource MutedBrush}" />
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <TextBlock x:Name="EmptyHint" Text="没有匹配的内容" FontSize="15" Foreground="{ThemeResource MutedBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           IsHitTestVisible="False" Visibility="Collapsed" />
+            </Grid>
+            <views:ResourceCatalogView x:Name="ResourcesContent" Grid.RowSpan="2" Visibility="Collapsed" />
+            <views:DownloadTasksView x:Name="TasksContent" Grid.RowSpan="2" Visibility="Collapsed" />
+        </views:TabContentPanel>
     </Grid>
     <views:InstallationView x:Name="InstallationContent" x:Load="False" Visibility="Collapsed" />
     <views:ModDetailsView x:Name="ModDetailsContent" x:Load="False" Visibility="Collapsed" />

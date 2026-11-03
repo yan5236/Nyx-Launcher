@@ -29,6 +29,22 @@ dotnet build NyxLauncher.slnx -c Debug -p:Platform=x64
 | `--local-resources <样本目录>` | 读取测试源码指定文件名的样本，输出写入临时目录，不改动样本；不是任意目录批量扫描，默认检查已覆盖合成资源 |
 | `--java-scan <验收目录>` | 扫描本机 Java，结果写入验收目录，不改用户 Java 配置 |
 
+## 主导航转场检查
+
+以下入口使用真实 WinUI 窗口检查六个主页面，以及设置、下载（含任务）、版本详情、衣柜的 Tab，覆盖动画中间态、重复进入、快速打断和卸载恢复；读取本机配置，主页面可能请求在线目录，但不安装游戏或保存用户偏好。Tab 检查不注入业务服务。动画开启时检查淡入与位移，关闭时检查直接显示；覆盖两个分支需分别在对应的 Windows 动画设置下运行。
+
+```powershell
+$navigationTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/Navigation.targets'
+$navigationOutput = Join-Path $PWD '.local/navigation-checks/'
+dotnet build src/NyxLauncher/NyxLauncher.csproj -c Debug -p:Platform=x64 "-p:CustomAfterMicrosoftCommonTargets=$navigationTargets" "-p:OutputPath=$navigationOutput"
+if ($LASTEXITCODE -ne 0) { throw '导航检查构建失败' }
+$navigationProcess = Start-Process (Join-Path $navigationOutput 'NyxLauncher.exe') -Wait -PassThru
+Get-Content (Join-Path $navigationOutput 'navigation-checks.log')
+if ($navigationProcess.ExitCode -ne 0) { throw '导航转场检查失败' }
+```
+
+该检查验证实际动画属性和最终状态，不替代不同显示器刷新率及低性能设备上的流畅度验收。
+
 ## 背景文字恢复检查
 
 在 Windows 桌面会话中执行以下命令，使用独立窗口和正式控件模板验证浅深色下添加背景、移除背景及不透明度降为零后的前景恢复，同时检查分类标签悬停、按下和选中状态、宽图实际绘制范围超出窗口布局槽时的取样坐标，以及可编辑筛选框选区的主题主色。交互检查通过切换真实模板视觉状态执行，不替代鼠标端到端验收。此入口不打开业务页面、不修改用户配置；结果写入独立输出目录的 `contrast-checks.log`，失败返回非零退出码。

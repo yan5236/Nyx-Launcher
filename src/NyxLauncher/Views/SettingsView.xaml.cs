@@ -49,7 +49,7 @@ public sealed partial class SettingsView : UserControl
     /// <summary>主窗口退出时等待 Java 扫描结束并关闭安装弹窗。</summary>
     public Task StopAsync() => JavaPanel.StopAsync();
 
-    /// <summary>沿用下载页 Tab 控件切换通用、启动、Java 及下载分组，首次进入 Java 时后台扫描，进入启动页刷新内存和高级配置。</summary>
+    /// <summary>切换通用、启动、Java 及下载分组并播放正文转场；首次进入 Java 时后台扫描，进入启动页刷新内存和高级配置。</summary>
     private void Tabs_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (GeneralPanel is null || DownloadPanel is null || JavaPanel is null || LaunchPanel is null) return;
@@ -61,6 +61,7 @@ public sealed partial class SettingsView : UserControl
         LaunchPanel.Visibility = tab == "launch" ? Visibility.Visible : Visibility.Collapsed;
         MemoryPanel.SetActive(tab == "launch");
         AdvancedPanel.SetActive(tab == "launch");
+        TabBody.PlayTransition();
     }
 
     /// <summary>源策略变化后保存，版本页下次打开时使用最新策略。</summary>

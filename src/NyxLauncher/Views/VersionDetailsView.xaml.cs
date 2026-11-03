@@ -77,7 +77,7 @@ public sealed partial class VersionDetailsView : UserControl
         if (Version is not null && BasicPanel.IsEnabled) DeleteRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>按分类显示基础、模组、游戏设置或导出，并停止隐藏分类的采样、网络请求与导出事务。</summary>
+    /// <summary>按分类显示基础、模组、游戏设置或导出并播放正文转场，同时停止隐藏分类的采样、网络请求与导出事务。</summary>
     private void Tabs_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (BasicPanel is not null) BasicPanel.Visibility = sender.SelectedItem == sender.Items[0] ? Visibility.Visible : Visibility.Collapsed;
@@ -96,6 +96,7 @@ public sealed partial class VersionDetailsView : UserControl
             ModsPanel.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
             ModsPanel.SetActive(active, Version);
         }
+        TabBody?.PlayTransition();
     }
 
     /// <summary>导出页按需创建并读取实际隔离目录；离开时取消工作并回收控件，不在其他标签保留文件树。</summary>

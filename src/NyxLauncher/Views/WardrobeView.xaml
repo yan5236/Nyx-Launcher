@@ -40,23 +40,25 @@
     <SelectorBarItem x:Name="SkinsTab" Text="皮肤" IsSelected="True"/>
     <SelectorBarItem x:Name="CapesTab" Text="披风"/>
    </SelectorBar>
-   <GridView x:Name="Cards" Grid.Row="1" SelectionMode="Single" SelectionChanged="Card_Changed" HorizontalAlignment="Stretch">
-    <GridView.ItemContainerStyle><Style TargetType="GridViewItem"><Setter Property="Margin" Value="0,0,12,12"/><Setter Property="Padding" Value="0"/></Style></GridView.ItemContainerStyle>
-    <GridView.ItemTemplate><DataTemplate>
-     <Grid Width="144" Height="208" Background="{ThemeResource TintBrush}" CornerRadius="10">
-      <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="32"/></Grid.RowDefinitions>
-      <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="5"/>
-      <Button Content="＋" Visibility="{Binding UploadVisibility}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="Upload_Click" AutomationProperties.Name="上传新皮肤"/>
-      <Button Content="⋯" Visibility="{Binding MenuVisibility}" Tag="{Binding}" HorizontalAlignment="Right" VerticalAlignment="Top"
-       Margin="4" Padding="8,0" Click="SkinMenu_Click" AutomationProperties.Name="皮肤菜单"/>
-      <TextBlock Grid.Row="1" Text="{Binding Name}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="136" TextTrimming="CharacterEllipsis"/>
-     </Grid>
-    </DataTemplate></GridView.ItemTemplate>
-   </GridView>
-   <StackPanel x:Name="LoadingPanel" Grid.Row="1" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
-    <ProgressRing x:Name="LoadingRing" Width="40" Height="40" IsActive="False"/>
-    <TextBlock Text="正在加载…" HorizontalAlignment="Center"/>
-   </StackPanel>
+   <views:TabContentPanel x:Name="TabBody" Grid.Row="1">
+       <GridView x:Name="Cards" SelectionMode="Single" SelectionChanged="Card_Changed" HorizontalAlignment="Stretch">
+        <GridView.ItemContainerStyle><Style TargetType="GridViewItem"><Setter Property="Margin" Value="0,0,12,12"/><Setter Property="Padding" Value="0"/></Style></GridView.ItemContainerStyle>
+        <GridView.ItemTemplate><DataTemplate>
+         <Grid Width="144" Height="208" Background="{ThemeResource TintBrush}" CornerRadius="10">
+          <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="32"/></Grid.RowDefinitions>
+          <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="5"/>
+          <Button Content="＋" Visibility="{Binding UploadVisibility}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="Upload_Click" AutomationProperties.Name="上传新皮肤"/>
+          <Button Content="⋯" Visibility="{Binding MenuVisibility}" Tag="{Binding}" HorizontalAlignment="Right" VerticalAlignment="Top"
+           Margin="4" Padding="8,0" Click="SkinMenu_Click" AutomationProperties.Name="皮肤菜单"/>
+          <TextBlock Grid.Row="1" Text="{Binding Name}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="136" TextTrimming="CharacterEllipsis"/>
+         </Grid>
+        </DataTemplate></GridView.ItemTemplate>
+       </GridView>
+       <StackPanel x:Name="LoadingPanel" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+        <ProgressRing x:Name="LoadingRing" Width="40" Height="40" IsActive="False"/>
+        <TextBlock Text="正在加载…" HorizontalAlignment="Center"/>
+       </StackPanel>
+   </views:TabContentPanel>
   </Grid>
   <InfoBar x:Name="Status" Grid.Row="2" Grid.ColumnSpan="2" IsClosable="True"/>
   <InfoBar x:Name="SuccessToast" Grid.RowSpan="3" Grid.ColumnSpan="2" HorizontalAlignment="Right" VerticalAlignment="Bottom"

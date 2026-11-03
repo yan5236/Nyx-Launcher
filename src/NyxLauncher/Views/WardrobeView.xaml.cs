@@ -165,8 +165,13 @@ public sealed partial class WardrobeView : UserControl
         Preview.SetTextures(_currentSkin, _currentSlim, _currentCape); UpdateEnabled();
     }
 
-    /// <summary>使用 SelectorBar 已提交的选中项切换列表；子项 IsSelected 在此事件内可能尚未同步，不能据此判断分类。</summary>
-    private void Tab_Changed(SelectorBar sender, SelectorBarSelectionChangedEventArgs e) { if (Cards is not null) FilterCards(); }
+    /// <summary>使用 SelectorBar 已提交的选中项切换列表并播放右侧正文转场；子项 IsSelected 此时可能尚未同步，不据此判断分类。</summary>
+    private void Tab_Changed(SelectorBar sender, SelectorBarSelectionChangedEventArgs e)
+    {
+        if (Cards is null) return;
+        FilterCards();
+        TabBody.PlayTransition();
+    }
 
     /// <summary>仅筛选内存中的卡片，不请求网络或写入文件。</summary>
     private void Search_Changed(object sender, TextChangedEventArgs e) => FilterCards();

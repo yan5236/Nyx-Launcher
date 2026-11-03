@@ -13,6 +13,7 @@ public sealed partial class MainPage : Page
     private readonly DownloadSettingsStore _settings;
     private readonly JavaRuntimeStore _java;
     private bool _importing;
+    private string _currentPage = "home";
 
     /// <summary>下载或游戏启动期间避免主动压缩托管堆，减少后台业务被全量回收暂停的机会。</summary>
     public bool HasMemorySensitiveWork => _tasks.Tasks.Any(task => task.IsBusy) || HomeContent.IsLaunching || _importing;
@@ -245,11 +246,17 @@ public sealed partial class MainPage : Page
         AccountMenuButton.Margin = open ? new Thickness(8, 8, 8, 12) : new Thickness(0, 8, 0, 12);
     }
 
-    /// <summary>按需创建目标页并切换可见状态；只停用已创建的其他页面，不因导航遍历而构造隐藏模块。</summary>
+    /// <summary>页面卸载时停止转场，恢复内容层的默认透明度和位置，避免重新挂载时残留动画状态。</summary>
+    private void Page_Unloaded(object sender, RoutedEventArgs e) => PageEntrance.Stop();
+
+    /// <summary>按需创建并激活目标页；页面变化时以淡入和轻微上移过渡，快速导航替换在途动画，重复进入不重播；系统关闭动画或首次加载时直接显示。</summary>
     /// <param name="page">由本页导航提供的 home、versions、downloads、wardrobe、account 或 settings 标签。</param>
     private void ShowPage(string page)
     {
         EnsurePage(page);
+        bool changed = _currentPage != page;
+        if (changed) PageEntrance.Stop();
+        _currentPage = page;
         ContentHost.MaxWidth = page == "home" ? double.PositiveInfinity : 1280;
         HomeScroll.Visibility = page == "home" ? Visibility.Visible : Visibility.Collapsed;
         if (VersionsScroll is not null) VersionsScroll.Visibility = page == "versions" ? Visibility.Visible : Visibility.Collapsed;
@@ -262,5 +269,7 @@ public sealed partial class MainPage : Page
         SettingsContent?.SetActive(page == "settings");
         WardrobeContent?.SetActive(page == "wardrobe");
         if (page == "home") HomeContent.Refresh();
+        if (changed && IsLoaded && new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
+            PageEntrance.Begin();
     }
 }

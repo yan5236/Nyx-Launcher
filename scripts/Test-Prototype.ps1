@@ -108,7 +108,9 @@ $search = $downloads.SelectSingleNode('//ui:AutoSuggestBox', $dns)
 if (-not $search -or $search.GetAttribute('TextChanged') -ne 'SearchBox_TextChanged') {
     throw 'Tab 栏下方必须提供可过滤列表的 AutoSuggestBox 搜索框。'
 }
-if ($search.ParentNode.GetAttribute('Grid.Row') -ne '1') {
+if ($search.ParentNode.ParentNode.LocalName -ne 'TabContentPanel' -or
+    $search.ParentNode.ParentNode.GetAttribute('Grid.Row') -ne '1' -or
+    $search.ParentNode.GetAttribute('Grid.Row') -notin @('', '0')) {
     throw '搜索框必须位于 Tab 栏下方的第二行。'
 }
 $combo = $downloads.SelectSingleNode('//ui:ComboBox', $dns)
@@ -122,7 +124,8 @@ if (($types) -join ',' -cne '全部类型,正式版,快照版,远古版,愚人�
 }
 $list = $downloads.SelectSingleNode('//ui:ListView', $dns)
 if (-not $list) { throw '版本内容必须使用 ListView 呈现。' }
-if ($list.ParentNode.GetAttribute('Grid.Row') -ne '2') {
+if (-not [object]::ReferenceEquals($list.ParentNode.ParentNode, $search.ParentNode.ParentNode) -or
+    $list.ParentNode.GetAttribute('Grid.Row') -ne '1') {
     throw '版本列表必须位于搜索框下方的第三行。'
 }
 $template = $list.SelectSingleNode('ui:ListView.ItemTemplate/ui:DataTemplate', $dns)

@@ -11,54 +11,56 @@
    <SelectorBarItem Text="Java" Tag="java" />
    <SelectorBarItem Text="下载" Tag="download" />
   </SelectorBar>
-  <ScrollViewer x:Name="GeneralPanel" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-  <StackPanel Spacing="16" Margin="0,0,16,0">
-   <Border Style="{StaticResource CardStyle}">
-    <ComboBox x:Name="Isolation" Header="版本隔离" HorizontalAlignment="Stretch"
-              SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="版本隔离">
-     <ComboBoxItem Content="关闭" />
-     <ComboBoxItem Content="隔离可安装 Mod 的版本" />
-     <ComboBoxItem Content="隔离非正式版" />
-     <ComboBoxItem Content="隔离可安装 Mod 的版本与非正式版" />
-     <ComboBoxItem Content="隔离所有版本" />
-    </ComboBox>
-   </Border>
-   <views:AppearanceSettingsView />
-  </StackPanel>
-  </ScrollViewer>
-  <ScrollViewer x:Name="DownloadPanel" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-  <StackPanel Spacing="16" Margin="0,0,16,0">
-   <Border Style="{StaticResource CardStyle}">
-    <StackPanel Spacing="16">
-     <ComboBox x:Name="FileSource" Header="文件下载源" HorizontalAlignment="Stretch"
-       SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="文件下载源">
-      <ComboBoxItem Content="尽量使用镜像源" /><ComboBoxItem Content="优先使用官方源，在加载缓慢时换用镜像源" /><ComboBoxItem Content="尽量使用官方源" />
-     </ComboBox>
-     <ComboBox x:Name="VersionSource" Header="版本列表源" HorizontalAlignment="Stretch"
-       SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="版本列表源">
-      <ComboBoxItem Content="尽量使用镜像源" /><ComboBoxItem Content="优先使用官方源，在加载缓慢时换用镜像源" /><ComboBoxItem Content="尽量使用官方源" />
-     </ComboBox>
-     <TextBlock Text="优先源失败时自动尝试另一来源；混合策略在官方加载超过 3 秒时同时尝试镜像。" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}" />
-    </StackPanel>
-   </Border>
-   <Border Style="{StaticResource CardStyle}">
-    <StackPanel Spacing="12">
-     <TextBlock x:Name="ParallelLabel" />
-     <Slider x:Name="ParallelDownloads" Minimum="1" Maximum="64" StepFrequency="1"
-       ValueChanged="Limit_ValueChanged" AutomationProperties.Name="并行下载文件数" />
-     <TextBlock x:Name="ConnectionsLabel" />
-     <Slider x:Name="Connections" Minimum="1" Maximum="64" StepFrequency="1"
-       ValueChanged="Limit_ValueChanged" AutomationProperties.Name="最大下载线程数" />
-     <TextBlock x:Name="SpeedLabel" />
-     <Slider x:Name="Speed" Minimum="0" Maximum="100" StepFrequency="1"
-       ValueChanged="Limit_ValueChanged" AutomationProperties.Name="下载速率限制，零为不限速" />
-     <TextBlock Text="并行文件数、线程数和限速由普通文件与 Minecraft 资源共用；修改后在下一批下载或空闲后继续任务时生效。" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}" />
-    </StackPanel>
-   </Border>
-  </StackPanel>
-  </ScrollViewer>
-  <ScrollViewer x:Name="LaunchPanel" Grid.Row="1" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="16" Margin="0,0,16,0"><views:MemorySettingsView x:Name="MemoryPanel" VerticalAlignment="Top"/><views:AdvancedLaunchSettingsView x:Name="AdvancedPanel"/></StackPanel></ScrollViewer>
-  <views:JavaSettingsView x:Name="JavaPanel" Grid.Row="1" Visibility="Collapsed"/>
+  <views:TabContentPanel x:Name="TabBody" Grid.Row="1">
+      <ScrollViewer x:Name="GeneralPanel" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="16" Margin="0,0,16,0">
+       <Border Style="{StaticResource CardStyle}">
+        <ComboBox x:Name="Isolation" Header="版本隔离" HorizontalAlignment="Stretch"
+                  SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="版本隔离">
+         <ComboBoxItem Content="关闭" />
+         <ComboBoxItem Content="隔离可安装 Mod 的版本" />
+         <ComboBoxItem Content="隔离非正式版" />
+         <ComboBoxItem Content="隔离可安装 Mod 的版本与非正式版" />
+         <ComboBoxItem Content="隔离所有版本" />
+        </ComboBox>
+       </Border>
+       <views:AppearanceSettingsView />
+      </StackPanel>
+      </ScrollViewer>
+      <ScrollViewer x:Name="DownloadPanel" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+      <StackPanel Spacing="16" Margin="0,0,16,0">
+       <Border Style="{StaticResource CardStyle}">
+        <StackPanel Spacing="16">
+         <ComboBox x:Name="FileSource" Header="文件下载源" HorizontalAlignment="Stretch"
+           SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="文件下载源">
+          <ComboBoxItem Content="尽量使用镜像源" /><ComboBoxItem Content="优先使用官方源，在加载缓慢时换用镜像源" /><ComboBoxItem Content="尽量使用官方源" />
+         </ComboBox>
+         <ComboBox x:Name="VersionSource" Header="版本列表源" HorizontalAlignment="Stretch"
+           SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="版本列表源">
+          <ComboBoxItem Content="尽量使用镜像源" /><ComboBoxItem Content="优先使用官方源，在加载缓慢时换用镜像源" /><ComboBoxItem Content="尽量使用官方源" />
+         </ComboBox>
+         <TextBlock Text="优先源失败时自动尝试另一来源；混合策略在官方加载超过 3 秒时同时尝试镜像。" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}" />
+        </StackPanel>
+       </Border>
+       <Border Style="{StaticResource CardStyle}">
+        <StackPanel Spacing="12">
+         <TextBlock x:Name="ParallelLabel" />
+         <Slider x:Name="ParallelDownloads" Minimum="1" Maximum="64" StepFrequency="1"
+           ValueChanged="Limit_ValueChanged" AutomationProperties.Name="并行下载文件数" />
+         <TextBlock x:Name="ConnectionsLabel" />
+         <Slider x:Name="Connections" Minimum="1" Maximum="64" StepFrequency="1"
+           ValueChanged="Limit_ValueChanged" AutomationProperties.Name="最大下载线程数" />
+         <TextBlock x:Name="SpeedLabel" />
+         <Slider x:Name="Speed" Minimum="0" Maximum="100" StepFrequency="1"
+           ValueChanged="Limit_ValueChanged" AutomationProperties.Name="下载速率限制，零为不限速" />
+         <TextBlock Text="并行文件数、线程数和限速由普通文件与 Minecraft 资源共用；修改后在下一批下载或空闲后继续任务时生效。" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}" />
+        </StackPanel>
+       </Border>
+      </StackPanel>
+      </ScrollViewer>
+      <ScrollViewer x:Name="LaunchPanel" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="16" Margin="0,0,16,0"><views:MemorySettingsView x:Name="MemoryPanel" VerticalAlignment="Top"/><views:AdvancedLaunchSettingsView x:Name="AdvancedPanel"/></StackPanel></ScrollViewer>
+      <views:JavaSettingsView x:Name="JavaPanel" Visibility="Collapsed"/>
+  </views:TabContentPanel>
   <InfoBar x:Name="SaveError" Grid.Row="2" Severity="Error" IsClosable="False" />
  </Grid>
 </UserControl>

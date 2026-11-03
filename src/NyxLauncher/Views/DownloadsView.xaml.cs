@@ -92,7 +92,7 @@ public sealed partial class DownloadsView : UserControl
         ResetPage(InstallationContent);
     }
 
-    /// <summary>右侧独立 Tab 与左侧分类互斥，进入任务页清除未读提示并停止游戏及资源清单请求。</summary>
+    /// <summary>右侧独立 Tab 与左侧分类互斥，进入任务页清除未读提示、停止清单请求并播放正文转场。</summary>
     private void TaskSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (sender.SelectedItem is null || TasksContent is null) return;
@@ -103,6 +103,7 @@ public sealed partial class DownloadsView : UserControl
         SearchControls.Visibility = ContentGrid.Visibility = ResourcesContent.Visibility = Visibility.Collapsed;
         TasksContent.Visibility = Visibility.Visible;
         TaskBadge.Visibility = Visibility.Collapsed;
+        TabBody.PlayTransition();
     }
 
     /// <summary>安装新版本入口使用游戏分类；分类切换时沿用现有筛选重置与加载流程。</summary>
@@ -284,7 +285,7 @@ public sealed partial class DownloadsView : UserControl
     /// <summary>失败后按当前设置重新请求，并从旋转状态重新开始。</summary>
     private void RetryRequested(object? sender, EventArgs e) => _ = LoadCategoryAsync();
 
-    /// <summary>切换分类时重置游戏筛选；资源目录接收独立分类，仅当前可见目录保持请求。</summary>
+    /// <summary>切换分类时重置游戏筛选并播放正文转场；资源目录接收独立分类，仅当前可见目录保持请求。</summary>
     private void ContentSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (LoadStatus is null || sender.SelectedItem?.Tag is not string category) return;
@@ -300,6 +301,7 @@ public sealed partial class DownloadsView : UserControl
         SearchBox.Text = "";
         TypeFilter.SelectedIndex = 1;
         if (_active) _ = LoadCategoryAsync();
+        TabBody.PlayTransition();
     }
 
     /// <summary>文本变化（含清除按钮）时即时过滤已加载条目。</summary>
