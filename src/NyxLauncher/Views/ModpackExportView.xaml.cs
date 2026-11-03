@@ -72,7 +72,7 @@ public sealed partial class ModpackExportView : UserControl
         SetBusy(false);
     }
 
-    /// <summary>按需创建带类型图标的文件行；目录右侧使用原生展开箭头，勾选任一层后同步父级半选状态。</summary>
+    /// <summary>按需创建文件卡片和紧贴排列的子项；目录标题点击仅展开，独立勾选框选择子树，文件整行可选择并同步父级半选状态。</summary>
     private FrameworkElement CreateEntry(ModpackExportEntry entry)
     {
         var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
@@ -83,9 +83,23 @@ public sealed partial class ModpackExportView : UserControl
         _checks[entry] = check;
         check.Checked += Entry_Changed; check.Unchecked += Entry_Changed; check.Indeterminate += Entry_Changed;
         check.Tag = entry;
-        if (!entry.IsDirectory) { check.Margin = new Thickness(12, 2, 12, 2); return check; }
-        var children = new StackPanel { Margin = new Thickness(20, 0, 0, 0), Spacing = 2 };
-        var expander = new Expander { Header = check, Content = children, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        if (!entry.IsDirectory)
+        {
+            check.VerticalContentAlignment = VerticalAlignment.Center;
+            check.MinHeight = 46;
+            return new Border { Style = (Style)Application.Current.Resources["CardStyle"], Padding = new Thickness(16, 0, 16, 0), Child = check };
+        }
+        check.Content = null;
+        check.HorizontalAlignment = HorizontalAlignment.Left;
+        var header = new Grid { ColumnSpacing = 10 };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.ColumnDefinitions.Add(new ColumnDefinition());
+        header.Children.Add(check);
+        Grid.SetColumn(label, 1);
+        header.Children.Add(label);
+        var children = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
+        var expander = new Expander { Header = header, Tag = entry, Content = children, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(expander, entry.Label);
         expander.Expanding += (_, _) =>
         {
             if (children.Children.Count == 0)
