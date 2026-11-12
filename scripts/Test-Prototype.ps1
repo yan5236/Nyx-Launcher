@@ -190,8 +190,40 @@ $sns = [System.Xml.XmlNamespaceManager]::new($settings.NameTable)
 $sns.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
 $sns.AddNamespace('x', $xns)
 $settingTabs = $settings.SelectNodes('//ui:SelectorBar/ui:SelectorBarItem', $sns)
-if (($settingTabs | ForEach-Object { $_.Text }) -join ',' -cne '通用,启动,Java,下载') {
-    throw '设置页必须按通用、启动、Java、下载顺序展示四个 Tab。'
+if (($settingTabs | ForEach-Object { $_.Text }) -join ',' -cne '通用,启动,Java,下载,关于') {
+    throw '设置页必须按通用、启动、Java、下载、关于顺序展示五个 Tab。'
+}
+
+# 核对关于页覆盖所有还原依赖及版本，升级、遗漏和重复条目都必须同步维护清单。
+$notices = @(Get-Content (Join-Path $project 'Assets/ThirdPartyNotices.json') -Raw -Encoding utf8 | ConvertFrom-Json)
+$packages = @($notices | ForEach-Object { $_.Packages })
+if ($packages.Count -ne @($packages | Sort-Object -Unique).Count) { throw '第三方清单不能重复登记 NuGet 包。' }
+foreach ($notice in $notices) {
+    if (-not $notice.Name -or -not $notice.Version -or -not $notice.Description -or -not $notice.License) {
+        throw '第三方清单必须包含名称、版本、用途和许可。'
+    }
+    foreach ($link in @($notice.ProjectUrl, $notice.LicenseUrl)) {
+        $uri = $null
+        if (-not [Uri]::TryCreate($link, [UriKind]::Absolute, [ref]$uri) -or $uri.Scheme -ne 'https') {
+            throw "第三方项目链接必须是绝对 HTTPS 地址：$link"
+        }
+    }
+}
+[xml]$appProject = Get-Content (Join-Path $project 'NyxLauncher.csproj') -Raw -Encoding utf8
+foreach ($package in $appProject.Project.ItemGroup.PackageReference) {
+    if ($package.Include -and "$($package.Include)/$($package.Version)" -notin $packages) {
+        throw "第三方清单缺少直接依赖或版本过期：$($package.Include)"
+    }
+}
+$assetsPath = Join-Path $project 'obj/project.assets.json'
+if (Test-Path $assetsPath) {
+    $assets = Get-Content $assetsPath -Raw -Encoding utf8 | ConvertFrom-Json
+    # 单文件发布额外还原 ILLink 构建工具；它不随应用分发，不属于运行依赖致谢清单。
+    $restoredPackages = @($assets.libraries.PSObject.Properties | Where-Object { $_.Value.type -eq 'package' -and $_.Name -notlike 'Microsoft.NET.ILLink.Tasks/*' } | ForEach-Object Name)
+    if (Compare-Object $packages $restoredPackages) { throw '第三方清单与还原后的直接及间接 NuGet 依赖不一致。' }
+}
+foreach ($component in @('Java Launch Wrapper', 'LWJGL Unsafe Agent', 'authlib-injector', 'Skia')) {
+    if ($component -notin $notices.Name) { throw "第三方清单缺少非 NuGet 组件：$component" }
 }
 foreach ($name in @('FileSource', 'VersionSource')) {
     $source = $settings.SelectSingleNode("//ui:ComboBox[@x:Name='$name']", $sns)

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl x:Class="NyxLauncher.Views.AboutView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:views="using:NyxLauncher.Views"
+ xmlns:services="using:NyxLauncher.Services">
+ <!-- 静态清单使用独立纵向布局并关闭滚动锚定，避免布局刷新时自动校正用户正在浏览的位置。 -->
+ <ScrollView ContentOrientation="Vertical" HorizontalScrollMode="Disabled"
+             HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Auto"
+             VerticalAnchorRatio="NaN" ZoomMode="Disabled">
+  <StackPanel Spacing="16" Margin="0,0,16,24">
+   <Border Style="{StaticResource CardStyle}">
+    <StackPanel Spacing="12" Padding="8,20" HorizontalAlignment="Center">
+     <Image Source="ms-appx:///Assets/NyxLogo.png" Width="88" Height="88" AutomationProperties.Name="Nyx Launcher 图标" />
+     <TextBlock Text="Nyx Launcher" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center" />
+     <TextBlock x:Name="VersionLabel" Text="{x:Bind VersionText}" Foreground="{ThemeResource MutedBrush}" HorizontalAlignment="Center" />
+     <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+      <HyperlinkButton x:Name="CheckUpdate" Content="检查更新" Click="CheckUpdate_Click" ToolTipService.ToolTip="检查新版本并查看更新说明" />
+      <HyperlinkButton Content="GitHub" Tag="https://github.com/yan5236/Nyx-Launcher" Click="Link_Click" />
+      <HyperlinkButton Content="官方网站" Tag="https://nyxlauncher.nanhaiblog.top/" Click="Link_Click" />
+     </StackPanel>
+     <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+      <HyperlinkButton x:Name="UserAgreement" Content="用户协议" Tag="{x:Bind services:LauncherInfo.AgreementUrl}" Click="Link_Click" />
+      <HyperlinkButton x:Name="PrivacyPolicy" Content="隐私协议" Tag="{x:Bind services:LauncherInfo.PrivacyUrl}" Click="Link_Click" />
+     </StackPanel>
+     <TextBlock x:Name="UpdateStatus" Foreground="{ThemeResource MutedBrush}" HorizontalAlignment="Center" TextWrapping="Wrap" />
+    </StackPanel>
+   </Border>
+   <InfoBar x:Name="LinkError" Severity="Error" IsClosable="True" />
+   <TextBlock Text="开源项目与第三方组件" FontSize="20" FontWeight="SemiBold" />
+   <TextBlock Text="感谢以下项目。许可证以对应版本的包及上游声明为准。" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap" />
+   <ItemsControl x:Name="DependencyList" ItemsSource="{x:Bind Dependencies}">
+    <ItemsControl.ItemTemplate>
+     <DataTemplate x:DataType="views:AboutDependency">
+      <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+       <StackPanel Spacing="6">
+        <TextBlock Text="{x:Bind Name}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock Text="{x:Bind Version}" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap" />
+        <TextBlock Text="{x:Bind Description}" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="12">
+         <HyperlinkButton x:Name="ProjectLink" Content="项目主页" Tag="{x:Bind ProjectUrl}" Click="Link_Click" AutomationProperties.Name="{x:Bind Name}" />
+         <HyperlinkButton Content="{x:Bind License}" Tag="{x:Bind LicenseUrl}" Click="Link_Click" ToolTipService.ToolTip="查看许可证" />
+        </StackPanel>
+       </StackPanel>
+      </Border>
+     </DataTemplate>
+    </ItemsControl.ItemTemplate>
+   </ItemsControl>
+  </StackPanel>
+ </ScrollView>
+</UserControl>

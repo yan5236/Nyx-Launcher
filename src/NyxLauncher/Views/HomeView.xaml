@@ -8,13 +8,13 @@
         <Border x:Name="StageCard" Width="760" Height="480" CornerRadius="18" HorizontalAlignment="Center"
                 VerticalAlignment="Center" AutomationProperties.Name="启动画面">
             <Border.Background>
-                <ImageBrush ImageSource="ms-appx:///Assets/HomeLandscape.jpg" Stretch="UniformToFill"
+                <ImageBrush x:Name="StageImage" ImageSource="ms-appx:///Assets/HomeLandscape.jpg" Stretch="UniformToFill"
                             AlignmentX="Center" AlignmentY="Center" />
             </Border.Background>
 
             <Grid>
                 <!-- 底部压暗：让悬浮控制台落在画面暗部，底部不与亮水面对撞 -->
-                <Border Height="220" VerticalAlignment="Bottom" CornerRadius="18" IsHitTestVisible="False">
+                <Border x:Name="BottomShade" Height="220" VerticalAlignment="Bottom" CornerRadius="18" IsHitTestVisible="False">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
                             <GradientStop Color="#0008100C" Offset="0.32" />
@@ -24,7 +24,7 @@
                 </Border>
 
                 <!-- 暗角：把视线收进画面中心，边缘不与浅色页面直接相接 -->
-                <Border CornerRadius="18" IsHitTestVisible="False">
+                <Border x:Name="EdgeShade" CornerRadius="18" IsHitTestVisible="False">
                     <Border.Background>
                         <RadialGradientBrush Center="0.5,0.48" GradientOrigin="0.5,0.48" RadiusX="0.78" RadiusY="0.9">
                             <GradientStop Color="#00000000" Offset="0.45" />

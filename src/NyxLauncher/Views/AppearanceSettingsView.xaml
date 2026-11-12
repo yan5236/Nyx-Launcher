@@ -29,6 +29,14 @@
     <Slider x:Name="OpacitySlider" Header="不透明度" Minimum="0" Maximum="100" StepFrequency="1" ValueChanged="Opacity_Changed" AutomationProperties.Name="背景图片不透明度"/>
    </StackPanel>
    <Slider x:Name="SidebarOpacitySlider" Header="侧栏背景不透明度" Minimum="0" Maximum="100" StepFrequency="1" ValueChanged="SidebarOpacity_Changed" AutomationProperties.Name="侧栏背景不透明度"/>
+   <StackPanel Spacing="8">
+    <TextBlock Text="首页图片" />
+    <StackPanel Orientation="Horizontal" Spacing="12">
+     <Button x:Name="ChooseHomeImage" Content="更换图片" Click="ChooseImage_Click" />
+     <Button x:Name="RemoveHomeImage" Content="移除" Click="RemoveHomeImage_Click" />
+     <Button x:Name="RestoreHomeImage" Content="恢复默认" Click="RestoreHomeImage_Click" />
+    </StackPanel>
+   </StackPanel>
    <InfoBar x:Name="Error" Severity="Error" IsClosable="False"/>
   </StackPanel>
  </Border>

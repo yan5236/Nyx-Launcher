@@ -13,6 +13,8 @@ public sealed record ThemeSettings
     public ThemeColors Light { get; init; } = new("#397450", "#28563B", "#397450");
     public ThemeColors Dark { get; init; } = new("#397450", "#80C99A", "#A2D6B4");
     public string? BackgroundPath { get; init; }
+    public string? HomeImagePath { get; init; }
+    public bool HideHomeImage { get; init; }
     public double BackgroundOpacity { get; init; } = 0.3;
     public double SidebarOpacity { get; init; } = 0.45;
 

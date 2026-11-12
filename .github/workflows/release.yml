@@ -1,0 +1,53 @@
+name: Build and release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Business checks
+        run: |
+          dotnet run --project tests/NyxLauncher.Checks -c Release
+          if ($LASTEXITCODE -ne 0) { throw '业务检查失败。' }
+      - name: Publish self-contained single EXE
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./scripts/Publish-Release.ps1 -Version $env:RELEASE_TAG
+      - name: Check interface structure
+        run: ./scripts/Test-Prototype.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NyxLauncher-windows-x64
+          path: artifacts/*/dist/*
+          if-no-files-found: error
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $files = @(Get-ChildItem artifacts/*/dist/* -File | ForEach-Object FullName)
+          $arguments = @('release', 'create', $env:RELEASE_TAG, '--verify-tag', '--generate-notes', '--title', "Nyx Launcher $env:RELEASE_TAG")
+          if ($env:RELEASE_TAG.Contains('-')) { $arguments += '--prerelease' }
+          gh @arguments @files
+          if ($LASTEXITCODE -ne 0) { throw '创建 GitHub Release 失败；构建产物仍可从 Actions 下载。' }

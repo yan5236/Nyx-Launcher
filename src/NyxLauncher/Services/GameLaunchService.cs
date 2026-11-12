@@ -91,7 +91,7 @@ public static class GameLaunchService
         {
             report(LaunchStage.CheckingDependencies, "选择兼容的 Java");
             int required = RequiredJavaMajor(profile);
-            var bundledRoots = new[] { path.Runtime, Path.Combine(AppContext.BaseDirectory, "Java") }.Where(Directory.Exists);
+            var bundledRoots = new[] { path.Runtime, Path.Combine(LauncherInfo.DirectoryPath, "Java") }.Where(Directory.Exists);
             var bundled = java.SelectedHome is null ? JavaDiscovery.Scan(bundledRoots, null, token).Runtimes : [];
             javaPath = JavaRuntimeStore.Resolve(java, required, bundled).Executable;
         }

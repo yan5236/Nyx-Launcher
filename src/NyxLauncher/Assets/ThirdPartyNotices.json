@@ -1,0 +1,215 @@
+[
+  {
+    "Name": "CmlLib.Core",
+    "Version": "4.1.0",
+    "Description": "Minecraft 安装与启动基础库。",
+    "ProjectUrl": "https://github.com/CmlLib/CmlLib.Core",
+    "License": "MIT",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "Packages": [
+      "CmlLib.Core/4.1.0"
+    ]
+  },
+  {
+    "Name": "CmlLib.Core.Commons",
+    "Version": "4.0.0",
+    "Description": "CmlLib 共用组件（间接依赖）。",
+    "ProjectUrl": "https://github.com/CmlLib/CmlLib.Core.Commons",
+    "License": "MIT",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "Packages": [
+      "CmlLib.Core.Commons/4.0.0"
+    ]
+  },
+  {
+    "Name": "CmlLib.Core.Installer.Forge",
+    "Version": "2.0.0",
+    "Description": "Forge 安装支持。",
+    "ProjectUrl": "https://github.com/CmlLib/CmlLib.Core.Installer.Forge",
+    "License": "MIT",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "Packages": [
+      "CmlLib.Core.Installer.Forge/2.0.0"
+    ]
+  },
+  {
+    "Name": "SkiaSharp",
+    "Version": "4.154.0",
+    "Description": "皮肤、披风及图像渲染；包含 Windows 原生组件。",
+    "ProjectUrl": "https://github.com/mono/SkiaSharp",
+    "License": "MIT",
+    "LicenseUrl": "https://github.com/mono/SkiaSharp/blob/main/LICENSE.md",
+    "Packages": [
+      "SkiaSharp/4.154.0",
+      "SkiaSharp.NativeAssets.Win32/4.154.0"
+    ]
+  },
+  {
+    "Name": "Skia",
+    "Version": "随 SkiaSharp 4.154.0 分发",
+    "Description": "SkiaSharp 使用的原生图形引擎。",
+    "ProjectUrl": "https://github.com/google/skia",
+    "License": "BSD-3-Clause",
+    "LicenseUrl": "https://github.com/google/skia/blob/main/LICENSE",
+    "Packages": []
+  },
+  {
+    "Name": "Microsoft Authentication Library (MSAL.NET)",
+    "Version": "4.92.0",
+    "Description": "微软账户认证。",
+    "ProjectUrl": "https://github.com/AzureAD/microsoft-authentication-library-for-dotnet",
+    "License": "MIT",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "Packages": [
+      "Microsoft.Identity.Client/4.92.0"
+    ]
+  },
+  {
+    "Name": "Microsoft IdentityModel",
+    "Version": "8.14.0",
+    "Description": "认证抽象组件（间接依赖）。",
+    "ProjectUrl": "https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet",
+    "License": "MIT",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "Packages": [
+      "Microsoft.IdentityModel.Abstractions/8.14.0"
+    ]
+  },
+  {
+    "Name": ".NET",
+    "Version": "9.0.0 · 10.0.14",
+    "Description": "自包含 .NET 运行时及张量、Windows 凭据保护组件。",
+    "ProjectUrl": "https://github.com/dotnet/runtime",
+    "License": "MIT 及第三方声明",
+    "LicenseUrl": "https://github.com/dotnet/runtime/blob/main/LICENSE.TXT",
+    "Packages": [
+      "System.Numerics.Tensors/9.0.0",
+      "System.Security.Cryptography.ProtectedData/10.0.14"
+    ]
+  },
+  {
+    "Name": "Html Agility Pack",
+    "Version": "1.11.48",
+    "Description": "HTML 解析（间接依赖）。",
+    "ProjectUrl": "https://github.com/zzzprojects/html-agility-pack",
+    "License": "MIT",
+    "LicenseUrl": "https://github.com/zzzprojects/html-agility-pack/blob/master/LICENSE",
+    "Packages": [
+      "HtmlAgilityPack/1.11.48"
+    ]
+  },
+  {
+    "Name": "SharpZipLib",
+    "Version": "1.4.2",
+    "Description": "压缩归档处理（间接依赖）。",
+    "ProjectUrl": "https://github.com/icsharpcode/SharpZipLib",
+    "License": "MIT",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "Packages": [
+      "SharpZipLib/1.4.2"
+    ]
+  },
+  {
+    "Name": "LZMA-SDK",
+    "Version": "19.0.0",
+    "Description": "LZMA 解压组件（间接依赖）。",
+    "ProjectUrl": "https://github.com/monemihir/LZMA-SDK",
+    "License": "MIT",
+    "LicenseUrl": "https://github.com/monemihir/LZMA-SDK/blob/master/LICENSE",
+    "Packages": [
+      "LZMA-SDK/19.0.0"
+    ]
+  },
+  {
+    "Name": "Windows App SDK / WinUI",
+    "Version": "2.6.4",
+    "Description": "原生 Windows 界面及平台组件。上游源码采用 MIT；NuGet 分发包另有 Microsoft 软件许可条款。",
+    "ProjectUrl": "https://github.com/microsoft/WindowsAppSDK",
+    "License": "Microsoft 软件许可条款",
+    "LicenseUrl": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.6.4/License",
+    "Packages": [
+      "Microsoft.WindowsAppSDK/2.6.4",
+      "Microsoft.WindowsAppSDK.AI/2.6.4",
+      "Microsoft.WindowsAppSDK.Base/2.6.4",
+      "Microsoft.WindowsAppSDK.DWrite/2.6.4",
+      "Microsoft.WindowsAppSDK.Foundation/2.6.4",
+      "Microsoft.WindowsAppSDK.InteractiveExperiences/2.6.4",
+      "Microsoft.WindowsAppSDK.ML/2.6.4",
+      "Microsoft.WindowsAppSDK.Runtime/2.6.4",
+      "Microsoft.WindowsAppSDK.Search/2.6.4",
+      "Microsoft.WindowsAppSDK.Widgets/2.6.4",
+      "Microsoft.WindowsAppSDK.WinUI/2.6.4"
+    ]
+  },
+  {
+    "Name": "Windows SDK Build Tools",
+    "Version": "10.0.28000.2705",
+    "Description": "Windows 构建工具，仅用于构建。",
+    "ProjectUrl": "https://developer.microsoft.com/windows/downloads/windows-sdk/",
+    "License": "Microsoft 软件许可条款",
+    "LicenseUrl": "https://aka.ms/WinSDKLicenseURL",
+    "Packages": [
+      "Microsoft.Windows.SDK.BuildTools/10.0.28000.2705"
+    ]
+  },
+  {
+    "Name": "Windows SDK Build Tools MSIX",
+    "Version": "1.7.251221100",
+    "Description": "Windows 打包构建工具（间接构建依赖）。",
+    "ProjectUrl": "https://developer.microsoft.com/windows/downloads/windows-sdk/",
+    "License": "Microsoft 软件许可条款",
+    "LicenseUrl": "https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools.MSIX/1.7.251221100/License",
+    "Packages": [
+      "Microsoft.Windows.SDK.BuildTools.MSIX/1.7.251221100"
+    ]
+  },
+  {
+    "Name": "Microsoft WebView2 SDK",
+    "Version": "1.0.3719.77",
+    "Description": "Windows App SDK 引入的间接依赖。",
+    "ProjectUrl": "https://github.com/MicrosoftEdge/WebView2Feedback",
+    "License": "BSD-3-Clause（SDK 包）",
+    "LicenseUrl": "https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.3719.77/License",
+    "Packages": [
+      "Microsoft.Web.WebView2/1.0.3719.77"
+    ]
+  },
+  {
+    "Name": "Windows ML Runtime",
+    "Version": "2.4.89",
+    "Description": "Windows App SDK 引入的机器学习运行时（间接依赖）。",
+    "ProjectUrl": "https://github.com/microsoft/windowsml",
+    "License": "Microsoft 软件许可条款",
+    "LicenseUrl": "https://www.nuget.org/packages/Microsoft.Windows.AI.MachineLearning/2.4.89/License",
+    "Packages": [
+      "Microsoft.Windows.AI.MachineLearning/2.4.89"
+    ]
+  },
+  {
+    "Name": "Java Launch Wrapper",
+    "Version": "1.4.4",
+    "Description": "随附的 Java 启动兼容组件。",
+    "ProjectUrl": "https://github.com/00ll00/java_launch_wrapper",
+    "License": "MIT",
+    "LicenseUrl": "https://github.com/00ll00/java_launch_wrapper/blob/master/LICENCE",
+    "Packages": []
+  },
+  {
+    "Name": "LWJGL Unsafe Agent",
+    "Version": "2.0",
+    "Description": "随附的 LWJGL 与新版 Java 兼容组件。",
+    "ProjectUrl": "https://github.com/HMCL-dev/lwjgl-unsafe-agent",
+    "License": "Apache-2.0",
+    "LicenseUrl": "https://github.com/HMCL-dev/lwjgl-unsafe-agent/blob/main/LICENSE",
+    "Packages": []
+  },
+  {
+    "Name": "authlib-injector",
+    "Version": "1.2.8",
+    "Description": "外置账户启动时按需下载的认证注入器。",
+    "ProjectUrl": "https://github.com/yushijinhun/authlib-injector",
+    "License": "AGPL-3.0-or-later（含例外）",
+    "LicenseUrl": "https://github.com/yushijinhun/authlib-injector/blob/develop/AGPLv3-with-authlib-injector-exception.txt",
+    "Packages": []
+  }
+]

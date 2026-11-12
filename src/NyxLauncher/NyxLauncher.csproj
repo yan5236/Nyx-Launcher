@@ -15,10 +15,15 @@
     <SelfContained>true</SelfContained>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <MicrosoftAuthConfig Condition="'$(MicrosoftAuthConfig)' == ''">$(MSBuildProjectDirectory)\..\..\config\microsoft-auth.json</MicrosoftAuthConfig>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Assets\ThirdPartyNotices.json" LogicalName="NyxLauncher.ThirdPartyNotices.json" />
   <Content Include="Assets\Launch\*" CopyToOutputDirectory="PreserveNewest" />
-    <EmbeddedResource Include="..\..\config\microsoft-auth.json" LogicalName="NyxLauncher.MicrosoftAuth.json" />
+    <EmbeddedResource Include="$(MicrosoftAuthConfig)" LogicalName="NyxLauncher.MicrosoftAuth.json" />
+    <AssemblyMetadata Include="SingleFile" Value="$(PublishSingleFile)" />
+    <Content Include="..\..\USER_AGREEMENT.md" Link="USER_AGREEMENT.md" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\PRIVACY.md" Link="PRIVACY.md" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\*.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\*.png" CopyToOutputDirectory="PreserveNewest" />
@@ -33,7 +38,7 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.4" />
   </ItemGroup>
   <Target Name="RequireMicrosoftAuthConfig" BeforeTargets="PrepareForBuild">
-    <Error Condition="!Exists('$(MSBuildProjectDirectory)\..\..\config\microsoft-auth.json')"
+    <Error Condition="!Exists('$(MicrosoftAuthConfig)')"
            Text="缺少 config/microsoft-auth.json，请复制 config/microsoft-auth.example.json 并填写自己的 ClientId 后构建。" />
   </Target>
 </Project>

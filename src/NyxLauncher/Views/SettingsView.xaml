@@ -5,11 +5,12 @@
  xmlns:views="using:NyxLauncher.Views">
  <Grid RowSpacing="16">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <SelectorBar SelectionChanged="Tabs_SelectionChanged" AutomationProperties.Name="设置分类">
+  <SelectorBar x:Name="SettingsTabs" SelectionChanged="Tabs_SelectionChanged" AutomationProperties.Name="设置分类">
    <SelectorBarItem Text="通用" Tag="general" IsSelected="True" />
    <SelectorBarItem Text="启动" Tag="launch" />
    <SelectorBarItem Text="Java" Tag="java" />
    <SelectorBarItem Text="下载" Tag="download" />
+   <SelectorBarItem x:Name="AboutTab" Text="关于" Tag="about" />
   </SelectorBar>
   <views:TabContentPanel x:Name="TabBody" Grid.Row="1">
       <ScrollViewer x:Name="GeneralPanel" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -60,6 +61,7 @@
       </ScrollViewer>
       <ScrollViewer x:Name="LaunchPanel" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="16" Margin="0,0,16,0"><views:MemorySettingsView x:Name="MemoryPanel" VerticalAlignment="Top"/><views:AdvancedLaunchSettingsView x:Name="AdvancedPanel"/></StackPanel></ScrollViewer>
       <views:JavaSettingsView x:Name="JavaPanel" Visibility="Collapsed"/>
+      <views:AboutView x:Name="AboutPanel" x:Load="False" Visibility="Collapsed"/>
   </views:TabContentPanel>
   <InfoBar x:Name="SaveError" Grid.Row="2" Severity="Error" IsClosable="False" />
  </Grid>

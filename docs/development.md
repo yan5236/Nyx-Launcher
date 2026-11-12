@@ -15,7 +15,36 @@ dotnet run --project src/NyxLauncher/NyxLauncher.csproj -c Debug -p:Platform=x64
 
 首次构建需要联网还原依赖，使用 NuGet 默认用户缓存或显式配置的缓存，不需要复制他人的 SDK 或本地验收目录。还原失败时检查包源、网络与当前代理；不在共享文档中固化某台机器的网络绕过方案，不关闭证书校验。
 
-项目采用无 MSIX 包的自包含桌面输出，分发时保留完整输出目录，不能只复制 EXE。构建成功不代表发布包、代码签名、自动更新或其他系统环境已经验证。
+普通 Debug/目录构建需要保留完整输出目录。正式发布使用无 MSIX、自包含的单 EXE；依赖会在启动时解压至 .NET 缓存，默认游戏与 Java 目录始终以实际 EXE 所在位置为根，不使用解压目录。发布版不要求另装 .NET 或 Windows App SDK，当前只发布 Windows x64，未配置代码签名。
+
+## 打包与 Tag 发布
+
+发布配置 [microsoft-auth.release.json](../config/microsoft-auth.release.json)只包含项目自己的微软公共客户端 ID 和 localhost 回调，随程序集嵌入，GitHub Actions 无需额外认证密钥。客户端 ID 是公开应用标识，不是 client secret；禁止加入密码、令牌或 client secret。本地开发默认仍使用被 Git 忽略的 `microsoft-auth.json`，发布脚本显式选择公共发布配置。
+
+```powershell
+pwsh -File scripts/Publish-Release.ps1 -Version v1.0.0
+```
+
+脚本按版本建立独立中间目录，拒绝覆盖非空发布目录，使用 [SingleFile 发布配置](../src/NyxLauncher/Properties/PublishProfiles/SingleFile.pubxml)打包并确认运行产物只有一个 EXE，不分发原生调试符号，输出 `artifacts/1.0.0/dist/NyxLauncher.exe` 和 `SHA256SUMS`。请保留 `NyxLauncher.exe` 文件名，WinUI 资源索引依赖这个名称。版本必须使用三段 SemVer，各段不超过 65534；支持 `v1.0.0-rc.1` 这类预发布。再次构建同版本时使用新的 `-OutputDirectory`。
+
+[发布工作流](../.github/workflows/release.yml)在推送 `v*` Tag 时运行 Windows 业务检查、单文件发布和界面结构检查，保存 Actions artifact，再创建带自动生成更新说明的 GitHub Release 并上传 EXE 和校验清单；带预发布后缀的 Tag 标记为 prerelease。维护者可在发布页补充面向用户的更新说明，启动器会显示 Release 正文。
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+先将工作流和实现提交、推送到项目仓库，再向该提交打 Tag。工作流使用仓库自带 `GITHUB_TOKEN` 的 `contents: write` 权限，不需要另建 PAT。示例命令不会由启动器执行。
+
+## 协议与自身更新
+
+协议位于仓库根目录的 [USER_AGREEMENT.md](../USER_AGREEMENT.md) 与 [PRIVACY.md](../PRIVACY.md)，随产物打包，界面链接直接打开 GitHub 对应文件。行为变化需要重新确认时，同时更新两份文档日期及 [AgreementStore.Revision](../src/NyxLauncher/Services/AgreementStore.cs)；首次或旧修订先弹窗，主动勾选并同意且写盘成功后才创建主页面。不同意或关闭时退出。
+
+自身更新只由“设置 → 关于 → 检查更新”触发，查询 GitHub latest 正式发布，展示版本和更新说明，确认后用共享下载任务下载安装。预发布不会成为正式版自动候选。仅单文件发布版允许直接替换，目录/开发版引导手动获取发布产物。没有后台自动检查、自动安装或强制重启。
+
+下载包必须是本仓库发布的固定 `NyxLauncher.exe`，使用 GitHub asset 的 `digest` 校验 SHA-256 和大小，缺失校验信息拒绝安装。跨进程锁防止并发替换；旧 EXE 改名为 `.previous` 后再移动新文件，失败恢复旧路径，备份冲突不覆盖。当前窗口继续运行，新版本下次启动生效，旧进程释放文件后才可清理备份。暂存、锁和备份位于 EXE 旁，因此该目录需要写权限；不支持跨重启恢复下载任务。
+
+单文件属性依据 [Microsoft 的 WinUI 3 发布说明](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/unpackage-winui-app#single-file-exe)；更新元数据依据 [GitHub Releases API](https://docs.github.com/en/rest/releases/releases#get-the-latest-release)。
 
 ## 职责与维护入口
 

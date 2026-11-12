@@ -13,6 +13,10 @@ internal static class ThemeChecks
             var store = new ThemeSettingsStore(path);
             Check(store.Current.Mode == AppearanceMode.System && store.Current.Preset == ThemePreset.Green, "默认跟随系统和绿色");
             Check(store.Current.SidebarOpacity == .45, "侧栏默认增加 45% 主题底色遮罩");
+            Check(!store.Current.HideHomeImage && store.Current.HomeImagePath is null, "旧配置默认显示内置首页图");
+            var home = store.Current with { HomeImagePath = Path.Combine(folder, "custom.png"), HideHomeImage = false };
+            Check(store.Save(home) is null && new ThemeSettingsStore(path).Current == home, "自定义首页图片设置往返");
+            Check(store.Save(home with { HomeImagePath = null, HideHomeImage = true }) is null && new ThemeSettingsStore(path).Current.HideHomeImage, "移除首页图片可持久化");
             var custom = store.Current with { Mode = AppearanceMode.Dark, Preset = ThemePreset.Custom, Light = new("#123456", "#234567", "#345678"), Dark = new("#ABCDEF", "#FEDCBA", "#AABBCC"), BackgroundOpacity = 0, SidebarOpacity = .75 };
             Check(store.Save(custom) is null && new ThemeSettingsStore(path).Current == custom, "自定义配色与零不透明度往返");
             Check(custom.Colors(false) == custom.Light && custom.Colors(true) == custom.Dark, "明暗配色独立");

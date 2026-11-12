@@ -7,7 +7,7 @@ public sealed partial class MainWindow : Window
 {
     private bool _closing;
     private bool _readyToClose;
-    /// <summary>加载主窗口、设置标题栏与图标，以 1040×680 的初始尺寸显示原型首页。</summary>
+    /// <summary>加载主窗口和主题，以 1040×680 显示；等待协议确认后才创建首页及业务服务。</summary>
     public MainWindow()
     {
         InitializeComponent();
@@ -16,9 +16,22 @@ public sealed partial class MainWindow : Window
         AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1040, 680));
         Themes.ThemeManager.Current.Attach(ThemeRoot, WindowBackground, AppWindow);
-        RootFrame.Navigate(typeof(MainPage));
+        ThemeRoot.Loaded += Startup_Loaded;
         AppWindow.Closing += Window_Closing;
         InitializeMemoryLifecycle();
+    }
+
+    /// <summary>根视觉树就绪后显示首次协议；只有同意落盘且窗口仍打开时创建主页面，拒绝时正常退出。</summary>
+    private async void Startup_Loaded(object sender, RoutedEventArgs args)
+    {
+        ThemeRoot.Loaded -= Startup_Loaded;
+        var store = new Services.AgreementStore();
+        if (!store.IsAccepted && await new Views.AgreementDialog(ThemeRoot.XamlRoot, store).ShowThemedAsync()
+            != Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
+        { Close(); return; }
+        if (_closing) return;
+        Services.LauncherUpdateInstaller.CleanupBackup(Services.LauncherInfo.ExecutablePath);
+        RootFrame.Navigate(typeof(MainPage));
     }
 
     /// <summary>响应窗口标题栏左上角的折叠按钮，将切换请求交给当前主页面。</summary>

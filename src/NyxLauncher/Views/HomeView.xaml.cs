@@ -27,10 +27,12 @@ public sealed partial class HomeView : UserControl
     public event EventHandler<bool>? CrashAnalysisChanged;
     public bool IsLaunching => _session is not null;
 
-    /// <summary>加载首页控件，服务通过主页面注入。</summary>
+    /// <summary>加载首页并在挂载时监听图片设置，卸载时解除订阅；游戏服务由主页面注入。</summary>
     public HomeView()
     {
         InitializeComponent();
+        Loaded += HomeImage_Loaded;
+        Unloaded += HomeImage_Unloaded;
     }
 
     /// <summary>按内容区可用宽高设定启动画面与控制台尺寸；控件、字体和间距不随窗口放大，最大化后仅画面变大。</summary>

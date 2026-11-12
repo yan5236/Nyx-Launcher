@@ -18,7 +18,7 @@ public sealed class GameFolderStore
     {
         _path = path ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "NyxLauncher", "game-folders.json");
-        string defaultFolder = Path.Combine(launcherDirectory ?? AppContext.BaseDirectory, ".minecraft");
+        string defaultFolder = Path.Combine(launcherDirectory ?? LauncherInfo.DirectoryPath, ".minecraft");
         try { Directory.CreateDirectory(defaultFolder); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         { LoadError = "无法创建默认游戏目录：" + ex.Message; }

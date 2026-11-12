@@ -84,7 +84,7 @@ public static class JavaDiscovery
             Environment.GetEnvironmentVariable("JAVA_HOME") ?? "", Environment.GetEnvironmentVariable("JDK_HOME") ?? "",
             Path.Combine(profile, ".jdks"), Path.Combine(profile, ".jvm"), Path.Combine(profile, ".sdkman", "candidates", "java"),
             Path.Combine(local, "Programs"), Path.Combine(roaming, ".minecraft", "runtime"),
-            Path.Combine(AppContext.BaseDirectory, "Java"), Path.Combine(AppContext.BaseDirectory, ".minecraft", "runtime")
+            Path.Combine(LauncherInfo.DirectoryPath, "Java"), Path.Combine(LauncherInfo.DirectoryPath, ".minecraft", "runtime")
         }).Concat((Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator));
         foreach (string programFiles in new[] { Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) })
             roots = roots.Concat(new[] { "Java", "Eclipse Adoptium", "Microsoft", "Zulu", "Amazon Corretto", "BellSoft" }.Select(x => Path.Combine(programFiles, x)));

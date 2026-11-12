@@ -8,6 +8,7 @@ namespace NyxLauncher.Views;
 public sealed partial class SettingsView : UserControl
 {
     private DownloadSettingsStore? _store;
+    private DownloadTaskManager? _tasks;
 
     /// <summary>加载设置控件；初始化完成前不写配置。</summary>
     public SettingsView() => InitializeComponent();
@@ -28,8 +29,13 @@ public sealed partial class SettingsView : UserControl
         SaveError.IsOpen = store.LoadError is not null;
     }
 
-    /// <summary>连接 Java 管理和统一下载任务，保持原有下载偏好独立持久化。</summary>
-    public void ConfigureJava(JavaRuntimeStore store, DownloadTaskManager tasks) => JavaPanel.Configure(store, tasks);
+    /// <summary>连接 Java 管理与关于页的共享下载任务，保持原有下载偏好独立持久化；关于页仍延迟创建。</summary>
+    public void ConfigureJava(JavaRuntimeStore store, DownloadTaskManager tasks)
+    {
+        _tasks = tasks;
+        JavaPanel.Configure(store, tasks);
+        AboutPanel?.ConfigureUpdates(tasks);
+    }
 
     /// <summary>设置页出现时激活当前 Java 或启动 Tab；仅尚未初始化的配置触发一次自动浅扫描。</summary>
     public void SetActive(bool active)
@@ -49,11 +55,17 @@ public sealed partial class SettingsView : UserControl
     /// <summary>主窗口退出时等待 Java 扫描结束并关闭安装弹窗。</summary>
     public Task StopAsync() => JavaPanel.StopAsync();
 
-    /// <summary>切换通用、启动、Java 及下载分组并播放正文转场；首次进入 Java 时后台扫描，进入启动页刷新内存和高级配置。</summary>
+    /// <summary>切换通用、启动、Java、下载及关于分组并播放正文转场；关于页首次选择时创建，Java 与启动页沿用原有刷新规则。</summary>
     private void Tabs_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         if (GeneralPanel is null || DownloadPanel is null || JavaPanel is null || LaunchPanel is null) return;
         string? tab = sender.SelectedItem?.Tag as string;
+        if (tab == "about" && AboutPanel is null)
+        {
+            FindName(nameof(AboutPanel));
+            if (_tasks is not null) AboutPanel!.ConfigureUpdates(_tasks);
+        }
+        if (AboutPanel is not null) AboutPanel.Visibility = tab == "about" ? Visibility.Visible : Visibility.Collapsed;
         GeneralPanel.Visibility = tab == "general" ? Visibility.Visible : Visibility.Collapsed;
         DownloadPanel.Visibility = tab == "download" ? Visibility.Visible : Visibility.Collapsed;
         JavaPanel.Visibility = tab == "java" ? Visibility.Visible : Visibility.Collapsed;

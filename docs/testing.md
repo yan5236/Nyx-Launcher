@@ -18,6 +18,7 @@ dotnet build NyxLauncher.slnx -c Debug -p:Platform=x64
 
 | 参数 | 范围及副作用 |
 | --- | --- |
+| `--launcher` | 协议修订和确认持久化、SemVer、GitHub 正式发布字段与地址、无发布/限流/取消、SHA-256、更新锁、替换回滚；仅临时文件和 HTTP 夹具 |
 | `--modpack-export` | 三格式导出往返、选择与半选、资源策略、网络失败、路径和覆盖保护、取消清理；使用临时文件及 HTTP 夹具 |
 | `--theme` | 外观配置往返、明暗配色独立、边界校验、损坏与写入失败保护 |
 | `--wardrobe` | 衣柜副本与索引、PNG 校验、账户限制、官方请求格式与模型投影；只使用合成纹理和协议夹具 |
@@ -29,9 +30,28 @@ dotnet build NyxLauncher.slnx -c Debug -p:Platform=x64
 | `--local-resources <样本目录>` | 读取测试源码指定文件名的样本，输出写入临时目录，不改动样本；不是任意目录批量扫描，默认检查已覆盖合成资源 |
 | `--java-scan <验收目录>` | 扫描本机 Java，结果写入验收目录，不改用户 Java 配置 |
 
+## 协议、首页图片与单文件更新
+
+`Release.targets` 使用正式窗口和控件，以临时协议、外观配置及合成游戏/账户验证首次弹窗不默认同意、拒绝不保存、勾选后才能确认、GitHub 协议链接，以及首页自定义图、移除、恢复默认和源图保护。它用正式下载管理器及本地 HTTP 夹具替换**自身的测试 EXE**，断言下载任务完成、备份保留、进程和窗口继续存在，并核对公共微软配置已经内嵌。仅测试产物被替换，用户实际配置和启动器不被替换；生成 `release-checks.log` 和完整新版首页的 `home-readme.png`。这不能代替 GitHub Actions 云端执行或真实 Release 下载验收。
+
+```powershell
+$releaseTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/Release.targets'
+$releaseOutput = Join-Path $PWD '.local/release-ui/'
+$releaseIntermediate = Join-Path $PWD '.local/release-ui-obj/'
+$releaseBuild = Join-Path $PWD '.local/release-ui-build/'
+$releaseConfig = Join-Path $PWD 'config/microsoft-auth.release.json'
+dotnet publish src/NyxLauncher/NyxLauncher.csproj -c Release -p:Platform=x64 -p:PublishProfile=SingleFile "-p:MicrosoftAuthConfig=$releaseConfig" "-p:CustomAfterMicrosoftCommonTargets=$releaseTargets" "-p:IntermediateOutputPath=$releaseIntermediate" "-p:OutputPath=$releaseBuild" -o $releaseOutput
+if ($LASTEXITCODE -ne 0) { throw '发布界面检查构建失败' }
+$releaseProcess = Start-Process (Join-Path $releaseOutput 'NyxLauncher.exe') -Wait -PassThru -WindowStyle Hidden
+Get-Content (Join-Path $releaseOutput 'release-checks.log')
+if ($releaseProcess.ExitCode -ne 0) { throw '发布界面检查失败' }
+```
+
+测试完成后退出前不清理仍在运行的 `.previous`。若重跑同一输出，可在旧进程已退出后清理该测试备份，或改用新的输出目录；请勿将此测试 EXE 当正式发布版分发。
+
 ## 主导航转场检查
 
-以下入口使用真实 WinUI 窗口检查六个主页面，以及设置、下载（含任务）、版本详情、衣柜的 Tab，覆盖动画中间态、重复进入、快速打断和卸载恢复；读取本机配置，主页面可能请求在线目录，但不安装游戏或保存用户偏好。Tab 检查不注入业务服务。动画开启时检查淡入与位移，关闭时检查直接显示；覆盖两个分支需分别在对应的 Windows 动画设置下运行。
+以下入口使用真实 WinUI 窗口检查六个主页面，以及设置、下载（含任务）、版本详情、衣柜的 Tab，覆盖动画中间态、重复进入、快速打断和卸载恢复；读取本机配置，主页面可能请求在线目录，但不安装游戏或保存用户偏好。关于页追加检查设置 Tab 入口、首次延迟创建、版本与依赖绑定、GitHub 协议链接、无效链接报错、分段往返滚动方向与位置、内容高度稳定及键盘聚焦自动滚动，并在输出目录保存浅深色截图，不实际打开浏览器。结构脚本另核对第三方清单与项目直接依赖及已还原的 NuGet 分发依赖图（排除仅用于构建的 ILLink 工具）。Tab 检查不注入业务服务。动画开启时检查淡入与位移，关闭时检查直接显示；覆盖两个分支需分别在对应的 Windows 动画设置下运行。
 
 ```powershell
 $navigationTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/Navigation.targets'
@@ -42,6 +62,8 @@ $navigationProcess = Start-Process (Join-Path $navigationOutput 'NyxLauncher.exe
 Get-Content (Join-Path $navigationOutput 'navigation-checks.log')
 if ($navigationProcess.ExitCode -ne 0) { throw '导航转场检查失败' }
 ```
+
+只验收关于页时，使用相同构建，将启动命令增加 `-ArgumentList '--about-only'`；仍检查设置 Tab 入口、延迟创建、协议状态、清单绑定和滚动，并生成浅深色及依赖列表截图，跳过其他页面的动画时序采样。
 
 该检查验证实际动画属性和最终状态，不替代不同显示器刷新率及低性能设备上的流畅度验收。
 

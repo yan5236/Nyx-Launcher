@@ -13,6 +13,7 @@ public sealed class DownloadTaskItem : INotifyPropertyChanged
     public bool IsGame { get; init; }
     public bool IsJava { get; init; }
     public bool IsMod { get; init; }
+    public bool IsLauncherUpdate { get; init; }
     public DownloadState State { get; internal set; } = DownloadState.Queued;
     public string Detail { get; internal set; } = "等待下载";
     public double Percent { get; internal set; }
@@ -50,6 +51,7 @@ public sealed class DownloadTaskManager
     private bool _shuttingDown;
     private Task? _shutdown;
     public List<DownloadTaskItem> Tasks { get; } = [];
+    public bool LauncherUpdateInstalled { get; private set; }
     /// <summary>游戏或模组任务仍在执行或清理时保护版本目录；普通文件和 Java 下载不阻止版本管理。</summary>
     public bool HasActiveVersionTasks => Tasks.Any(x => (x.IsGame || x.IsMod) && x.IsBusy);
     public event EventHandler? Changed;
@@ -128,11 +130,24 @@ public sealed class DownloadTaskManager
         var item = new DownloadTaskItem
         {
             Name = $"Java {package.Major} · {package.Channel} · {package.Version}", IsJava = true,
-            Destination = Path.Combine(launcherDirectory ?? AppContext.BaseDirectory, "Java", package.FolderName)
+            Destination = Path.Combine(launcherDirectory ?? LauncherInfo.DirectoryPath, "Java", package.FolderName)
         };
-        var installation = new JavaInstallationService(launcherDirectory ?? AppContext.BaseDirectory, item.Id, package, store);
+        var installation = new JavaInstallationService(launcherDirectory ?? LauncherInfo.DirectoryPath, item.Id, package, store);
         item.Work = (transport, token) => installation.InstallAsync(transport, (percent, detail) => Report(item, percent, detail), token);
         item.Cleanup = installation.Cleanup;
+        Add(item);
+        return item;
+    }
+
+    /// <summary>用户确认后创建启动器更新任务，共享下载、暂停、重试、取消及限速；开发构建和本次运行已安装新版时拒绝替换。</summary>
+    public DownloadTaskItem AddLauncherUpdate(LauncherRelease release)
+    {
+        if (!LauncherInfo.CanSelfUpdate) throw new IOException("当前不是单文件发布版，请从 GitHub 下载发布版后使用更新功能。");
+        if (LauncherUpdateInstalled) throw new IOException("新版已安装，下次启动生效；当前窗口可继续使用。");
+        var item = new DownloadTaskItem { Name = "Nyx Launcher " + release.Version, Destination = LauncherInfo.ExecutablePath, IsLauncherUpdate = true };
+        var installer = new LauncherUpdateInstaller(release, item.Destination);
+        item.Work = (transport, token) => installer.InstallAsync(transport, (percent, detail) => Report(item, percent, detail), token);
+        item.Cleanup = installer.Cleanup;
         Add(item);
         return item;
     }
@@ -222,7 +237,8 @@ public sealed class DownloadTaskManager
             await Task.Run(() => item.Work!(_transport!, cancellation.Token));
             item.State = DownloadState.Completed;
             item.Percent = 100;
-            item.Detail = "已完成";
+            item.Detail = item.IsLauncherUpdate ? "更新已安装，下次启动生效；当前窗口可继续使用" : "已完成";
+            if (item.IsLauncherUpdate) LauncherUpdateInstalled = true;
             if (item.IsGame) _dispatch(() => InstallationCompleted?.Invoke(this, EventArgs.Empty));
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
