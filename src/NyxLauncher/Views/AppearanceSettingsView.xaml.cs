@@ -1,6 +1,8 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.Windows.Storage.Pickers;
 using NyxLauncher.Services;
 using NyxLauncher.Themes;
@@ -15,7 +17,7 @@ public sealed partial class AppearanceSettingsView : UserControl
     private bool _loading = true;
     private readonly ThemeManager _themes = ThemeManager.Current;
 
-    /// <summary>初始化外观控件并在加载期间订阅错误通知，卸载时解除订阅。</summary>
+    /// <summary>使用应用共享的外观服务创建控件，加载期间抑制初始化事件；卸载时解除订阅。</summary>
     public AppearanceSettingsView()
     {
         InitializeComponent();
@@ -24,11 +26,16 @@ public sealed partial class AppearanceSettingsView : UserControl
         Unloaded += ViewUnloaded;
     }
 
-    /// <summary>加载后监听背景解码错误，并展示当前配置读取问题。</summary>
-    private void ViewLoaded(object sender, RoutedEventArgs args) { _themes.Changed += ThemeChanged; ThemeChanged(); }
+    /// <summary>加载后监听背景解码错误；重新加载时恢复从保存值刷新，并展示当前配置读取问题。</summary>
+    private void ViewLoaded(object sender, RoutedEventArgs args) { if (_loading) Refresh(); _themes.Changed += ThemeChanged; ThemeChanged(); }
 
-    /// <summary>移除事件订阅，避免已经卸载的控件被主题服务持有。</summary>
-    private void ViewUnloaded(object sender, RoutedEventArgs args) => _themes.Changed -= ThemeChanged;
+    /// <summary>移除事件订阅，避免已经卸载的控件被主题服务持有；未关闭取色器时补交已选颜色。</summary>
+    private void ViewUnloaded(object sender, RoutedEventArgs args)
+    {
+        _themes.Changed -= ThemeChanged;
+        if (_themes.HasPreview && CustomPanel is not null) Save(Draft());
+        _loading = true;
+    }
 
     /// <summary>展示当前外观读取或背景加载错误，不覆盖编辑中的颜色。</summary>
     private void ThemeChanged() => ShowError(_themes.Store.LoadError ?? _themes.BackgroundError);
@@ -63,25 +70,70 @@ public sealed partial class AppearanceSettingsView : UserControl
         Save(_themes.Store.Current with { Mode = (AppearanceMode)Mode.SelectedIndex, Preset = (ThemePreset)Preset.SelectedIndex });
     }
 
-    /// <summary>切换要编辑的浅色或深色配色，不改变实际外观模式。</summary>
+    /// <summary>切换要编辑的浅色或深色配色，不改变实际外观模式，也不立即改写共享画刷。</summary>
     private void ColorMode_Changed(object sender, SelectionChangedEventArgs args) { if (!_loading) LoadColors(); }
 
-    /// <summary>仅填充已经创建的颜色选择器，未应用的修改在切换组别时丢弃，不为预设配色创建编辑器。</summary>
+    /// <summary>仅填充已经创建的颜色行，未提交的修改在切换组别时丢弃，不为预设配色创建编辑器。</summary>
     private void LoadColors()
     {
         if (CustomPanel is null) return;
-        var colors = ColorMode.SelectedIndex == 1 ? _themes.Store.Current.Dark : _themes.Store.Current.Light;
-        Tone.Color = ThemeManager.Parse(colors.Tone);
-        Primary.Color = ThemeManager.Parse(colors.Primary);
-        Secondary.Color = ThemeManager.Parse(colors.Secondary);
+        bool previous = _loading;
+        _loading = true;
+        try
+        {
+            var colors = ColorMode.SelectedIndex == 1 ? _themes.Store.Current.Dark : _themes.Store.Current.Light;
+            ApplyColor(TonePicker, ToneSwatch, colors.Tone);
+            ApplyColor(PrimaryPicker, PrimarySwatch, colors.Primary);
+            ApplyColor(SecondaryPicker, SecondarySwatch, colors.Secondary);
+        }
+        finally { _loading = previous; }
     }
 
-    /// <summary>保存当前明暗组的色调、主色和副色，另一组保持不变。</summary>
-    private void ApplyColors_Click(object sender, RoutedEventArgs args)
+    /// <summary>把配置中的不透明 RGB 同步到取色器、右侧色块与读屏提示。</summary>
+    private void ApplyColor(ColorPicker picker, Border swatch, string value)
     {
-        var colors = new ThemeColors(Hex(Tone.Color), Hex(Primary.Color), Hex(Secondary.Color));
-        Save(ColorMode.SelectedIndex == 1 ? _themes.Store.Current with { Dark = colors } : _themes.Store.Current with { Light = colors });
+        var color = ThemeManager.Parse(value);
+        picker.Color = color;
+        swatch.Background = new SolidColorBrush(color);
+        if (RowFor(picker) is { } row) AutomationProperties.SetHelpText(row, "打开取色器，当前 " + value);
     }
+
+    /// <summary>取色器变化时立即刷新色块与共享画刷，只预览、不写盘，关闭取色器后再保存。</summary>
+    private void Picker_ColorChanged(ColorPicker sender, ColorChangedEventArgs args)
+    {
+        if (_loading) return;
+        if (SwatchFor(sender) is { } swatch) swatch.Background = new SolidColorBrush(sender.Color);
+        if (RowFor(sender) is { } row) AutomationProperties.SetHelpText(row, "打开取色器，当前 " + Hex(sender.Color));
+        _themes.Preview(Draft());
+    }
+
+    /// <summary>关闭取色器后保存当前明暗组的色调、主色和副色；没有改动时不重写配置。</summary>
+    private void Picker_Closed(object sender, object args)
+    {
+        if (_loading || CustomPanel is null) return;
+        var draft = Draft();
+        if (!_themes.HasPreview && draft == _themes.Store.Current) return;
+        Save(draft);
+    }
+
+    /// <summary>组合三行取色器的当前颜色，只替换正在编辑的明暗组。</summary>
+    private ThemeSettings Draft()
+    {
+        var colors = new ThemeColors(Hex(TonePicker.Color), Hex(PrimaryPicker.Color), Hex(SecondaryPicker.Color));
+        return ColorMode.SelectedIndex == 1 ? _themes.Store.Current with { Dark = colors } : _themes.Store.Current with { Light = colors };
+    }
+
+    /// <summary>按取色器找到对应行的右侧色块。</summary>
+    private Border? SwatchFor(ColorPicker picker) =>
+        ReferenceEquals(picker, TonePicker) ? ToneSwatch :
+        ReferenceEquals(picker, PrimaryPicker) ? PrimarySwatch :
+        ReferenceEquals(picker, SecondaryPicker) ? SecondarySwatch : null;
+
+    /// <summary>按取色器找到对应整行按钮，用于同步读屏提示。</summary>
+    private Button? RowFor(ColorPicker picker) =>
+        ReferenceEquals(picker, TonePicker) ? ToneRow :
+        ReferenceEquals(picker, PrimaryPicker) ? PrimaryRow :
+        ReferenceEquals(picker, SecondaryPicker) ? SecondaryRow : null;
 
     /// <summary>转换颜色为不透明 RGB 配置字符串，忽略选择器的透明分量。</summary>
     private static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";

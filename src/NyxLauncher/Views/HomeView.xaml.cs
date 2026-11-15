@@ -27,6 +27,9 @@ public sealed partial class HomeView : UserControl
     public event EventHandler<bool>? CrashAnalysisChanged;
     public bool IsLaunching => _session is not null;
 
+    /// <summary>游戏窗口就绪且当前会话仍在运行时，允许联机页开房或加入。</summary>
+    public bool IsGameRunning => _session?.Status.Stage == LaunchStage.Running;
+
     /// <summary>加载首页并在挂载时监听图片设置，卸载时解除订阅；游戏服务由主页面注入。</summary>
     public HomeView()
     {

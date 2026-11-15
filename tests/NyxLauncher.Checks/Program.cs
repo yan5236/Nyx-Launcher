@@ -8,9 +8,16 @@ internal static class Program
     private const string Valid = """{"versions":[{"id":"1.0","type":"release","releaseTime":"2011-11-18T00:00:00Z"}]}""";
     private static int _checks;
 
-    /// <summary>运行业务断言；--launcher 检查协议和自身更新；--modpack-export 检查离线整合包导出；--wardrobe、--theme、--mod-management、--advanced-launch、--region-restriction 检查对应范围；--local-resources 可选读取样本，--mcim-live、--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
+    /// <summary>运行业务断言；--terracotta 检查局域网通告解析；--launcher 检查协议和自身更新；--modpack-export 检查离线整合包导出；--wardrobe、--theme、--mod-management、--advanced-launch、--region-restriction 检查对应范围；--local-resources 可选读取样本，--mcim-live、--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--terracotta"))
+        {
+            CheckLanAnnouncements();
+            CheckTerracottaProfiles();
+            Console.WriteLine($"通过 {_checks} 项联机检查。");
+            return;
+        }
         await LauncherChecks.RunAsync();
         if (args.Contains("--launcher")) return;
         if (args.Contains("--modpack-export")) { await ModpackExportChecks.RunAsync(); return; }
@@ -20,6 +27,8 @@ internal static class Program
         if (args.Contains("--region-restriction")) { await RegionRestrictionChecks.RunAsync(); return; }
         ThemeChecks.Run();
         if (args.Contains("--theme")) return;
+        CheckLanAnnouncements();
+        CheckTerracottaProfiles();
         AdvancedLaunchChecks.Run();
         if (args.Contains("--advanced-launch")) return;
         if (args.Contains("--mcim-live")) { await ResourceMirrorChecks.LiveAsync(); return; }
@@ -215,6 +224,38 @@ await VersionManagementChecks.RunAsync();
             }
         }
         Console.WriteLine($"通过 {_checks} 项检查。");
+    }
+
+    /// <summary>检查局域网世界广播能够读出中文名称和端口，并拒绝空端口、溢出端口、缺失字段及陶瓦大厅。</summary>
+    private static void CheckLanAnnouncements()
+    {
+        Check(MinecraftLanRooms.TryReadAnnouncement("[MOTD]生存世界[/MOTD][AD]65535[/AD]", out string name, out ushort port)
+            && name == "生存世界" && port == 65535, "联机：解析 Minecraft 世界名称和端口");
+        foreach (string invalid in new[] { "[MOTD]世界[/MOTD][AD]0[/AD]", "[MOTD]世界[/MOTD][AD]65536[/AD]",
+            "[MOTD]世界[/MOTD][AD][/AD]", "[MOTD]世界[/MOTD]", "[MOTD]§6§l双击进入陶瓦联机大厅（请保持陶瓦运行）[/MOTD][AD]25565[/AD]" })
+            Check(!MinecraftLanRooms.TryReadAnnouncement(invalid, out _, out _), "联机：忽略无效或大厅广播 " + invalid);
+    }
+
+    /// <summary>验证两种角色的连接信息和成员数组，并检查旧模块无成员字段时仍可连线。</summary>
+    private static void CheckTerracottaProfiles()
+    {
+        using var host = System.Text.Json.JsonDocument.Parse("""
+            {"state":"host-ok","room":"U/TEST","profiles":[{"name":"Alice","kind":"HOST"},{"name":"Bob","kind":"GUEST"},null,{"name":""}]}
+            """);
+        var hosted = TerracottaSession.ParseState(host.RootElement);
+        Check(hosted.State == "host-ok" && hosted.Value == "U/TEST" && hosted.Players.SequenceEqual(["Alice（房主）", "Bob"]),
+            "联机：房主收到邀请码及真实成员列表，忽略无效成员");
+
+        using var guest = System.Text.Json.JsonDocument.Parse("""
+            {"state":"guest-ok","url":"127.0.0.1:25566","profiles":[{"name":"Alice","kind":"HOST"}]}
+            """);
+        var joined = TerracottaSession.ParseState(guest.RootElement);
+        Check(joined.State == "guest-ok" && joined.Value == "127.0.0.1:25566" && joined.Players.SequenceEqual(["Alice（房主）"]),
+            "联机：访客收到直连地址及房主名");
+
+        using var legacy = System.Text.Json.JsonDocument.Parse("""{"state":"host-ok","room":"U/TEST"}""");
+        var withoutProfiles = TerracottaSession.ParseState(legacy.RootElement);
+        Check(withoutProfiles.Value == "U/TEST" && withoutProfiles.Players.Length == 0, "联机：兼容缺少成员字段的模块");
     }
 
     /// <summary>创建 HTTP 测试响应，模拟真实 JSON 或错误正文。</summary>

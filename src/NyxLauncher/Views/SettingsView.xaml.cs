@@ -9,9 +9,45 @@ public sealed partial class SettingsView : UserControl
 {
     private DownloadSettingsStore? _store;
     private DownloadTaskManager? _tasks;
+    private MultiplayerView? _multiplayer;
 
     /// <summary>加载设置控件；初始化完成前不写配置。</summary>
     public SettingsView() => InitializeComponent();
+
+    /// <summary>连接通用设置中的陶瓦管理操作，复用联机页的模块路径和进程生命周期。</summary>
+    public void ConfigureMultiplayer(MultiplayerView multiplayer)
+    {
+        _multiplayer = multiplayer;
+        multiplayer.ModuleSettingsChanged += RefreshModuleSettings;
+        RefreshModuleSettings();
+    }
+
+    /// <summary>显示当前模块路径；模块运行时禁用安装和替换，仍可导出日志。</summary>
+    private void RefreshModuleSettings()
+    {
+        if (_multiplayer is null) return;
+        ModulePath.Text = _multiplayer.ModulePath ?? "尚未安装陶瓦联机模块。";
+        DownloadModule.IsEnabled = SelectModule.IsEnabled = _multiplayer.CanChangeModule;
+        ExportModuleLog.IsEnabled = !_multiplayer.IsBusy;
+    }
+
+    /// <summary>从通用设置打开安装目录选择器，并在本卡片显示下载进度或错误。</summary>
+    private async void DownloadModule_Click(object sender, RoutedEventArgs e)
+    {
+        if (_multiplayer is not null) await _multiplayer.DownloadAsync(XamlRoot, ModuleFeedback);
+    }
+
+    /// <summary>从通用设置选择兼容的陶瓦可执行文件；取消保留原有设置。</summary>
+    private async void SelectModule_Click(object sender, RoutedEventArgs e)
+    {
+        if (_multiplayer is not null) await _multiplayer.SelectAsync(XamlRoot, ModuleFeedback);
+    }
+
+    /// <summary>从通用设置导出当前或最近一次陶瓦日志，并在本卡片报告结果。</summary>
+    private async void ExportModuleLog_Click(object sender, RoutedEventArgs e)
+    {
+        if (_multiplayer is not null) await _multiplayer.ExportLogAsync(XamlRoot, ModuleFeedback);
+    }
 
     /// <summary>注入设置存储，填充源策略、并行文件数、连接数、限速及隔离选项，初始化不写配置并展示读取错误。</summary>
     public void Configure(DownloadSettingsStore store)

@@ -16,7 +16,8 @@ public sealed partial class MainPage : Page
     private string _currentPage = "home";
 
     /// <summary>下载或游戏启动期间避免主动压缩托管堆，减少后台业务被全量回收暂停的机会。</summary>
-    public bool HasMemorySensitiveWork => _tasks.Tasks.Any(task => task.IsBusy) || HomeContent.IsLaunching || _importing;
+    public bool HasMemorySensitiveWork => _tasks.Tasks.Any(task => task.IsBusy) || HomeContent.IsLaunching || _importing ||
+        MultiplayerContent?.IsBusy == true;
 
     /// <summary>后台回收前卸载已经隐藏的详情控件，不创建尚未访问的模块，不影响可见页面和共享任务。</summary>
     public void ReleaseUnusedViews()
@@ -24,10 +25,10 @@ public sealed partial class MainPage : Page
         DownloadsContent?.ReleaseUnusedDetails();
     }
 
-    /// <summary>关闭时停止后台业务，只清理已经创建的账户和设置页，不为退出构造未使用的页面。</summary>
+    /// <summary>关闭时停止下载、游戏和已创建页面的后台工作，包括陶瓦进程。</summary>
     public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(),
         AccountContent?.StopAsync() ?? Task.CompletedTask, SettingsContent?.StopAsync() ?? Task.CompletedTask,
-        WardrobeContent?.StopAsync() ?? Task.CompletedTask);
+        WardrobeContent?.StopAsync() ?? Task.CompletedTask, MultiplayerContent?.StopAsync() ?? Task.CompletedTask);
     /// <summary>只创建首页及共享业务状态，其他模块首次导航时才创建；后台安装完成仍可刷新首页。</summary>
     public MainPage()
     {
@@ -56,6 +57,11 @@ public sealed partial class MainPage : Page
     /// <summary>首次进入指定模块时显式加载其 XAML 并注入共享服务；每个模块只配置一次，已创建页面保留筛选和后台业务状态。</summary>
     private void EnsurePage(string page)
     {
+        if ((page is "multiplayer" or "settings") && MultiplayerContent is null)
+        {
+            FindName(nameof(MultiplayerContent));
+            MultiplayerContent!.Configure(() => HomeContent.IsGameRunning, () => _accounts.Selected?.Name);
+        }
         if (page == "wardrobe" && WardrobeContent is null)
         {
             FindName(nameof(WardrobeContent));
@@ -81,6 +87,7 @@ public sealed partial class MainPage : Page
             SettingsContent.Configure(_settings);
             SettingsContent.ConfigureJava(_java, _tasks);
             SettingsContent.ConfigureMemory(_folders, () => HomeContent.SelectedVersion);
+            SettingsContent.ConfigureMultiplayer(MultiplayerContent!);
         }
         else if (page == "account" && AccountContent is null)
         {
@@ -263,11 +270,13 @@ public sealed partial class MainPage : Page
         if (DownloadsContent is not null) DownloadsContent.Visibility = page == "downloads" ? Visibility.Visible : Visibility.Collapsed;
         if (AccountContent is not null) AccountContent.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
         if (WardrobeContent is not null) WardrobeContent.Visibility = page == "wardrobe" ? Visibility.Visible : Visibility.Collapsed;
+        if (MultiplayerContent is not null) MultiplayerContent.Visibility = page == "multiplayer" ? Visibility.Visible : Visibility.Collapsed;
         if (SettingsScroll is not null) SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent?.SetActive(page == "downloads");
         VersionsContent?.SetActive(page == "versions");
         SettingsContent?.SetActive(page == "settings");
         WardrobeContent?.SetActive(page == "wardrobe");
+        MultiplayerContent?.SetActive(page == "multiplayer");
         if (page == "home") HomeContent.Refresh();
         if (changed && IsLoaded && new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
             PageEntrance.Begin();

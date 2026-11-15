@@ -12,6 +12,7 @@ public sealed class ThemeManager
 {
     public static ThemeManager Current { get; } = new();
     public ThemeSettingsStore Store { get; } = new();
+    private ThemeSettings? _preview;
     private FrameworkElement? _root;
     private Image? _background;
     private string? _loadedPath;
@@ -20,6 +21,17 @@ public sealed class ThemeManager
     private readonly Dictionary<string, SolidColorBrush> _brushes = new();
     public string? BackgroundError { get; private set; }
     public event Action? Changed;
+
+    /// <summary>取色器拖动期间的临时配置；只原地更新共享画刷，不写盘也不切换原生模板主题，关闭取色器后再提交。</summary>
+    public void Preview(ThemeSettings settings)
+    {
+        _preview = settings;
+        if (_root is null) return;
+        UpdateBrushes(_root.ActualTheme == ElementTheme.Dark);
+    }
+
+    /// <summary>是否存在尚未提交的取色预览；卸载外观设置时用于补交已选颜色。</summary>
+    public bool HasPreview => _preview is not null;
 
     /// <summary>初始化全部共享画刷；必须在创建窗口和页面前调用。</summary>
     public void Initialize() => UpdateBrushes(false);
@@ -53,24 +65,37 @@ public sealed class ThemeManager
         foreach (var pair in _brushes) dialog.Resources[pair.Key] = pair.Value;
     }
 
-    /// <summary>成功保存后立即应用外观；失败返回错误并保留当前界面。</summary>
+    /// <summary>成功保存后立即应用外观；失败返回错误并保留当前界面，取色预览在成功或失败后都退出生效状态。</summary>
     public string? Save(ThemeSettings settings)
     {
-        var previous = Store.Current;
+        var saved = Store.Current;
         var error = Store.Save(settings);
-        if (error is null) Apply(previous.Preset != settings.Preset || previous.Light != settings.Light || previous.Dark != settings.Dark);
+        if (error is null)
+        {
+            _preview = null;
+            Apply(saved.Preset != settings.Preset || saved.Light != settings.Light || saved.Dark != settings.Dark);
+        }
+        else if (_preview is not null)
+        {
+            _preview = null;
+            Apply(true);
+        }
         return error;
     }
+
+    /// <summary>当前生效配置；未提交的取色预览优先于已保存值。</summary>
+    private ThemeSettings Effective => _preview ?? Store.Current;
 
     /// <summary>应用明暗模式与背景透明度；配色变化时刷新原生模板缓存，只有图片路径改变时才重新解码图片。</summary>
     private void Apply(bool refreshPalette = false)
     {
         if (_root is null || _background is null) return;
+        var current = Effective;
         _contrast?.Restore();
         if (refreshPalette) _root.RequestedTheme = _root.ActualTheme == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark;
-        _root.RequestedTheme = Store.Current.Mode switch { AppearanceMode.Light => ElementTheme.Light, AppearanceMode.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
+        _root.RequestedTheme = current.Mode switch { AppearanceMode.Light => ElementTheme.Light, AppearanceMode.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
         UpdateBrushes(_root.ActualTheme == ElementTheme.Dark);
-        var path = Store.Current.BackgroundPath;
+        var path = current.BackgroundPath;
         if (path != _loadedPath)
         {
             _loadedPath = path;
@@ -79,7 +104,7 @@ public sealed class ThemeManager
             _contrast?.SetImage(null);
             _ = LoadBackgroundAsync(path, ++_imageGeneration);
         }
-        _background.Opacity = Store.Current.BackgroundOpacity;
+        _background.Opacity = current.BackgroundOpacity;
         _contrast?.Invalidate();
         Changed?.Invoke();
     }
@@ -125,13 +150,14 @@ public sealed class ThemeManager
     /// <summary>按三种主题色生成表面与交互画刷，原地更新以覆盖已打开的模板和弹窗。</summary>
     private void UpdateBrushes(bool dark)
     {
-        var colors = Store.Current.Colors(dark);
+        var current = Effective;
+        var colors = current.Colors(dark);
         var tone = Parse(colors.Tone); var primary = Parse(colors.Primary); var secondary = Parse(colors.Secondary);
         Set("ShellBrush", Mix(dark ? Parse("#181818") : Parse("#F8F8F8"), tone, dark ? .12 : .06));
         foreach (string key in new[] { "NavigationViewDefaultPaneBackground", "NavigationViewExpandedPaneBackground" })
         {
             Set(key, _brushes["ShellBrush"].Color);
-            _brushes[key].Opacity = Store.Current.SidebarOpacity;
+            _brushes[key].Opacity = current.SidebarOpacity;
         }
         Set("PageBrush", dark ? Parse("#202020") : Parse("#FAFBF8"));
         Set("CardBrush", dark ? Mix(Parse("#292929"), tone, .06) : Parse("#FFFFFF"));
@@ -139,7 +165,7 @@ public sealed class ThemeManager
         Set("CardHoverBrush", Mix(_brushes["CardBrush"].Color, tone, .06));
         Set("CardPressedBrush", Mix(_brushes["CardBrush"].Color, tone, .12));
         foreach (string key in new[] { "CardBrush", "CardHoverBrush", "CardPressedBrush" })
-            _brushes[key].Opacity = Store.Current.BackgroundPath is null ? 1 : .88;
+            _brushes[key].Opacity = current.BackgroundPath is null ? 1 : .88;
         Set("LineBrush", dark ? Parse("#454545") : Parse("#E3E7DF"));
         Set("TextBrush", dark ? Parse("#F3F3F3") : Parse("#263B30"));
         Set("MutedBrush", dark ? Parse("#B9C3BC") : Parse("#6B7A70"));
@@ -148,7 +174,7 @@ public sealed class ThemeManager
         Set("DangerBrush", dark ? Parse("#FF99A4") : Parse("#A4262C"));
         Set("DangerLineBrush", dark ? Parse("#9C5559") : Parse("#E3B4B1"));
         Set("SystemControlHighlightAccentBrush", primary);
-        var foreground = Store.Current.Preset == ThemePreset.VuiBlue && !dark ? Parse("#FFFFFF") : Contrast(primary);
+        var foreground = current.Preset == ThemePreset.VuiBlue && !dark ? Parse("#FFFFFF") : Contrast(primary);
         foreach (string key in new[] { "AccentButtonBackground", "AccentButtonBorderBrush", "AccentFillColorDefaultBrush" }) Set(key, primary);
         foreach (string key in new[] { "AccentButtonBackgroundPointerOver", "AccentButtonBorderBrushPointerOver", "AccentFillColorSecondaryBrush" }) Set(key, Mix(primary, foreground, .10));
         foreach (string key in new[] { "AccentButtonBackgroundPressed", "AccentButtonBorderBrushPressed", "AccentFillColorTertiaryBrush" }) Set(key, Mix(primary, foreground, .18));

@@ -81,6 +81,24 @@ Get-Content (Join-Path $contrastOutput 'contrast-checks.log')
 if ($contrastProcess.ExitCode -ne 0) { throw '背景文字恢复检查失败' }
 ```
 
+## 自定义配色检查
+
+在 Windows 桌面会话中使用临时外观配置和正式设置控件验证自定义配色的三行布局、取色交互与持久化：每行整行可点击，左侧为色调、主色或副色名称，右侧为 48×26 圆角色块；打开取色器后拖动颜色只实时预览共享画刷，不写入临时 `theme.json`，关闭取色器才保存当前明暗组，另一组保持不变，界面不再显示“应用”按钮。检查同时保存浅色与深色截图。此入口用临时存储替换共享外观服务，不写入用户配置，不替代真实鼠标拖动取色和不同缩放比例下的视觉验收；结果写入独立输出目录的 `appearance-checks.log`，失败返回非零退出码。
+
+```powershell
+$appearanceTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/Appearance.targets'
+$appearanceOutput = Join-Path $PWD '.local/appearance-checks/'
+dotnet build src/NyxLauncher/NyxLauncher.csproj -c Debug -p:Platform=x64 "-p:CustomAfterMicrosoftCommonTargets=$appearanceTargets" "-p:OutputPath=$appearanceOutput"
+if ($LASTEXITCODE -ne 0) { throw '自定义配色检查构建失败' }
+$appearanceProcess = Start-Process (Join-Path $appearanceOutput 'NyxLauncher.exe') -Wait -PassThru
+Get-Content (Join-Path $appearanceOutput 'appearance-checks.log')
+if ($appearanceProcess.ExitCode -ne 0) { throw '自定义配色检查失败' }
+```
+
+## 陶瓦联机检查
+
+运行 `dotnet run --project tests/NyxLauncher.Checks -- --terracotta`，验证局域网通告和陶瓦房间成员解析。完整联机验收使用两个已启动 Minecraft Java 版的客户端，检查下载提示、通用设置中的模块管理、房主邀请码、访客弹窗和直连地址、双方的玩家列表，以及返回首页后房间仍在运行。关闭房间或退出游戏后确认访客断开，并在通用设置分别导出运行中和停止后的陶瓦日志。
+
 ## 实网与安装检查
 
 ### 整合包导出界面

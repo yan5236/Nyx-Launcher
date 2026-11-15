@@ -26,6 +26,18 @@
         </ComboBox>
        </Border>
        <views:AppearanceSettingsView />
+       <Border Style="{StaticResource CardStyle}">
+        <StackPanel Spacing="10">
+         <TextBlock Text="联机模块" Style="{StaticResource SubtitleTextBlockStyle}"/>
+         <TextBlock x:Name="ModulePath" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+         <StackPanel Spacing="8" HorizontalAlignment="Left">
+          <Button x:Name="DownloadModule" Content="下载到指定目录" Click="DownloadModule_Click"/>
+          <Button x:Name="SelectModule" Content="选择已安装的模块" Click="SelectModule_Click"/>
+          <Button x:Name="ExportModuleLog" Content="导出联机日志" Click="ExportModuleLog_Click"/>
+         </StackPanel>
+         <InfoBar x:Name="ModuleFeedback" IsClosable="True"/>
+        </StackPanel>
+       </Border>
       </StackPanel>
       </ScrollViewer>
       <ScrollViewer x:Name="DownloadPanel" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
