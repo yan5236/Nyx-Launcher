@@ -44,6 +44,9 @@
             <NavigationViewItem x:Name="WardrobeItem" Content="衣柜" Tag="wardrobe">
                 <NavigationViewItem.Icon><ImageIcon><ImageIcon.Source><SvgImageSource UriSource="ms-appx:///Assets/hanger.svg" /></ImageIcon.Source></ImageIcon></NavigationViewItem.Icon>
             </NavigationViewItem>
+            <NavigationViewItem x:Name="ServersItem" Content="服务器" Tag="servers">
+                <NavigationViewItem.Icon><FontIcon Glyph="&#xEC05;" /></NavigationViewItem.Icon>
+            </NavigationViewItem>
             <NavigationViewItem Content="联机" Tag="multiplayer">
                 <NavigationViewItem.Icon><FontIcon Glyph="&#xE968;" /></NavigationViewItem.Icon>
             </NavigationViewItem>
@@ -90,6 +93,7 @@
                 <views:DownloadsView x:Name="DownloadsContent" x:Load="False" Visibility="Collapsed" />
                 <views:AccountsView x:Name="AccountContent" x:Load="False" Visibility="Collapsed" />
                 <views:WardrobeView x:Name="WardrobeContent" x:Load="False" Visibility="Collapsed" />
+                <views:ServersView x:Name="ServersContent" x:Load="False" Visibility="Collapsed" />
                 <views:MultiplayerView x:Name="MultiplayerContent" x:Load="False" Visibility="Collapsed" />
                 <Grid x:Name="SettingsScroll" x:Load="False" Visibility="Collapsed">
                     <views:SettingsView x:Name="SettingsContent" />

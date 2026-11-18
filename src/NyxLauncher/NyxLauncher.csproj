@@ -18,6 +18,7 @@
     <MicrosoftAuthConfig Condition="'$(MicrosoftAuthConfig)' == ''">$(MSBuildProjectDirectory)\..\..\config\microsoft-auth.json</MicrosoftAuthConfig>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Assets\FeaturedServers.json" LogicalName="NyxLauncher.FeaturedServers.json" />
     <EmbeddedResource Include="Assets\ThirdPartyNotices.json" LogicalName="NyxLauncher.ThirdPartyNotices.json" />
   <Content Include="Assets\Launch\*" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="$(MicrosoftAuthConfig)" LogicalName="NyxLauncher.MicrosoftAuth.json" />

@@ -12,9 +12,9 @@ namespace NyxLauncher.Services;
 /// <summary>从真实本地清单生成启动进程，将隔离策略用于 gameDir 与进程工作目录。</summary>
 public static class GameLaunchService
 {
-    /// <summary>以版本优先的高级配置构造进程，保留加载器参数并接入兼容组件与外置认证；只构造进程，不启动或修改显卡偏好。</summary>
+    /// <summary>以版本优先的高级配置构造进程，保留加载器参数、接入兼容组件与外置认证，并在指定服务器时生成直连参数；只构造进程，不启动或修改显卡偏好。</summary>
     public static async Task<Process> BuildAsync(string folder, InstalledVersion version, IsolationMode isolation, GameAccount account,
-        CancellationToken token = default, MSession? authenticatedSession = null, string? javaPath = null, AdvancedLaunchSettings? advanced = null)
+        CancellationToken token = default, MSession? authenticatedSession = null, string? javaPath = null, AdvancedLaunchSettings? advanced = null, ServerEndpoint? server = null)
     {
         var session = authenticatedSession ?? CreateSession(account);
         if (session.UUID != account.Uuid || account.IsMicrosoft && (session.UserType != "msa" || string.IsNullOrEmpty(session.AccessToken)))
@@ -42,7 +42,7 @@ public static class GameLaunchService
             GameLauncherName = "NyxLauncher",
             ArgumentDictionary = new Dictionary<string, string> { ["game_directory"] = gameDirectory }
         };
-        LaunchArguments.Apply(option, advanced, major);
+        LaunchArguments.Apply(option, advanced, major, server);
         var process = await launcher.BuildProcessAsync(version.Name, option, token);
         process.StartInfo.WorkingDirectory = gameDirectory;
         process.StartInfo.UseShellExecute = false;

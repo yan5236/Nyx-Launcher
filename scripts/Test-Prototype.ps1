@@ -22,8 +22,8 @@ if ($titleBar.IsPaneToggleButtonVisible -ne 'True' -or $titleBar.PaneToggleReque
     throw '折叠按钮必须位于窗口标题栏，侧栏内部不重复显示。'
 }
 $items = $navigation.SelectNodes('ui:NavigationView.MenuItems/ui:NavigationViewItem', $ns)
-if (($items | ForEach-Object { $_.Content }) -join ',' -cne '首页,版本管理,下载,衣柜') {
-    throw '主导航必须依次为首页、版本管理、下载、衣柜。'
+if (($items | ForEach-Object { $_.Content }) -join ',' -cne '首页,版本管理,下载,衣柜,服务器,联机') {
+    throw '主导航必须依次为首页、版本管理、下载、衣柜、服务器、联机。'
 }
 if ($navigation.IsSettingsVisible -ne 'False') {
     throw '设置入口只能放在账户弹层中。'
@@ -346,6 +346,34 @@ if (-not $danger -or -not $danger.SelectSingleNode('ui:TextBlock[@Text="危险�
     throw '基础页底部必须提供危险区和可访问的删除版本按钮。'
 }
 
+# 服务器页：版本选择必须是卡片弹窗，页面和表单都不再使用下拉选择器。
+[xml]$servers = Get-Content (Join-Path $project 'Views/ServersView.xaml') -Raw -Encoding utf8
+$srv = [System.Xml.XmlNamespaceManager]::new($servers.NameTable)
+$srv.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$srv.AddNamespace('x', $xns)
+$srv.AddNamespace('views', 'using:NyxLauncher.Views')
+if ($servers.SelectSingleNode('//ui:ComboBox', $srv)) {
+    throw '服务器页版本选择不得使用下拉选择器，必须打开卡片弹窗。'
+}
+$editorLayer = $servers.SelectSingleNode("//ui:Grid[@x:Name='EditorLayer']", $srv)
+$versionEntry = $servers.SelectSingleNode("//ui:Button[@x:Name='EditorVersion']", $srv)
+if (-not $editorLayer -or -not $versionEntry -or $versionEntry.GetAttribute('Click') -ne 'EditorVersion_Click' -or
+    -not $versionEntry.SelectSingleNode('.//views:VersionIcon', $srv)) {
+    throw '服务器表单必须在页面上层打开，并提供带图标的版本入口。'
+}
+[xml]$versionDialog = Get-Content (Join-Path $project 'Views/ServerVersionDialog.xaml') -Raw -Encoding utf8
+$vdns = [System.Xml.XmlNamespaceManager]::new($versionDialog.NameTable)
+$vdns.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$vdns.AddNamespace('views', 'using:NyxLauncher.Views')
+if ($versionDialog.DocumentElement.LocalName -ne 'ContentDialog' -or
+    -not $versionDialog.SelectSingleNode('//ui:ListView[@IsItemClickEnabled="True" and @ItemClick="Version_Click"]', $vdns) -or
+    -not $versionDialog.SelectSingleNode('//views:VersionIcon', $vdns) -or
+    -not $versionDialog.SelectSingleNode('//ui:TextBlock[@Text="{x:Bind Name}"]', $vdns) -or
+    -not $versionDialog.SelectSingleNode('//ui:TextBlock[@Text="{x:Bind Detail}"]', $vdns) -or
+    -not $versionDialog.SelectSingleNode('//ui:TextBlock[@Text="默认"]', $vdns)) {
+    throw '版本选择必须使用带图标、版本名、副标题小字和默认标记的卡片弹窗。'
+}
+
 # 检查 XAML 引用的本地图片资源是否存在。
 foreach ($file in $xamlFiles) {
     [xml]$document = Get-Content $file.FullName -Raw -Encoding utf8
@@ -358,5 +386,5 @@ foreach ($file in $xamlFiles) {
         }
     }
 }
-Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、详情危险区、设置 Tab/源策略/滑块范围、账户区域限制说明及图片资源。'
+Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、详情危险区、设置 Tab/源策略/滑块范围、账户区域限制说明、服务器版本卡片弹窗及图片资源。'
 

@@ -55,6 +55,21 @@ public sealed class BackgroundContrast
     /// <summary>为固定白字的原生输入选区生成同色相底色；过亮主色与黑色混合，保证白字至少约 4.5:1 的对比度。</summary>
     public static uint SelectionBackground(uint primary) => TextColor(primary) == 0xFFFFFFFF ? primary : Composite(0xFF000000, primary, .55);
 
+    /// <summary>在卡片底色上保持原字色；对比不足时逐步向黑色或白色混合，返回达到 4.5:1 的近似色。</summary>
+    internal static uint ReadableText(uint foreground, uint background)
+    {
+        double backdrop = Luminance(background);
+        uint target = TextColor(background);
+        for (int step = 0; step < 20; step++)
+        {
+            uint candidate = Composite(target, foreground, step / 20d);
+            double brightness = Luminance(candidate);
+            if ((Math.Max(backdrop, brightness) + .05) / (Math.Min(backdrop, brightness) + .05) >= 4.5)
+                return candidate;
+        }
+        return target;
+    }
+
     /// <summary>计算不透明 sRGB 颜色的线性相对亮度，供局部取样排序与文字对比度共用。</summary>
     private static double Luminance(uint color) => .2126 * Linear((byte)(color >> 16)) + .7152 * Linear((byte)(color >> 8)) + .0722 * Linear((byte)color);
 

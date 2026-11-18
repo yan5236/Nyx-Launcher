@@ -45,9 +45,9 @@ public sealed class GameLaunchSession
         }
     }
 
-    /// <summary>固定本次高级设置与 Java，认证后构造进程并应用其显卡偏好；取消覆盖网络与进程，最终回收句柄。</summary>
+    /// <summary>固定本次高级设置、Java 和可选直连目标，认证后构造进程并应用其显卡偏好；取消覆盖网络与进程，最终回收句柄。</summary>
     public async Task RunAsync(string folder, InstalledVersion version, DownloadSettings settings, GameAccount account,
-        Func<GameAccount, CancellationToken, Task<MSession>>? authenticate = null, JavaSelection? java = null)
+        Func<GameAccount, CancellationToken, Task<MSession>>? authenticate = null, JavaSelection? java = null, ServerEndpoint? server = null)
     {
         if (Interlocked.Exchange(ref _started, 1) != 0) throw new InvalidOperationException("启动会话不能重复运行。");
         Process? process = null;
@@ -67,7 +67,7 @@ public sealed class GameLaunchSession
             var identity = authenticate is null ? GameLaunchService.CreateSession(account) : await authenticate(account, token);
             _accessToken = identity.AccessToken;
             token.ThrowIfCancellationRequested();
-            process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token, identity, javaPath, advanced);
+            process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token, identity, javaPath, advanced, server);
             GameDirectory = process.StartInfo.WorkingDirectory;
             StartedUtc = DateTime.UtcNow;
             _gameLog = new GameLaunchLog(folder, gameOutput: true);

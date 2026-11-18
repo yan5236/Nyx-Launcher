@@ -107,12 +107,19 @@ public sealed partial class HomeView : UserControl
     /// <summary>读取系统动画开关，不使用额外设置项。</summary>
     private static bool AnimationsEnabled() => new Windows.UI.ViewManagement.UISettings().AnimationsEnabled;
 
-    /// <summary>锁定版本、身份和 Java 快照启动会话；再次点击停止，失败在会话回收后弹出原因与日志入口。</summary>
+    /// <summary>从首页选择器读取版本和账户并启动，再次点击时停止当前会话。</summary>
     private async void Launch_Click(object sender, RoutedEventArgs e)
     {
         if (_session is not null) { _session.Stop(); UpdateControls(); return; }
         if (_closing || _scanning || VersionList.SelectedItem is not InstalledVersion version ||
             _folders?.Selected is not string root || _accounts?.Selected is not GameAccount account) return;
+        await StartGameAsync(root, version, account);
+    }
+
+    /// <summary>锁定游戏目录、版本、身份和可选服务器，沿用首页进度、停止及日志入口；已有会话或关闭期间跳过新请求。</summary>
+    internal async Task StartGameAsync(string root, InstalledVersion version, GameAccount account, ServerEndpoint? server = null)
+    {
+        if (_closing || _session is not null) return;
         var session = new GameLaunchSession();
         _session = session;
         session.Changed += Session_Changed;
@@ -120,7 +127,7 @@ public sealed partial class HomeView : UserControl
         var settings = _settings!.Current;
         try
         {
-            _running = session.RunAsync(root, version, settings, account, AuthenticateAsync, _java?.Current);
+            _running = session.RunAsync(root, version, settings, account, AuthenticateAsync, _java?.Current, server);
             await _running;
             ShowProgress(session.Status);
             if (!_closing && session.Status.Stage == LaunchStage.Failed)

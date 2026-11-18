@@ -62,6 +62,11 @@ public sealed partial class MainPage : Page
             FindName(nameof(MultiplayerContent));
             MultiplayerContent!.Configure(() => HomeContent.IsGameRunning, () => _accounts.Selected?.Name);
         }
+        if (page == "servers" && ServersContent is null)
+        {
+            FindName(nameof(ServersContent));
+            ServersContent!.Configure(_folders, LaunchServerAsync);
+        }
         if (page == "wardrobe" && WardrobeContent is null)
         {
             FindName(nameof(WardrobeContent));
@@ -94,6 +99,15 @@ public sealed partial class MainPage : Page
             FindName(nameof(AccountContent));
             AccountContent!.Configure(_accounts, new AccountRegionPolicy());
         }
+    }
+
+    /// <summary>检查共享游戏会话及账户，切回首页展示服务器启动进度；无法启动时向服务器页返回原因。</summary>
+    private Task LaunchServerAsync(ServerVersion version, ServerEndpoint endpoint)
+    {
+        if (HomeContent.IsLaunching) throw new InvalidOperationException("请先停止当前游戏。");
+        if (_accounts.Selected is not GameAccount account) throw new InvalidOperationException("请先添加并选择账户。");
+        Navigation.SelectedItem = HomeItem;
+        return HomeContent.StartGameAsync(version.Folder, version.Version, account, endpoint);
     }
 
     /// <summary>模组管理下载入口先选中模组分类，再切换主导航，避免加载游戏列表。</summary>
@@ -238,7 +252,7 @@ public sealed partial class MainPage : Page
     private void UpdateAccountPane(bool open)
     {
         if (AccountName is null || AccountChevron is null) return;
-        foreach (var item in new[] { HomeItem, VersionsItem, DownloadsItem, WardrobeItem })
+        foreach (var item in new[] { HomeItem, VersionsItem, DownloadsItem, WardrobeItem, ServersItem })
             item.Margin = open ? new Thickness(8, 2, 8, 2) : new Thickness(0, 2, 0, 2);
         AccountName.Visibility = AccountChevron.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         AccountMenuLayout.ColumnSpacing = open ? 10 : 0;
@@ -270,12 +284,14 @@ public sealed partial class MainPage : Page
         if (DownloadsContent is not null) DownloadsContent.Visibility = page == "downloads" ? Visibility.Visible : Visibility.Collapsed;
         if (AccountContent is not null) AccountContent.Visibility = page == "account" ? Visibility.Visible : Visibility.Collapsed;
         if (WardrobeContent is not null) WardrobeContent.Visibility = page == "wardrobe" ? Visibility.Visible : Visibility.Collapsed;
+        if (ServersContent is not null) ServersContent.Visibility = page == "servers" ? Visibility.Visible : Visibility.Collapsed;
         if (MultiplayerContent is not null) MultiplayerContent.Visibility = page == "multiplayer" ? Visibility.Visible : Visibility.Collapsed;
         if (SettingsScroll is not null) SettingsScroll.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         DownloadsContent?.SetActive(page == "downloads");
         VersionsContent?.SetActive(page == "versions");
         SettingsContent?.SetActive(page == "settings");
         WardrobeContent?.SetActive(page == "wardrobe");
+        ServersContent?.SetActive(page == "servers");
         MultiplayerContent?.SetActive(page == "multiplayer");
         if (page == "home") HomeContent.Refresh();
         if (changed && IsLoaded && new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)

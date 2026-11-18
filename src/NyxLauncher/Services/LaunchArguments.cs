@@ -59,8 +59,8 @@ internal static class LaunchArguments
         return result.ToArray();
     }
 
-    /// <summary>将高级参数交给库的独立参数接口；不指定 GC 时移除库默认 G1 调优，保留安全属性，显式 GC 与手写 GC 冲突时报错。</summary>
-    internal static void Apply(MLaunchOption option, AdvancedLaunchSettings settings, int javaMajor)
+    /// <summary>将高级参数传给库，并在服务器启动时以选中的直连目标覆盖手写的目标参数；显式 GC 与手写 GC 冲突时报错。</summary>
+    internal static void Apply(MLaunchOption option, AdvancedLaunchSettings settings, int javaMajor, ServerEndpoint? server = null)
     {
         AdvancedLaunchSettingsStore.Validate(settings);
         var custom = Parse(settings.JvmArguments);
@@ -77,6 +77,32 @@ internal static class LaunchArguments
         if (gc is not null) arguments.Add(gc);
         arguments.AddRange(custom);
         option.ExtraJvmArguments = new[] { new MArgument(arguments) };
-        option.ExtraGameArguments = new[] { new MArgument(Parse(settings.GameArguments)) };
+        var game = Parse(settings.GameArguments);
+        if (server is not null)
+        {
+            option.ServerIp = server.Host.Contains(':') ? $"[{server.Host}]" : server.Host;
+            option.ServerPort = server.Port;
+            game = WithoutConnectionOptions(game);
+        }
+        option.ExtraGameArguments = [new MArgument(game)];
+    }
+
+    /// <summary>删除直连目标相关选项及其值，保留原有参数顺序和其他选项。</summary>
+    private static string[] WithoutConnectionOptions(string[] arguments)
+    {
+        var remaining = new List<string>();
+        for (int i = 0; i < arguments.Length; i++)
+        {
+            string argument = arguments[i];
+            int equals = argument.IndexOf('=');
+            string key = equals < 0 ? argument : argument[..equals];
+            if (key is "--server" or "--port" or "--quickPlayMultiplayer" or "--quickPlaySingleplayer" or "--quickPlayRealms")
+            {
+                if (equals < 0 && i + 1 < arguments.Length && !arguments[i + 1].StartsWith("--", StringComparison.Ordinal)) i++;
+                continue;
+            }
+            remaining.Add(argument);
+        }
+        return remaining.ToArray();
     }
 }

@@ -81,7 +81,7 @@ internal static class JavaChecks
     }
 
     /// <summary>模拟本地 Java 的 PE 架构和 release 文件，仅供静态发现与安装校验使用，测试不会执行此文件。</summary>
-    private static JavaRuntime CreateJava(string home, string version, ushort machine = 0x8664)
+    internal static JavaRuntime CreateJava(string home, string version, ushort machine = 0x8664)
     {
         Directory.CreateDirectory(Path.Combine(home, "bin"));
         byte[] bytes = new byte[128];

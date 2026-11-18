@@ -11,6 +11,11 @@ internal static class Program
     /// <summary>运行业务断言；--terracotta 检查局域网通告解析；--launcher 检查协议和自身更新；--modpack-export 检查离线整合包导出；--wardrobe、--theme、--mod-management、--advanced-launch、--region-restriction 检查对应范围；--local-resources 可选读取样本，--mcim-live、--live-modpacks、--live-mod-install、--resources-live、--java-live/--java-catalog 及 --live 系列显式访问实网。</summary>
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--servers"))
+        {
+            await ServerChecks.RunAsync();
+            return;
+        }
         if (args.Contains("--terracotta"))
         {
             CheckLanAnnouncements();
