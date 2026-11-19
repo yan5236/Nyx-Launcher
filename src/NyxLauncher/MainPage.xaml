@@ -48,7 +48,9 @@
                 <NavigationViewItem.Icon><FontIcon Glyph="&#xE896;" /></NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="WardrobeItem" Content="衣柜" Tag="wardrobe">
-                <NavigationViewItem.Icon><ImageIcon><ImageIcon.Source><SvgImageSource UriSource="ms-appx:///Assets/hanger.svg" /></ImageIcon.Source></ImageIcon></NavigationViewItem.Icon>
+                <NavigationViewItem.Icon>
+                    <PathIcon Data="F0 M5.5,3 A2.5,2.5 0 1 1 9.56,4.95 Q8.6,5.72 8.56,6.47 L15.24,10.78 A1.65,1.65 0 0 1 14.35,13.82 H1.65 A1.65,1.65 0 0 1 0.76,10.78 L7.44,6.47 Q7.48,5.21 8.87,4.08 A1.4,1.4 0 1 0 6.6,3 Z M8,7.42 L1.35,11.71 A0.55,0.55 0 0 0 1.65,12.72 H14.35 A0.55,0.55 0 0 0 14.65,11.71 Z" />
+                </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="ServersItem" Content="服务器" Tag="servers">
                 <NavigationViewItem.Icon><FontIcon Glyph="&#xEC05;" /></NavigationViewItem.Icon>
