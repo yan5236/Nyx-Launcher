@@ -56,7 +56,7 @@
             <Grid x:Name="ContentGrid" Grid.Row="1">
                 <views:VersionLoadStatus x:Name="LoadStatus" Visibility="Collapsed" />
                 <!-- 将滚动条移入页面右侧留白，等量内边距保持卡片与搜索栏对齐。 -->
-                <ListView x:Name="EntryList" SelectionMode="Single" IsItemClickEnabled="True" ItemClick="EntryList_ItemClick"
+                <ListView x:Name="EntryList" SelectionMode="None" IsItemClickEnabled="True" ItemClick="EntryList_ItemClick"
                           Margin="0,0,-20,0" Padding="0,0,20,0"
                           ScrollViewer.VerticalScrollBarVisibility="Auto"
                           AutomationProperties.Name="下载内容列表">
