@@ -60,7 +60,8 @@ public partial class App : Application
 
             _window = new Window { Title = "Wheel UI checks", Content = root };
             _window.Activate();
-            _window.AppWindow.Resize(new(560, 620));
+            double scale = root.XamlRoot?.RasterizationScale ?? 1;
+            _window.AppWindow.Resize(new((int)(root.Width * scale) + 40, (int)(root.Height * scale) + 80));
             await Task.Delay(1500);
 
             var hwnd = WindowNative.GetWindowHandle(_window);
@@ -152,7 +153,19 @@ public partial class App : Application
             plain.IsDropDownOpen = false;
             await Task.Delay(300);
 
-            // 6. 收起状态保留下拉列表的默认行为：弹层仍然能打开。
+            // 6. 展开状态下安全控件同样不被滚轮改选：收起时的保护不能把展开后的列表交互带坏。
+            await PrepareAsync(hwnd, scroller);
+            safe.IsDropDownOpen = true;
+            await Task.Delay(700);
+            var (safeX, safeY) = ScreenPoint(safe, root, hwnd);
+            await WheelAtAsync(safeX, safeY + 70, 2);
+            await Task.Delay(600);
+            Check(safe.IsDropDownOpen, "展开时滚轮后下拉层保持打开（列表交互沿用 WinUI 默认行为）");
+            Log($"展开状态记录：SelectedIndex={safe.SelectedIndex}（展开时沿用默认行为，不作额外约束）");
+            safe.IsDropDownOpen = false;
+            await Task.Delay(300);
+
+            // 7. 收起状态保留下拉列表的默认行为：弹层仍然能打开。
             safe.IsDropDownOpen = true;
             await Task.Delay(600);
             Check(VisualTreeHelper.GetOpenPopupsForXamlRoot(safe.XamlRoot).Count > 0, "ScrollSafeComboBox 展开时仍弹出下拉层");
@@ -183,8 +196,8 @@ public partial class App : Application
         box.Width = 320;
         box.Height = 36;
         box.HorizontalAlignment = HorizontalAlignment.Left;
-        box.SelectedIndex = 2;
         for (int i = 0; i < 6; i++) box.Items.Add("选项 " + i);
+        box.SelectedIndex = 2;
         return box;
     }
 

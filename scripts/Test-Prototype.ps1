@@ -380,7 +380,14 @@ $projectSources = Get-ChildItem $project -Recurse -Include '*.xaml', '*.cs' -Fil
     Where-Object FullName -notmatch '\\(bin|obj)\\'
 foreach ($file in $projectSources) {
     $raw = Get-Content $file.FullName -Raw -Encoding utf8
-    if ($raw -match '<(\w+:)?ComboBox[ >]' -or $raw -match 'new\s+([\w.]+\.)?ComboBox\s*[\({]') {
+    # XAML 按开标签判断；C# 只按构造判断，避免注释或字符串里的示例文本误报。
+    $offending = if ($file.Extension -eq '.xaml') {
+        $raw -match '<\s*([\w.]+:)?ComboBox(\s|/?>)'
+    }
+    else {
+        $raw -match 'new\s+(global::)?([\w.]+\.)?ComboBox\s*[\(\{]'
+    }
+    if ($offending) {
         throw "下拉选择器必须使用 ScrollSafeComboBox，避免收起时滚轮改选：$($file.Name)"
     }
 }
