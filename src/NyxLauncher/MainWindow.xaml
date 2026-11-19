@@ -12,6 +12,7 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
+    <!-- 背景场景铺满整个窗口（含标题栏），侧栏与内容面板以玻璃材质浮于其上。 -->
     <Grid x:Name="ThemeRoot" Background="{ThemeResource ShellBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

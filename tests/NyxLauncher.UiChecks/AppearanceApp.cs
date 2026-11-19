@@ -153,7 +153,7 @@ public partial class App : Application
             Check(Hex(SwatchColor(toneSwatch)) == restingLight.Item1 && Hex(SwatchColor(primarySwatch)) == restingLight.Item2 &&
                 Hex(SwatchColor(secondarySwatch)) == restingLight.Item3, "浅色截图前三行色块显示恢复后的浅色组颜色");
             Check(RowColor(toneRow) == ResourceColor("ShellBrush"), "浅色截图前配色行背景使用 ShellBrush");
-            Check(Hex(ResourceColor("PageBrush")) == "#FAFBF8", "浅色截图前页面底色为浅色主题：" + Hex(ResourceColor("PageBrush")));
+            Check(Hex(ResourceColor("PageBrush")) == "#F7F9F7", "浅色截图前页面底色为浅色主题：" + Hex(ResourceColor("PageBrush")));
             Check(Descendants(root).OfType<InfoBar>().All(bar => !bar.IsOpen), "恢复配色后错误提示保持关闭");
             await SnapshotAsync(root, "appearance-light.png");
 
@@ -172,7 +172,7 @@ public partial class App : Application
                 Hex(SwatchColor(toneSwatch)) + " / " + Hex(SwatchColor(primarySwatch)) + " / " + Hex(SwatchColor(secondarySwatch)));
             Check(ResourceColor("ShellBrush") != lightShell, "切换深色后配色行背景画刷随之变化");
             Check(RowColor(toneRow) == ResourceColor("ShellBrush"), "深色截图前配色行背景使用 ShellBrush");
-            Check(Hex(ResourceColor("PageBrush")) == "#202020", "深色截图前页面底色为深色主题：" + Hex(ResourceColor("PageBrush")));
+            Check(Hex(ResourceColor("PageBrush")) == "#161B18", "深色截图前页面底色为深色主题：" + Hex(ResourceColor("PageBrush")));
             Check(Luminance(ResourceColor("ShellBrush")) < 0.35, "深色截图前行背景为暗色：" + Hex(ResourceColor("ShellBrush")));
             await SnapshotAsync(root, "appearance-dark.png");
 

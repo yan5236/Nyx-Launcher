@@ -10,18 +10,22 @@ public sealed record ThemeSettings
 {
     public AppearanceMode Mode { get; init; } = AppearanceMode.System;
     public ThemePreset Preset { get; init; } = ThemePreset.Green;
-    public ThemeColors Light { get; init; } = new("#397450", "#28563B", "#397450");
-    public ThemeColors Dark { get; init; } = new("#397450", "#80C99A", "#A2D6B4");
+    public ThemeColors Light { get; init; } = new("#3C7A55", "#2B6B45", "#2F7A4E");
+    public ThemeColors Dark { get; init; } = new("#3C7A55", "#74D19C", "#9BE0B7");
+    /// <summary>自选背景副本路径；为空时使用随本地时段变化的内置场景。</summary>
     public string? BackgroundPath { get; init; }
-    public string? HomeImagePath { get; init; }
-    public bool HideHomeImage { get; init; }
-    public double BackgroundOpacity { get; init; } = 0.3;
-    public double SidebarOpacity { get; init; } = 0.45;
+    /// <summary>用户主动移除背景；为真时窗口只显示主题底色。</summary>
+    public bool HideBackground { get; init; }
+    public double BackgroundOpacity { get; init; } = 1;
+    public double SidebarOpacity { get; init; } = 0.55;
+
+    /// <summary>是否有背景图片参与绘制（内置时段场景或自选图片）。</summary>
+    public bool HasBackground => !HideBackground;
 
     /// <summary>按配色与明暗返回色调、主色和副色；自定义的两组颜色独立保存。</summary>
     public ThemeColors Colors(bool dark) => Preset switch
     {
-        ThemePreset.Green => dark ? new("#397450", "#80C99A", "#A2D6B4") : new("#397450", "#28563B", "#397450"),
+        ThemePreset.Green => dark ? new("#3C7A55", "#74D19C", "#9BE0B7") : new("#3C7A55", "#2B6B45", "#2F7A4E"),
         ThemePreset.VuiBlue => dark ? new("#0078D4", "#60CDFF", "#99DFFF") : new("#0078D4", "#0078D4", "#005A9E"),
         _ => dark ? Dark : Light
     };

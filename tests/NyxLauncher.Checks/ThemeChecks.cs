@@ -12,11 +12,15 @@ internal static class ThemeChecks
             string path = Path.Combine(folder, "theme.json");
             var store = new ThemeSettingsStore(path);
             Check(store.Current.Mode == AppearanceMode.System && store.Current.Preset == ThemePreset.Green, "默认跟随系统和绿色");
-            Check(store.Current.SidebarOpacity == .45, "侧栏默认增加 45% 主题底色遮罩");
-            Check(!store.Current.HideHomeImage && store.Current.HomeImagePath is null, "旧配置默认显示内置首页图");
-            var home = store.Current with { HomeImagePath = Path.Combine(folder, "custom.png"), HideHomeImage = false };
-            Check(store.Save(home) is null && new ThemeSettingsStore(path).Current == home, "自定义首页图片设置往返");
-            Check(store.Save(home with { HomeImagePath = null, HideHomeImage = true }) is null && new ThemeSettingsStore(path).Current.HideHomeImage, "移除首页图片可持久化");
+            Check(store.Current.SidebarOpacity == .55, "玻璃面板默认 55% 主题底色");
+            Check(store.Current.HasBackground && store.Current.BackgroundPath is null && store.Current.BackgroundOpacity == 1, "默认显示完全不透明的时段场景背景");
+            var home = store.Current with { BackgroundPath = Path.Combine(folder, "custom.png"), HideBackground = false };
+            Check(store.Save(home) is null && new ThemeSettingsStore(path).Current == home, "自选背景设置往返");
+            Check(store.Save(home with { BackgroundPath = null, HideBackground = true }) is null && !new ThemeSettingsStore(path).Current.HasBackground, "移除背景可持久化");
+            foreach (var (hour, scene) in new[] { (0, "midnight"), (4, "predawn"), (6, "sunrise"), (9, "morning"), (12, "noon"), (17, "sunset"), (18, "dusk"), (21, "night"), (23, "midnight") })
+                Check(TimeOfDayScene.Resolve(new DateTime(2026, 1, 1, hour, 30, 0)) == scene, $"{hour}:30 使用 {scene} 场景");
+            Check(TimeOfDayScene.Resolve(new DateTime(2026, 1, 1, 7, 0, 0)) == "morning", "时段边界归属后一个时段");
+            Check(TimeOfDayScene.Names.Count == 8, "内置八个时段场景");
             var custom = store.Current with { Mode = AppearanceMode.Dark, Preset = ThemePreset.Custom, Light = new("#123456", "#234567", "#345678"), Dark = new("#ABCDEF", "#FEDCBA", "#AABBCC"), BackgroundOpacity = 0, SidebarOpacity = .75 };
             Check(store.Save(custom) is null && new ThemeSettingsStore(path).Current == custom, "自定义配色与零不透明度往返");
             Check(custom.Colors(false) == custom.Light && custom.Colors(true) == custom.Dark, "明暗配色独立");

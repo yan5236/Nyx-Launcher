@@ -7,7 +7,7 @@ using NyxLauncher.Services;
 
 namespace NyxLauncher.Views;
 
-/// <summary>首页启动台：世界画面、版本选择器与启动进度；窗口缩放只改变画面尺寸，控件保持固定像素。</summary>
+/// <summary>首页启动台：站在窗口背景场景上的问候语、版本选择器与启动进度；控件保持固定像素，只有控制台宽度随窗口变化。</summary>
 public sealed partial class HomeView : UserControl
 {
     public InstalledVersion? SelectedVersion => VersionList.SelectedItem as InstalledVersion;
@@ -30,26 +30,22 @@ public sealed partial class HomeView : UserControl
     /// <summary>游戏窗口就绪且当前会话仍在运行时，允许联机页开房或加入。</summary>
     public bool IsGameRunning => _session?.Status.Stage == LaunchStage.Running;
 
-    /// <summary>加载首页并在挂载时监听图片设置，卸载时解除订阅；游戏服务由主页面注入。</summary>
+    /// <summary>加载首页并在挂载时刷新问候语与进入动效；游戏服务由主页面注入。</summary>
     public HomeView()
     {
         InitializeComponent();
-        Loaded += HomeImage_Loaded;
-        Unloaded += HomeImage_Unloaded;
+        Loaded += Greeting_Loaded;
     }
 
-    /// <summary>按内容区可用宽高设定启动画面与控制台尺寸；控件、字体和间距不随窗口放大，最大化后仅画面变大。</summary>
+    /// <summary>按内容区可用宽高设定首页高度与控制台宽度；控件、字体和间距不随窗口放大。</summary>
     public void ResizeLayout(double width, double height)
     {
         if (width <= 0 || height <= 0) return;
         Root.MinHeight = height;
-        double cardWidth = Math.Min(width, 1600);
-        // 内容区顶部已有 20 像素留白，上下各留 30 像素时画面在视觉上居中。
-        double cardHeight = Math.Max(340, Math.Min(height - 40, Math.Max(360, cardWidth * 0.78)));
-        StageCard.Width = cardWidth;
-        StageCard.Height = cardHeight;
-        Deck.Width = Math.Min(800, Math.Max(280, cardWidth - 44));
-        ManageButton.Visibility = cardWidth >= 620 ? Visibility.Visible : Visibility.Collapsed;
+        double inner = Math.Max(0, width - Root.Padding.Left - Root.Padding.Right);
+        Deck.Width = Math.Min(880, Math.Max(280, inner));
+        ManageButton.Visibility = inner >= 480 ? Visibility.Visible : Visibility.Collapsed;
+        Greeting.Visibility = height >= 300 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>共用目录、隔离、账户与 Java 状态；切换选择只影响下一次启动。</summary>

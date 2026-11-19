@@ -252,7 +252,7 @@ public sealed partial class MainPage : Page
     private void UpdateAccountPane(bool open)
     {
         if (AccountName is null || AccountChevron is null) return;
-        foreach (var item in new[] { HomeItem, VersionsItem, DownloadsItem, WardrobeItem, ServersItem })
+        foreach (var item in new[] { HomeItem, VersionsItem, DownloadsItem, WardrobeItem, ServersItem, MultiplayerItem })
             item.Margin = open ? new Thickness(8, 2, 8, 2) : new Thickness(0, 2, 0, 2);
         AccountName.Visibility = AccountChevron.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         AccountMenuLayout.ColumnSpacing = open ? 10 : 0;
@@ -270,6 +270,14 @@ public sealed partial class MainPage : Page
     /// <summary>页面卸载时停止转场，恢复内容层的默认透明度和位置，避免重新挂载时残留动画状态。</summary>
     private void Page_Unloaded(object sender, RoutedEventArgs e) => PageEntrance.Stop();
 
+    /// <summary>非首页显示玻璃面板，首页隐藏面板让背景场景完整呈现；面板以合成线程淡入淡出，系统关闭动画时直接切换。</summary>
+    private void UpdateSheet(bool visible)
+    {
+        SheetContent.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        Sheet.OpacityTransition = IsLoaded && Themes.Motion.Enabled ? new ScalarTransition { Duration = Themes.Motion.Normal } : null;
+        Sheet.Opacity = visible ? 1 : 0;
+    }
+
     /// <summary>按需创建并激活目标页；页面变化时以淡入和轻微上移过渡，快速导航替换在途动画，重复进入不重播；系统关闭动画或首次加载时直接显示。</summary>
     /// <param name="page">由本页导航提供的 home、versions、downloads、wardrobe、account 或 settings 标签。</param>
     private void ShowPage(string page)
@@ -278,7 +286,7 @@ public sealed partial class MainPage : Page
         bool changed = _currentPage != page;
         if (changed) PageEntrance.Stop();
         _currentPage = page;
-        ContentHost.MaxWidth = page == "home" ? double.PositiveInfinity : 1280;
+        UpdateSheet(page != "home");
         HomeScroll.Visibility = page == "home" ? Visibility.Visible : Visibility.Collapsed;
         if (VersionsScroll is not null) VersionsScroll.Visibility = page == "versions" ? Visibility.Visible : Visibility.Collapsed;
         if (DownloadsContent is not null) DownloadsContent.Visibility = page == "downloads" ? Visibility.Visible : Visibility.Collapsed;

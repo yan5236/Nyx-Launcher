@@ -105,10 +105,14 @@ public sealed class BackgroundTextContrast
             double coverage = 0;
             Brush? previous = null;
             bool enabled = true;
+            bool excluded = false;
             for (DependencyObject? node = element; node is not null && node != _root; node = VisualTreeHelper.GetParent(node))
             {
                 if (node is Control control && !control.IsEnabled) enabled = false;
+                // 玻璃面板与显式排除的子树使用自身主题文字，不按背景图片改写。
+                if (ContrastScope.GetIsExcluded(node)) { excluded = true; break; }
                 Brush? brush = node switch { Border border => border.Background, Panel panel => panel.Background, Control surfaceControl => surfaceControl.Background, _ => null };
+                if (brush is AcrylicBrush) { excluded = true; break; }
                 if (brush is SolidColorBrush solid && !ReferenceEquals(brush, previous))
                 {
                     double alpha = solid.Color.A / 255d * solid.Opacity;
@@ -116,7 +120,7 @@ public sealed class BackgroundTextContrast
                 }
                 if (brush is not null) previous = brush;
             }
-            if (!enabled || coverage >= .8) continue;
+            if (!enabled || excluded || coverage >= .8) continue;
             uint color = Sample(rect);
             for (int i = surfaces.Count - 1; i >= 0; i--) color = BackgroundContrast.Composite(Argb(surfaces[i].Color), color, surfaces[i].Opacity);
             if (!_original.ContainsKey(element))

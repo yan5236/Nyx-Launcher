@@ -15,10 +15,12 @@ public sealed class ThemeManager
     private ThemeSettings? _preview;
     private FrameworkElement? _root;
     private Image? _background;
+    private BackgroundScene? _scene;
     private string? _loadedPath;
     private int _imageGeneration;
     private BackgroundTextContrast? _contrast;
     private readonly Dictionary<string, SolidColorBrush> _brushes = new();
+    private readonly Dictionary<string, AcrylicBrush> _acrylics = new();
     public string? BackgroundError { get; private set; }
     public event Action? Changed;
 
@@ -39,12 +41,14 @@ public sealed class ThemeManager
     /// <summary>把窗口焦点状态交给背景文字取样器，不改变用户保存的主题设置。</summary>
     public void SetForeground(bool foreground) => _contrast?.SetForeground(foreground);
 
-    /// <summary>绑定窗口根节点和背景层，监听系统明暗变化；窗口生命周期内仅调用一次。</summary>
+    /// <summary>绑定窗口根节点和背景层，监听系统明暗变化并启动时段场景；窗口生命周期内仅调用一次。</summary>
     public void Attach(FrameworkElement root, Image background, Microsoft.UI.Windowing.AppWindow? window = null)
     {
         _root = root;
         _background = background;
         _contrast = new BackgroundTextContrast(root, background, window);
+        _scene = new BackgroundScene(root, background, () => _contrast?.Invalidate());
+        _scene.SceneDue += () => Apply();
         root.ActualThemeChanged += ActualThemeChanged;
         Apply();
     }
@@ -86,6 +90,10 @@ public sealed class ThemeManager
     /// <summary>当前生效配置；未提交的取色预览优先于已保存值。</summary>
     private ThemeSettings Effective => _preview ?? Store.Current;
 
+    /// <summary>当前应显示的背景文件：移除时为空，自选图片优先，否则为本地时段对应的内置场景。</summary>
+    private static string? ResolveBackground(ThemeSettings settings) =>
+        settings.HideBackground ? null : settings.BackgroundPath ?? TimeOfDayScene.PathOf(TimeOfDayScene.Resolve(DateTime.Now));
+
     /// <summary>应用明暗模式与背景透明度；配色变化时刷新原生模板缓存，只有图片路径改变时才重新解码图片。</summary>
     private void Apply(bool refreshPalette = false)
     {
@@ -95,13 +103,14 @@ public sealed class ThemeManager
         if (refreshPalette) _root.RequestedTheme = _root.ActualTheme == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark;
         _root.RequestedTheme = current.Mode switch { AppearanceMode.Light => ElementTheme.Light, AppearanceMode.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
         UpdateBrushes(_root.ActualTheme == ElementTheme.Dark);
-        var path = current.BackgroundPath;
+        // 只有内置场景需要按时段轮换；自选图片或移除背景时停止计时。
+        _scene?.SetFollowing(current.HasBackground && current.BackgroundPath is null);
+        var path = ResolveBackground(current);
         if (path != _loadedPath)
         {
             _loadedPath = path;
             BackgroundError = null;
-            _background.Source = null;
-            _contrast?.SetImage(null);
+            if (path is null) { _scene?.Swap(null); _contrast?.SetImage(null); }
             _ = LoadBackgroundAsync(path, ++_imageGeneration);
         }
         _background.Opacity = current.BackgroundOpacity;
@@ -135,45 +144,46 @@ public sealed class ThemeManager
             await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
             if (generation == _imageGeneration && _background is not null)
             {
-                _background.Source = bitmap;
+                _scene?.Swap(bitmap);
                 _contrast?.SetImage(sample);
             }
         }
         catch (Exception ex)
         {
             if (generation != _imageGeneration) return;
+            _scene?.Swap(null);
+            _contrast?.SetImage(null);
             BackgroundError = "无法加载背景图片：" + ex.Message;
             Changed?.Invoke();
         }
     }
 
-    /// <summary>按三种主题色生成表面与交互画刷，原地更新以覆盖已打开的模板和弹窗。</summary>
+    /// <summary>按三种主题色生成表面、玻璃与交互画刷，原地更新以覆盖已打开的模板和弹窗。</summary>
     private void UpdateBrushes(bool dark)
     {
         var current = Effective;
         var colors = current.Colors(dark);
         var tone = Parse(colors.Tone); var primary = Parse(colors.Primary); var secondary = Parse(colors.Secondary);
-        Set("ShellBrush", Mix(dark ? Parse("#181818") : Parse("#F8F8F8"), tone, dark ? .12 : .06));
-        foreach (string key in new[] { "NavigationViewDefaultPaneBackground", "NavigationViewExpandedPaneBackground" })
-        {
-            Set(key, _brushes["ShellBrush"].Color);
-            _brushes[key].Opacity = current.SidebarOpacity;
-        }
-        Set("PageBrush", dark ? Parse("#202020") : Parse("#FAFBF8"));
-        Set("CardBrush", dark ? Mix(Parse("#292929"), tone, .06) : Parse("#FFFFFF"));
-        Set("MenuSurfaceBrush", _brushes["CardBrush"].Color);
-        Set("CardHoverBrush", Mix(_brushes["CardBrush"].Color, tone, .06));
-        Set("CardPressedBrush", Mix(_brushes["CardBrush"].Color, tone, .12));
+        bool glass = current.HasBackground;
+        Set("ShellBrush", Mix(dark ? Parse("#0F1311") : Parse("#EEF2EE"), tone, dark ? .10 : .06));
+        Set("PageBrush", dark ? Parse("#161B18") : Parse("#F7F9F7"));
+        Set("CardBrush", dark ? Mix(Parse("#202622"), tone, .05) : Parse("#FFFFFF"));
+        Set("MenuSurfaceBrush", dark ? Mix(Parse("#1B201D"), tone, .05) : Parse("#FFFFFF"));
+        Set("CardHoverBrush", Mix(_brushes["CardBrush"].Color, dark ? Parse("#FFFFFF") : tone, dark ? .06 : .07));
+        Set("CardPressedBrush", Mix(_brushes["CardBrush"].Color, dark ? Parse("#FFFFFF") : tone, dark ? .10 : .13));
+        // 背景图片存在时卡片保留部分透明，让底层面板的玻璃质感透出；无图时回到完全不透明。
         foreach (string key in new[] { "CardBrush", "CardHoverBrush", "CardPressedBrush" })
-            _brushes[key].Opacity = current.BackgroundPath is null ? 1 : .88;
-        Set("LineBrush", dark ? Parse("#454545") : Parse("#E3E7DF"));
-        Set("TextBrush", dark ? Parse("#F3F3F3") : Parse("#263B30"));
-        Set("MutedBrush", dark ? Parse("#B9C3BC") : Parse("#6B7A70"));
-        Set("TintBrush", Mix(dark ? Parse("#242424") : Parse("#FFFFFF"), tone, dark ? .30 : .16));
+            _brushes[key].Opacity = glass ? (dark ? .66 : .74) : 1;
+        Set("LineBrush", dark ? Parse("#343C37") : Parse("#DCE3DD"));
+        _brushes["LineBrush"].Opacity = glass ? .8 : 1;
+        Set("TextBrush", dark ? Parse("#EEF3EF") : Parse("#1C2721"));
+        Set("MutedBrush", dark ? Parse("#A6B3AA") : Parse("#5E6B63"));
+        Set("TintBrush", Mix(dark ? Parse("#1E2420") : Parse("#FFFFFF"), tone, dark ? .30 : .16));
         Set("SecondaryBrush", secondary);
-        Set("DangerBrush", dark ? Parse("#FF99A4") : Parse("#A4262C"));
-        Set("DangerLineBrush", dark ? Parse("#9C5559") : Parse("#E3B4B1"));
+        Set("DangerBrush", dark ? Parse("#FF99A4") : Parse("#B3261E"));
+        Set("DangerLineBrush", dark ? Parse("#9C5559") : Parse("#E8B4AF"));
         Set("SystemControlHighlightAccentBrush", primary);
+        UpdateGlass(dark, tone, current);
         var foreground = current.Preset == ThemePreset.VuiBlue && !dark ? Parse("#FFFFFF") : Contrast(primary);
         foreach (string key in new[] { "AccentButtonBackground", "AccentButtonBorderBrush", "AccentFillColorDefaultBrush" }) Set(key, primary);
         foreach (string key in new[] { "AccentButtonBackgroundPointerOver", "AccentButtonBorderBrushPointerOver", "AccentFillColorSecondaryBrush" }) Set(key, Mix(primary, foreground, .10));
@@ -186,6 +196,19 @@ public sealed class ThemeManager
         Set("AccentTextFillColorSecondaryBrush", secondary);
         Application.Current.Resources["SystemAccentColor"] = primary;
         UpdateControlBrushes();
+    }
+
+    /// <summary>生成三种玻璃表面：侧栏、内容面板与首页控制台；均为应用内亚克力，透出并模糊背景场景。</summary>
+    private void UpdateGlass(bool dark, Color tone, ThemeSettings current)
+    {
+        var tint = Mix(dark ? Parse("#101512") : Parse("#F3F6F3"), tone, dark ? .08 : .05);
+        double sidebar = current.HasBackground ? current.SidebarOpacity : 1;
+        // 侧栏与导航模板共用一个亚克力实例，展开、收起时外观一致。
+        var pane = SetAcrylic("SidebarGlassBrush", tint, sidebar * (dark ? .78 : .70), dark ? .80 : .62);
+        foreach (string key in new[] { "NavigationViewDefaultPaneBackground", "NavigationViewExpandedPaneBackground" })
+            Publish(key, pane);
+        SetAcrylic("SheetGlassBrush", tint, current.HasBackground ? (dark ? .70 : .62) : 1, dark ? .88 : .80);
+        SetAcrylic("DeckGlassBrush", tint, current.HasBackground ? (dark ? .62 : .55) : 1, dark ? .82 : .74);
     }
 
     /// <summary>覆盖原生控件已静态解析的强调色别名，使导航、滑块、选择框和进度也随配色更新。</summary>
@@ -254,8 +277,31 @@ public sealed class ThemeManager
         {
             brush = new SolidColorBrush(color);
             _brushes[key] = brush;
-            Application.Current.Resources[key] = brush;
         }
+        Publish(key, brush);
+    }
+
+    /// <summary>原地更新亚克力画刷的色调、透明度与回退色；不透明度为 1 时等同实色表面。</summary>
+    private AcrylicBrush SetAcrylic(string key, Color tint, double tintOpacity, double luminosity)
+    {
+        if (!_acrylics.TryGetValue(key, out var brush))
+        {
+            brush = new AcrylicBrush();
+            _acrylics[key] = brush;
+        }
+        brush.TintColor = tint;
+        brush.TintOpacity = Math.Clamp(tintOpacity, 0, 1);
+        brush.TintLuminosityOpacity = Math.Clamp(Math.Max(luminosity, tintOpacity), 0, 1);
+        brush.FallbackColor = tint;
+        Publish(key, brush);
+        return brush;
+    }
+
+    /// <summary>把画刷写入应用资源及窗口根资源；根资源优先，保证已打开模板读取到同一实例。</summary>
+    private void Publish(string key, Brush brush)
+    {
+        if (!ReferenceEquals(Application.Current.Resources.TryGetValue(key, out var existing) ? existing : null, brush))
+            Application.Current.Resources[key] = brush;
         if (_root is not null) _root.Resources[key] = brush;
     }
 }

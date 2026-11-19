@@ -58,25 +58,23 @@ public partial class App : Application
 
             var list = Field<ComboBox>(view, "VersionList");
             var launch = Field<Button>(view, "LaunchButton");
-            var card = Field<Border>(view, "StageCard");
             var deck = Field<Border>(view, "Deck");
             Check(list.Items.Count == 4 && list.SelectedItem is InstalledVersion, "首页选择器列出全部已安装版本并恢复选择");
-            Check(Math.Abs(card.Width - DefaultWidth) < .5, "默认窗口下启动画面占满内容宽度：" + card.Width);
-            Check(Math.Abs(card.Height - 572) < .5, "默认窗口下启动画面高度按窗口高度计算：" + card.Height);
             Check(Math.Abs(launch.ActualWidth - 196) < .5 && Math.Abs(launch.ActualHeight - 56) < .5,
                 $"默认窗口下启动按钮固定 196×56，实际 {launch.ActualWidth}×{launch.ActualHeight}");
-            Check(Math.Abs(deck.ActualWidth - 748) < 1, "默认窗口下控制台宽度受画面宽度约束：" + deck.ActualWidth);
+            Check(Math.Abs(deck.ActualWidth - (DefaultWidth - 72)) < 1, "默认窗口下控制台宽度随内容区：" + deck.ActualWidth);
             Check(Field<Button>(view, "ManageButton").Visibility == Visibility.Visible, "默认窗口显示版本管理入口");
+            Check(Field<StackPanel>(view, "Greeting").Visibility == Visibility.Visible &&
+                Field<TextBlock>(view, "GreetingTitle").Text.Length > 0, "首页显示时段问候语");
             Check(NoAmbientInfo(view), "首页不显示账户、Java 或目录等与启动无关的信息");
             Check(!Field<InfoBar>(view, "Status").IsOpen, "正常状态不占用提示区域");
             await SnapshotAsync(root, "home-light-1040.png");
 
             Resize(view, root, WideWidth, WideHeight);
             await Task.Delay(500);
-            Check(Math.Abs(card.Width - 1600) < .5, "最大化后画面宽度上限 1600，不无限拉伸：" + card.Width);
             Check(Math.Abs(launch.ActualWidth - 196) < .5 && Math.Abs(launch.ActualHeight - 56) < .5,
                 $"最大化后启动按钮仍为 196×56，实际 {launch.ActualWidth}×{launch.ActualHeight}");
-            Check(Math.Abs(deck.ActualWidth - 800) < 1, "最大化后控制台宽度上限 800：" + deck.ActualWidth);
+            Check(Math.Abs(deck.ActualWidth - 880) < 1, "最大化后控制台宽度上限 880：" + deck.ActualWidth);
             await SnapshotAsync(root, "home-light-1920.png");
 
             Resize(view, root, DefaultWidth, DefaultHeight);
@@ -104,7 +102,7 @@ public partial class App : Application
             await Task.Delay(300);
             Check(Math.Abs(launch.ActualWidth - 196) < .5, "窄窗口主按钮仍为固定尺寸：" + launch.ActualWidth);
             Check(Field<Button>(view, "ManageButton").Visibility == Visibility.Collapsed, "窄窗口隐藏次要按钮");
-            Check(card.Width <= 520.5, "窄窗口画面不超出内容宽度");
+            Check(deck.Width <= 520 - 72 + .5, "窄窗口控制台不超出内容宽度");
 
             var emptyView = new HomeView();
             root.Children.Clear();

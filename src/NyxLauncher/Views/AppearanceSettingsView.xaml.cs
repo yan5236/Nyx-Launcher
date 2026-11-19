@@ -40,7 +40,7 @@ public sealed partial class AppearanceSettingsView : UserControl
     /// <summary>展示当前外观读取或背景加载错误，不覆盖编辑中的颜色。</summary>
     private void ThemeChanged() => ShowError(_themes.Store.LoadError ?? _themes.BackgroundError);
 
-    /// <summary>从保存值刷新外观与首页图片按钮并抑制初始化事件；只有自定义配色才创建颜色选择器。</summary>
+    /// <summary>从保存值刷新外观与背景图片按钮并抑制初始化事件；只有自定义配色才创建颜色选择器。</summary>
     private void Refresh()
     {
         _loading = true;
@@ -55,10 +55,9 @@ public sealed partial class AppearanceSettingsView : UserControl
         else if (CustomPanel is not null) UnloadObject(CustomPanel);
         OpacitySlider.Value = settings.BackgroundOpacity * 100;
         SidebarOpacitySlider.Value = settings.SidebarOpacity * 100;
-        RemoveImage.IsEnabled = settings.BackgroundPath is not null;
-        OpacitySlider.IsEnabled = settings.BackgroundPath is not null;
-        RemoveHomeImage.IsEnabled = !settings.HideHomeImage;
-        RestoreHomeImage.IsEnabled = settings.HideHomeImage || settings.HomeImagePath is not null;
+        RemoveImage.IsEnabled = settings.HasBackground;
+        RestoreImage.IsEnabled = settings.HideBackground || settings.BackgroundPath is not null;
+        OpacitySlider.IsEnabled = settings.HasBackground;
         LoadColors();
         _loading = false;
     }
@@ -138,11 +137,10 @@ public sealed partial class AppearanceSettingsView : UserControl
     /// <summary>转换颜色为不透明 RGB 配置字符串，忽略选择器的透明分量。</summary>
     private static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
-    /// <summary>为窗口背景或首页选择并验证图片，保存独立副本；按点击入口只更新相应配置，取消或失败保留原图。</summary>
+    /// <summary>选择并验证窗口背景图片，保存独立副本后替换时段场景；取消或失败保留原背景。</summary>
     private async void ChooseImage_Click(object sender, RoutedEventArgs args)
     {
-        bool home = ReferenceEquals(sender, ChooseHomeImage);
-        ChooseImage.IsEnabled = ChooseHomeImage.IsEnabled = false;
+        ChooseImage.IsEnabled = false;
         string? destination = null;
         try
         {
@@ -167,36 +165,29 @@ public sealed partial class AppearanceSettingsView : UserControl
             destination = Path.Combine(_themes.Store.DirectoryPath, "background-" + Guid.NewGuid().ToString("N") + Path.GetExtension(selected.Path));
             await File.WriteAllBytesAsync(destination, bytes);
             var current = _themes.Store.Current;
-            var oldPath = home ? current.HomeImagePath : current.BackgroundPath;
-            if (Save(home ? current with { HomeImagePath = destination, HideHomeImage = false } : current with { BackgroundPath = destination }))
+            var oldPath = current.BackgroundPath;
+            if (Save(current with { BackgroundPath = destination, HideBackground = false }))
             {
                 destination = null;
                 DeleteOwnedImage(oldPath);
             }
         }
         catch (Exception ex) { ShowError("未更换背景图片：" + ex.Message); }
-        finally { DeleteOwnedImage(destination); ChooseImage.IsEnabled = ChooseHomeImage.IsEnabled = true; }
+        finally { DeleteOwnedImage(destination); ChooseImage.IsEnabled = true; }
     }
 
-    /// <summary>清空背景引用并保存，成功后只清理本应用拥有的旧副本。</summary>
+    /// <summary>移除背景（包括内置场景），窗口只保留主题底色；成功后只清理本应用拥有的旧副本。</summary>
     private void RemoveImage_Click(object sender, RoutedEventArgs args)
     {
         var path = _themes.Store.Current.BackgroundPath;
-        if (Save(_themes.Store.Current with { BackgroundPath = null })) DeleteOwnedImage(path);
+        if (Save(_themes.Store.Current with { BackgroundPath = null, HideBackground = true })) DeleteOwnedImage(path);
     }
 
-    /// <summary>移除首页图片并保留版本选择和启动按钮，保存成功后清理应用拥有的自定义副本。</summary>
-    private void RemoveHomeImage_Click(object sender, RoutedEventArgs args)
+    /// <summary>恢复随本地时段变化的内置场景，保存成功后清理先前自定义副本。</summary>
+    private void RestoreImage_Click(object sender, RoutedEventArgs args)
     {
-        var path = _themes.Store.Current.HomeImagePath;
-        if (Save(_themes.Store.Current with { HomeImagePath = null, HideHomeImage = true })) DeleteOwnedImage(path);
-    }
-
-    /// <summary>恢复随程序提供的默认首页图，保存成功后清理先前自定义副本，不改变整个窗口的背景。</summary>
-    private void RestoreHomeImage_Click(object sender, RoutedEventArgs args)
-    {
-        var path = _themes.Store.Current.HomeImagePath;
-        if (Save(_themes.Store.Current with { HomeImagePath = null, HideHomeImage = false })) DeleteOwnedImage(path);
+        var path = _themes.Store.Current.BackgroundPath;
+        if (Save(_themes.Store.Current with { BackgroundPath = null, HideBackground = false })) DeleteOwnedImage(path);
     }
 
     /// <summary>改变图片本身的不透明度，不改变文字和控件透明度。</summary>
@@ -205,7 +196,7 @@ public sealed partial class AppearanceSettingsView : UserControl
         if (!_loading) Save(_themes.Store.Current with { BackgroundOpacity = OpacitySlider.Value / 100 });
     }
 
-    /// <summary>单独保存侧栏主题底色的遮罩不透明度，不影响页面图片和导航内容。</summary>
+    /// <summary>单独保存玻璃面板（侧栏）的主题底色不透明度，不影响背景图片和导航内容。</summary>
     private void SidebarOpacity_Changed(object sender, RangeBaseValueChangedEventArgs args)
     {
         if (!_loading) Save(_themes.Store.Current with { SidebarOpacity = SidebarOpacitySlider.Value / 100 });

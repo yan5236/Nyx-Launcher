@@ -31,9 +31,9 @@ dotnet build NyxLauncher.slnx -c Debug -p:Platform=x64
 | `--local-resources <样本目录>` | 读取测试源码指定文件名的样本，输出写入临时目录，不改动样本；不是任意目录批量扫描，默认检查已覆盖合成资源 |
 | `--java-scan <验收目录>` | 扫描本机 Java，结果写入验收目录，不改用户 Java 配置 |
 
-## 协议、首页图片与单文件更新
+## 协议、窗口背景与单文件更新
 
-`Release.targets` 使用正式窗口和控件，以临时协议、外观配置及合成游戏/账户验证首次弹窗不默认同意、拒绝不保存、勾选后才能确认、GitHub 协议链接，以及首页自定义图、移除、恢复默认和源图保护。它用正式下载管理器及本地 HTTP 夹具替换**自身的测试 EXE**，断言下载任务完成、备份保留、进程和窗口继续存在，并核对公共微软配置已经内嵌。仅测试产物被替换，用户实际配置和启动器不被替换；生成 `release-checks.log` 和完整新版首页的 `home-readme.png`。这不能代替 GitHub Actions 云端执行或真实 Release 下载验收。
+`Release.targets` 使用正式窗口和控件，以临时协议、外观配置及合成游戏/账户验证首次弹窗不默认同意、拒绝不保存、勾选后才能确认、GitHub 协议链接，以及默认时段场景、自选背景、移除、恢复时段场景和源图保护。它用正式下载管理器及本地 HTTP 夹具替换**自身的测试 EXE**，断言下载任务完成、备份保留、进程和窗口继续存在，并核对公共微软配置已经内嵌。仅测试产物被替换，用户实际配置和启动器不被替换；生成 `release-checks.log` 和完整新版首页的 `home-readme.png`。这不能代替 GitHub Actions 云端执行或真实 Release 下载验收。
 
 ```powershell
 $releaseTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/Release.targets'
@@ -120,7 +120,7 @@ if ($exportProcess.ExitCode -ne 0) { throw '导出界面检查失败' }
 
 ### 首页界面
 
-`tests/NyxLauncher.UiChecks/Home.targets` 替换应用入口，用临时目录中的合成版本与离线账户加载真实首页，检查默认窗口与最大化下的画面、控制台和启动按钮尺寸，版本选择器列表，启动进度接管选择器并交还，窄窗口隐藏次要按钮，以及没有已安装版本时的空选择器与禁用启动按钮；同时确认首页没有账户、Java 或目录文字。截图写入输出目录，不读取或修改用户的游戏目录与账户配置。
+`tests/NyxLauncher.UiChecks/Home.targets` 替换应用入口，用临时目录中的合成版本与离线账户加载真实首页，检查默认窗口与最大化下的控制台宽度（上限 880）、启动按钮尺寸和时段问候语，版本选择器列表，启动进度接管选择器并交还，窄窗口隐藏次要按钮，以及没有已安装版本时的空选择器与禁用启动按钮；同时确认首页没有账户、Java 或目录文字。截图写入输出目录，不读取或修改用户的游戏目录与账户配置。
 
 ```powershell
 $homeTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/Home.targets'

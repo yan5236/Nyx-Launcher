@@ -100,21 +100,15 @@
    </StackPanel>
    <StackPanel Spacing="8">
     <TextBlock Text="背景图片"/>
+    <!-- 默认使用随时段变化的内置场景；可替换为自选图片、移除或恢复默认。 -->
     <StackPanel Orientation="Horizontal" Spacing="12">
      <Button x:Name="ChooseImage" Content="选择图片" Click="ChooseImage_Click"/>
      <Button x:Name="RemoveImage" Content="移除" Click="RemoveImage_Click"/>
+     <Button x:Name="RestoreImage" Content="恢复时段场景" Click="RestoreImage_Click"/>
     </StackPanel>
     <Slider x:Name="OpacitySlider" Header="不透明度" Minimum="0" Maximum="100" StepFrequency="1" ValueChanged="Opacity_Changed" AutomationProperties.Name="背景图片不透明度"/>
    </StackPanel>
-   <Slider x:Name="SidebarOpacitySlider" Header="侧栏背景不透明度" Minimum="0" Maximum="100" StepFrequency="1" ValueChanged="SidebarOpacity_Changed" AutomationProperties.Name="侧栏背景不透明度"/>
-   <StackPanel Spacing="8">
-    <TextBlock Text="首页图片" />
-    <StackPanel Orientation="Horizontal" Spacing="12">
-     <Button x:Name="ChooseHomeImage" Content="更换图片" Click="ChooseImage_Click" />
-     <Button x:Name="RemoveHomeImage" Content="移除" Click="RemoveHomeImage_Click" />
-     <Button x:Name="RestoreHomeImage" Content="恢复默认" Click="RestoreHomeImage_Click" />
-    </StackPanel>
-   </StackPanel>
+   <Slider x:Name="SidebarOpacitySlider" Header="玻璃面板不透明度" Minimum="0" Maximum="100" StepFrequency="1" ValueChanged="SidebarOpacity_Changed" AutomationProperties.Name="玻璃面板不透明度"/>
    <InfoBar x:Name="Error" Severity="Error" IsClosable="False"/>
   </StackPanel>
  </Border>

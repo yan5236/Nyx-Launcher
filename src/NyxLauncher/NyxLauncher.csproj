@@ -28,7 +28,7 @@
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\*.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\*.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\*.jpg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Scenes\*.jpg" CopyToOutputDirectory="PreserveNewest" />
     <Manifest Include="$(ApplicationManifest)" />
     <PackageReference Include="CmlLib.Core" Version="4.1.0" />
     <PackageReference Include="SkiaSharp" Version="4.154.0" />

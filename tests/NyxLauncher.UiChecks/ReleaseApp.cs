@@ -15,7 +15,7 @@ using Windows.Graphics.Imaging;
 
 namespace NyxLauncher;
 
-/// <summary>以隔离配置验证正式协议控件、首页图片及运行中单文件替换，保存可用于 README 的真实首页截图。</summary>
+/// <summary>以隔离配置验证正式协议控件、窗口背景场景及运行中单文件替换，保存可用于 README 的真实首页截图。</summary>
 public partial class App : Application
 {
     private MainWindow? _window;
@@ -107,29 +107,29 @@ public partial class App : Application
             "真实确认按钮成功保存当前协议修订");
     }
 
-    /// <summary>通过外观服务及正式按钮验证自定义图、无图和恢复默认；所有写入发生在隔离配置，图片源不被删除。</summary>
+    /// <summary>通过外观服务及正式按钮验证默认时段场景、自选背景、移除和恢复；所有写入发生在隔离配置，图片源不被删除。</summary>
     private async Task CheckHomeImageAsync(MainPage page, string temporary)
     {
         var themes = ThemeManager.Current;
         var home = Field<HomeView>(page, "HomeContent");
+        var background = Field<Image>(_window!, "WindowBackground");
+        Check(background.Source is BitmapImage, "默认显示内置时段场景背景");
         string source = Path.Combine(temporary, "custom.jpg");
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Assets", "HomeLandscape.jpg"), source);
-        Check(themes.Save(themes.Store.Current with { HomeImagePath = source }) is null, "自选首页图保存成功");
+        File.Copy(TimeOfDayScene.PathOf("noon"), source);
+        Check(themes.Save(themes.Store.Current with { BackgroundPath = source }) is null, "自选背景保存成功");
         await Task.Delay(500);
-        Check(Field<Border>(home, "StageCard").Background is ImageBrush && Field<ImageBrush>(home, "StageImage").ImageSource is BitmapImage,
-            "自选图片已经解码并显示");
+        Check(background.Source is BitmapImage, "自选背景已经解码并显示");
         var appearance = new AppearanceSettingsView();
-        typeof(AppearanceSettingsView).GetMethod("RemoveHomeImage_Click", Private)!.Invoke(appearance, [appearance, new RoutedEventArgs()]);
+        typeof(AppearanceSettingsView).GetMethod("RemoveImage_Click", Private)!.Invoke(appearance, [appearance, new RoutedEventArgs()]);
         await Task.Delay(100);
-        Check(Field<Border>(home, "StageCard").Background is null && Field<Border>(home, "EdgeShade").Visibility == Visibility.Collapsed &&
-            Field<Border>(home, "BottomShade").Visibility == Visibility.Collapsed, "移除同时清除图片和暗角");
+        Check(background.Source is null && themes.Store.Current.HideBackground, "移除后窗口只保留主题底色");
         Check(Field<Button>(home, "LaunchButton").IsEnabled && Field<ComboBox>(home, "VersionList").SelectedItem is InstalledVersion,
-            "无图时仍可选择和启动游戏");
+            "无背景时仍可选择和启动游戏");
         Check(File.Exists(source), "移除不删除用户源图");
-        typeof(AppearanceSettingsView).GetMethod("RestoreHomeImage_Click", Private)!.Invoke(appearance, [appearance, new RoutedEventArgs()]);
-        await Task.Delay(300);
-        Check(!themes.Store.Current.HideHomeImage && themes.Store.Current.HomeImagePath is null && Field<Border>(home, "StageCard").Background is ImageBrush,
-            "恢复默认立即显示内置图");
+        typeof(AppearanceSettingsView).GetMethod("RestoreImage_Click", Private)!.Invoke(appearance, [appearance, new RoutedEventArgs()]);
+        await Task.Delay(500);
+        Check(!themes.Store.Current.HideBackground && themes.Store.Current.BackgroundPath is null && background.Source is BitmapImage,
+            "恢复后立即显示时段场景");
     }
 
     /// <summary>用本进程单文件的副本模拟已校验的新发布，真实下载并替换正在运行的 EXE，断言当前进程和窗口未被关闭。</summary>
