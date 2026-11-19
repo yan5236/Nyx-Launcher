@@ -203,10 +203,29 @@ internal static class Program
         try
         {
             var store = new DownloadSettingsStore(path);
-            Check(store.Current.MaxConnections == 16 && store.Current.SpeedLimitMiB == 0, "缺失设置使用默认值");
-            var settings = new DownloadSettings(SourceStrategy.MirrorFirst, SourceStrategy.OfficialFirst, 1, 100);
+            Check(store.Current.MaxConnections == 16 && store.Current.SpeedLimitMiB == 0 &&
+                store.Current.AfterLaunch == LauncherAfterLaunch.KeepOpen &&
+                store.Current.CloseInTrayMode == TrayCloseAction.Ask, "缺失设置默认保持启动器和每次询问");
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(path, """{"MaxConnections":8}""");
+            store = new DownloadSettingsStore(path);
+            Check(store.Current.MaxConnections == 8 && store.Current.AfterLaunch == LauncherAfterLaunch.KeepOpen &&
+                store.Current.CloseInTrayMode == TrayCloseAction.Ask, "旧设置默认询问且保留下载配置");
+            var settings = new DownloadSettings(SourceStrategy.MirrorFirst, SourceStrategy.OfficialFirst, 1, 100,
+                AfterLaunch: LauncherAfterLaunch.MinimizeToTray);
             Check(store.Save(settings) is null && new DownloadSettingsStore(path).Current == settings, "设置持久化回读");
             Check(store.Save(settings with { MaxConnections = 0 }) is not null && store.Current == settings, "拒绝越界且保留旧值");
+            Check(store.Save(settings with { AfterLaunch = (LauncherAfterLaunch)99 }) is not null &&
+                store.Current == settings, "拒绝未知的启动后行为");
+            foreach (var action in new[] { TrayCloseAction.MinimizeToTray, TrayCloseAction.Exit, TrayCloseAction.Ask })
+            {
+                var changed = settings with { CloseInTrayMode = action };
+                Check(store.Save(changed) is null && new DownloadSettingsStore(path).Current == changed, "托盘关闭行为保存和重置");
+            }
+            Check(store.Save(settings with { CloseInTrayMode = (TrayCloseAction)99 }) is not null &&
+                store.Current == settings, "拒绝未知的托盘关闭行为");
+            var close = settings with { AfterLaunch = LauncherAfterLaunch.Close };
+            Check(store.Save(close) is null && new DownloadSettingsStore(path).Current == close, "关闭启动器选项持久化回读");
             File.WriteAllText(path, "{broken");
             Check(new DownloadSettingsStore(path).LoadError is not null && File.ReadAllText(path) == "{broken", "损坏设置报告错误且不覆盖");
             var blocked = new DownloadSettingsStore(directory);

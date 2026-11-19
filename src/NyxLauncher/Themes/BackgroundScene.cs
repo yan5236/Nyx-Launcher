@@ -58,13 +58,14 @@ internal sealed class BackgroundScene
         SceneDue?.Invoke();
     }
 
-    /// <summary>替换背景图片：旧图复制到上层并淡出，新图从 104% 缓慢推近至 100%；系统关闭动画时直接替换。</summary>
-    public void Swap(ImageSource? source)
+    /// <summary>替换背景图片；允许调用方在隐藏窗口时跳过动画，立即释放两层图片及当前过渡。</summary>
+    public void Swap(ImageSource? source, bool animate = true)
     {
         _transition?.Stop();
+        _transition = null;
         var previous = _image.Source;
         _image.Source = source;
-        if (_veil is null || !AnimationsEnabled())
+        if (_veil is null || !animate || !AnimationsEnabled())
         {
             if (_veil is not null) { _veil.Source = null; _veil.Opacity = 0; }
             _zoom.ScaleX = _zoom.ScaleY = 1;

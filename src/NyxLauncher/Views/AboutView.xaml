@@ -17,6 +17,7 @@
      <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
       <HyperlinkButton x:Name="CheckUpdate" Content="检查更新" Click="CheckUpdate_Click" ToolTipService.ToolTip="检查新版本并查看更新说明" />
       <HyperlinkButton Content="GitHub" Tag="https://github.com/yan5236/Nyx-Launcher" Click="Link_Click" />
+      <HyperlinkButton Content="GPL-3.0" Tag="https://github.com/yan5236/Nyx-Launcher/blob/main/LICENSE" Click="Link_Click" />
       <HyperlinkButton Content="官方网站" Tag="https://nyxlauncher.nanhaiblog.top/" Click="Link_Click" />
      </StackPanel>
      <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">

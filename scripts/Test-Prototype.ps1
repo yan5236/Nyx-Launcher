@@ -223,7 +223,7 @@ if (Test-Path $assetsPath) {
     $restoredPackages = @($assets.libraries.PSObject.Properties | Where-Object { $_.Value.type -eq 'package' -and $_.Name -notlike 'Microsoft.NET.ILLink.Tasks/*' } | ForEach-Object Name)
     if (Compare-Object $packages $restoredPackages) { throw '第三方清单与还原后的直接及间接 NuGet 依赖不一致。' }
 }
-foreach ($component in @('Java Launch Wrapper', 'LWJGL Unsafe Agent', 'authlib-injector', 'Skia')) {
+foreach ($component in @('Java Launch Wrapper', 'LWJGL Unsafe Agent', 'authlib-injector', 'Skia', 'Terracotta（陶瓦联机）', 'EasyTier')) {
     if ($component -notin $notices.Name) { throw "第三方清单缺少非 NuGet 组件：$component" }
 }
 foreach ($name in @('FileSource', 'VersionSource')) {

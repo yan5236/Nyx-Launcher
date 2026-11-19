@@ -49,7 +49,7 @@ public sealed partial class SettingsView : UserControl
         if (_multiplayer is not null) await _multiplayer.ExportLogAsync(XamlRoot, ModuleFeedback);
     }
 
-    /// <summary>注入设置存储，填充源策略、并行文件数、连接数、限速及隔离选项，初始化不写配置并展示读取错误。</summary>
+    /// <summary>注入设置存储，填充下载、隔离、启动后行为及托盘关闭偏好，初始化不写配置。</summary>
     public void Configure(DownloadSettingsStore store)
     {
         var settings = store.Current;
@@ -59,7 +59,9 @@ public sealed partial class SettingsView : UserControl
         ParallelDownloads.Value = settings.MaxParallelDownloads;
         Speed.Value = settings.SpeedLimitMiB;
         Isolation.SelectedIndex = (int)settings.Isolation;
+        AfterLaunch.SelectedIndex = (int)settings.AfterLaunch;
         _store = store;
+        SyncTrayCloseAction();
         UpdateLabels();
         SaveError.Message = store.LoadError ?? "";
         SaveError.IsOpen = store.LoadError is not null;
@@ -112,8 +114,28 @@ public sealed partial class SettingsView : UserControl
         TabBody.PlayTransition();
     }
 
-    /// <summary>源策略变化后保存，版本页下次打开时使用最新策略。</summary>
+    /// <summary>下拉选项变化后保存，后续下载及启动使用新偏好。</summary>
     private void Source_SelectionChanged(object sender, SelectionChangedEventArgs e) => Save();
+
+    /// <summary>只在托盘模式下显示关闭偏好；同步保存值时，事件处理器会跳过重复写入。</summary>
+    internal void SyncTrayCloseAction()
+    {
+        if (_store is null) return;
+        TrayClose.Visibility = _store.Current.AfterLaunch == LauncherAfterLaunch.MinimizeToTray
+            ? Visibility.Visible : Visibility.Collapsed;
+        TrayClose.SelectedIndex = (int)_store.Current.CloseInTrayMode;
+    }
+
+    /// <summary>保存设置页主动修改的关闭偏好；失败时恢复已保存值并显示错误。</summary>
+    private void TrayClose_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_store is null || TrayClose.SelectedIndex < 0 ||
+            TrayClose.SelectedIndex == (int)_store.Current.CloseInTrayMode) return;
+        var error = _store.Save(_store.Current with { CloseInTrayMode = (TrayCloseAction)TrayClose.SelectedIndex });
+        SyncTrayCloseAction();
+        SaveError.Message = error ?? "";
+        SaveError.IsOpen = error is not null;
+    }
 
     /// <summary>滑块变化时刷新单位及数值，并保存整数限制。</summary>
     private void Limit_ValueChanged(object sender, RangeBaseValueChangedEventArgs e) => Save();
@@ -126,7 +148,7 @@ public sealed partial class SettingsView : UserControl
         SpeedLabel.Text = Speed.Value == 0 ? "速率限制：不限速" : $"速率限制：{(int)Speed.Value} MiB/s";
     }
 
-    /// <summary>保存全部下载与隔离偏好；失败时保留原配置、恢复并行滑块并显示未保存。</summary>
+    /// <summary>保存下载和通用偏好；失败时保留原配置、恢复并行滑块和启动后行为选项，并显示未保存。</summary>
     private void Save()
     {
         if (_store is null) return;
@@ -138,17 +160,20 @@ public sealed partial class SettingsView : UserControl
             MaxConnections = (int)Connections.Value,
             MaxParallelDownloads = (int)ParallelDownloads.Value,
             SpeedLimitMiB = (int)Speed.Value,
-            Isolation = (IsolationMode)Isolation.SelectedIndex
+            Isolation = (IsolationMode)Isolation.SelectedIndex,
+            AfterLaunch = (LauncherAfterLaunch)AfterLaunch.SelectedIndex
         });
         if (error is not null)
         {
             var store = _store;
             _store = null;
             ParallelDownloads.Value = store.Current.MaxParallelDownloads;
+            AfterLaunch.SelectedIndex = (int)store.Current.AfterLaunch;
             _store = store;
             UpdateLabels();
         }
         SaveError.Message = error ?? "";
         SaveError.IsOpen = error is not null;
+        SyncTrayCloseAction();
     }
 }

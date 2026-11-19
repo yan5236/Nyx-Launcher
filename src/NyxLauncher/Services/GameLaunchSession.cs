@@ -25,27 +25,30 @@ public sealed class GameLaunchSession
     private string? _accessToken;
     private GameLaunchLog? _log;
     private GameLaunchLog? _gameLog;
+    private bool _canDetach;
     public string? LogPath => _log?.FilePath;
     public string? LogError => _log?.Error;
     public bool Crashed { get; private set; }
+    public bool IsDetached { get; private set; }
     public string? GameDirectory { get; private set; }
     public DateTime StartedUtc { get; private set; }
     public string? GameOutputPath => _gameLog?.FilePath;
     public LaunchStatus Status => _status;
     public event EventHandler? Changed;
 
-    /// <summary>请求停止本次启动；重复请求无副作用，不取消其他下载或其他游戏进程。</summary>
-    public void Stop()
+    /// <summary>取消本次会话；托盘退出时可仅解除对已就绪且未重定向输出的游戏进程的监控。</summary>
+    public void Stop(bool leaveGameRunning = false)
     {
         lock (_stateLock)
         {
-            if (_status.Stage is LaunchStage.Exited or LaunchStage.Failed or LaunchStage.Stopping) return;
+            if (IsDetached || _status.Stage is LaunchStage.Exited or LaunchStage.Failed or LaunchStage.Stopping) return;
+            IsDetached = leaveGameRunning && _canDetach && _status.Stage == LaunchStage.Running;
+            if (!IsDetached) Set(LaunchStage.Stopping, "正在停止…");
             _cancellation.Cancel();
-            Set(LaunchStage.Stopping, "正在停止…");
         }
     }
 
-    /// <summary>固定本次高级设置、Java 和可选直连目标，认证后构造进程并应用其显卡偏好；取消覆盖网络与进程，最终回收句柄。</summary>
+    /// <summary>准备并启动游戏，等待真实窗口就绪；按本次偏好释放进程控制权或等待退出，最终回收句柄。</summary>
     public async Task RunAsync(string folder, InstalledVersion version, DownloadSettings settings, GameAccount account,
         Func<GameAccount, CancellationToken, Task<MSession>>? authenticate = null, JavaSelection? java = null, ServerEndpoint? server = null)
     {
@@ -70,29 +73,42 @@ public sealed class GameLaunchSession
             process = await GameLaunchService.BuildAsync(folder, version, settings.Isolation, account, token, identity, javaPath, advanced, server);
             GameDirectory = process.StartInfo.WorkingDirectory;
             StartedUtc = DateTime.UtcNow;
-            _gameLog = new GameLaunchLog(folder, gameOutput: true);
+            bool captureOutput = settings.AfterLaunch == LauncherAfterLaunch.KeepOpen;
+            _canDetach = !captureOutput;
             token.ThrowIfCancellationRequested();
-            process.StartInfo.RedirectStandardOutput = true;
-            process.StartInfo.RedirectStandardError = true;
-            process.OutputDataReceived += CaptureOutput;
-            process.ErrorDataReceived += CaptureOutput;
+            // 可独立运行的游戏不依赖启动器排空输出管道，诊断从游戏自身的日志与崩溃文件读取。
+            if (captureOutput)
+            {
+                _gameLog = new GameLaunchLog(folder, gameOutput: true);
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+                process.OutputDataReceived += CaptureOutput;
+                process.ErrorDataReceived += CaptureOutput;
+            }
             LaunchCompatibility.ConfigureGpu(process.StartInfo.FileName, advanced.HighPerformanceGpu);
             token.ThrowIfCancellationRequested();
             started = process.Start();
             if (!started) throw new IOException("系统未能创建游戏进程。");
-            process.BeginOutputReadLine(); process.BeginErrorReadLine();
+            if (captureOutput) { process.BeginOutputReadLine(); process.BeginErrorReadLine(); }
             Report(LaunchStage.WaitingForWindow, "等待游戏窗口出现");
             while (!process.HasExited)
             {
                 token.ThrowIfCancellationRequested();
-                if (!appeared && GameWindow.HasVisibleWindow(process.Id))
+                if (GameWindow.HasVisibleWindow(process.Id))
                 {
-                    appeared = true;
-                    Report(LaunchStage.Running, "正在运行 · " + version.Name + " · " + identity.Username);
+                    lock (_stateLock)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        appeared = true;
+                        IsDetached = settings.AfterLaunch == LauncherAfterLaunch.Close;
+                        Set(LaunchStage.Running, "正在运行 · " + version.Name + " · " + identity.Username);
+                    }
+                    if (IsDetached) return;
+                    break;
                 }
                 await Task.Delay(200, token);
             }
-            process.WaitForExit();
+            await process.WaitForExitAsync(token);
             token.ThrowIfCancellationRequested();
             if (!appeared || process.ExitCode != 0)
             {
@@ -101,6 +117,7 @@ public sealed class GameLaunchSession
             }
             Set(LaunchStage.Exited, "游戏已退出");
         }
+        catch (OperationCanceledException) when (IsDetached) { }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
             try
@@ -114,7 +131,7 @@ public sealed class GameLaunchSession
         {
             _log?.Write("失败阶段：" + Status.Stage + "\n" + NetworkFailureDetails.Format(ex));
             string message = Redact(ex.Message, _accessToken);
-            try { if (started) await EndProcessAsync(process!, false); }
+            try { if (started && !IsDetached) await EndProcessAsync(process!, false); }
             catch (Exception stop) { message += "\n停止游戏失败：" + stop.Message; }
             Set(LaunchStage.Failed, message);
         }

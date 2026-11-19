@@ -15,6 +15,18 @@ public sealed partial class MainPage : Page
     private bool _importing;
     private string _currentPage = "home";
 
+    internal TrayCloseAction? TrayClosePreference =>
+        _settings.Current.AfterLaunch == LauncherAfterLaunch.MinimizeToTray &&
+        (!HomeContent.IsLaunching || HomeContent.IsGameRunningInTrayMode) ? _settings.Current.CloseInTrayMode : null;
+
+    /// <summary>保存窗口关闭弹窗中记住的选择；成功后同步已加载的设置页，失败时返回提示。</summary>
+    internal string? SaveTrayCloseAction(TrayCloseAction action)
+    {
+        var error = _settings.Save(_settings.Current with { CloseInTrayMode = action });
+        if (error is null) SettingsContent?.SyncTrayCloseAction();
+        return error;
+    }
+
     /// <summary>下载或游戏启动期间避免主动压缩托管堆，减少后台业务被全量回收暂停的机会。</summary>
     public bool HasMemorySensitiveWork => _tasks.Tasks.Any(task => task.IsBusy) || HomeContent.IsLaunching || _importing ||
         MultiplayerContent?.IsBusy == true;
@@ -25,10 +37,17 @@ public sealed partial class MainPage : Page
         DownloadsContent?.ReleaseUnusedDetails();
     }
 
-    /// <summary>关闭时停止下载、游戏和已创建页面的后台工作，包括陶瓦进程。</summary>
-    public Task StopDownloadsAsync() => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(),
+    /// <summary>关闭时停止下载和已创建页面的后台工作；从托盘退出时允许已启动的游戏继续运行。</summary>
+    public Task StopDownloadsAsync(bool leaveGameRunning = false) => Task.WhenAll(_tasks.ShutdownAsync(), HomeContent.StopAsync(leaveGameRunning),
         AccountContent?.StopAsync() ?? Task.CompletedTask, SettingsContent?.StopAsync() ?? Task.CompletedTask,
         WardrobeContent?.StopAsync() ?? Task.CompletedTask, MultiplayerContent?.StopAsync() ?? Task.CompletedTask);
+
+    /// <summary>将首页与服务器直连共享的就绪和会话结束通知交给主窗口处理。</summary>
+    internal void ConfigureLaunchBehavior(Action<LauncherAfterLaunch> ready, Action ended)
+    {
+        HomeContent.GameWindowReady += ready;
+        HomeContent.GameSessionEnded += ended;
+    }
     /// <summary>只创建首页及共享业务状态，其他模块首次导航时才创建；后台安装完成仍可刷新首页。</summary>
     public MainPage()
     {

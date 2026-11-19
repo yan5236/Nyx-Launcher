@@ -17,6 +17,7 @@ public sealed partial class HomeView : UserControl
     private JavaRuntimeStore? _java;
     private GameLaunchSession? _session;
     private Task? _running;
+    private LauncherAfterLaunch _afterLaunch;
     private int _refresh;
     private bool _scanning;
     private bool _closing;
@@ -25,10 +26,13 @@ public sealed partial class HomeView : UserControl
     private bool _progressEnding;
     public event EventHandler<InstalledVersion>? ManageRequested;
     public event EventHandler<bool>? CrashAnalysisChanged;
+    internal event Action<LauncherAfterLaunch>? GameWindowReady;
+    internal event Action? GameSessionEnded;
     public bool IsLaunching => _session is not null;
 
     /// <summary>游戏窗口就绪且当前会话仍在运行时，允许联机页开房或加入。</summary>
     public bool IsGameRunning => _session?.Status.Stage == LaunchStage.Running;
+    internal bool IsGameRunningInTrayMode => IsGameRunning && _afterLaunch == LauncherAfterLaunch.MinimizeToTray;
 
     /// <summary>加载首页并在挂载时刷新问候语与进入动效；游戏服务由主页面注入。</summary>
     public HomeView()
@@ -121,20 +125,28 @@ public sealed partial class HomeView : UserControl
         session.Changed += Session_Changed;
         Status.IsOpen = false; BeginProgress(); UpdateControls();
         var settings = _settings!.Current;
+        _afterLaunch = settings.AfterLaunch;
         try
         {
             _running = session.RunAsync(root, version, settings, account, AuthenticateAsync, _java?.Current, server);
             await _running;
+            if (_closing) return;
+            GameSessionEnded?.Invoke();
             ShowProgress(session.Status);
-            if (!_closing && session.Status.Stage == LaunchStage.Failed)
+            if (session.Status.Stage == LaunchStage.Failed)
                 await ShowFailureAsync(session);
         }
         finally
         {
             session.Changed -= Session_Changed;
             _session = null; _running = null;
-            UpdateControls(); Refresh();
+            if (!_closing)
+            {
+                UpdateControls();
+                if (!session.IsDetached) Refresh();
+            }
         }
+        if (!_closing && session.IsDetached) GameWindowReady?.Invoke(LauncherAfterLaunch.Close);
     }
 
     /// <summary>启动在其他页面失败时等待已有弹窗关闭，再显示原因；避免 WinUI 同一窗口叠加模态弹窗导致异常，关闭启动器时放弃等待。</summary>
@@ -172,12 +184,20 @@ public sealed partial class HomeView : UserControl
         return result.Session;
     }
 
-    /// <summary>后台通知排队刷新当前会话最新快照，迟到回调不能覆盖新会话。</summary>
-    private void Session_Changed(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(() =>
+    /// <summary>把会话状态更新调度到界面；首次真实窗口就绪时通知托盘，迟到回调不能隐藏已退出的会话。</summary>
+    private void Session_Changed(object? sender, EventArgs e)
     {
-        if (sender != _session) return;
-        ShowProgress(_session!.Status); UpdateControls();
-    });
+        var session = (GameLaunchSession)sender!;
+        bool ready = session.Status.Stage == LaunchStage.Running;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (session != _session || _closing) return;
+            var status = session.Status;
+            if (ready && status.Stage == LaunchStage.Running && _afterLaunch == LauncherAfterLaunch.MinimizeToTray)
+                GameWindowReady?.Invoke(_afterLaunch);
+            ShowProgress(status); UpdateControls();
+        });
+    }
 
     /// <summary>启动时让选择器淡出、进度淡入；每次启动重置进度代数，旧退出动画和延迟不能隐藏新会话。</summary>
     private void BeginProgress()
@@ -214,7 +234,7 @@ public sealed partial class HomeView : UserControl
             StageProgress.Value = 100; StageLabel.Text = "启动完成"; ProgressPercent.Text = "100%";
             await Task.Delay(300);
         }
-        if (generation != _progressGeneration) return;
+        if (_closing || generation != _progressGeneration) return;
         AnimateProgress(false);
     }
 
@@ -277,10 +297,13 @@ public sealed partial class HomeView : UserControl
         AutomationProperties.SetName(LaunchButton, label);
     }
 
-    /// <summary>关闭时取消启动或停止游戏并等待回收，期间禁止刷新和再次启动。</summary>
-    public async Task StopAsync()
+    /// <summary>关闭时停止进度动画，取消启动并等待会话回收；手动从托盘退出时保留已就绪的游戏。</summary>
+    public async Task StopAsync(bool leaveGameRunning = false)
     {
-        _closing = true; _session?.Stop(); UpdateControls();
+        _closing = true;
+        _progressAnimation?.Stop();
+        _session?.Stop(leaveGameRunning);
+        UpdateControls();
         if (_running is not null) await _running;
     }
 }

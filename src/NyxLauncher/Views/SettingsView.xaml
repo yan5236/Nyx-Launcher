@@ -25,6 +25,22 @@
          <ComboBoxItem Content="隔离所有版本" />
         </views:ScrollSafeComboBox>
        </Border>
+       <Border Style="{StaticResource CardStyle}">
+        <StackPanel Spacing="12">
+        <views:ScrollSafeComboBox x:Name="AfterLaunch" Header="启动后启动器行为" HorizontalAlignment="Stretch"
+                  SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="启动后启动器行为">
+         <ComboBoxItem Content="保持不变" />
+         <ComboBoxItem Content="最小化至托盘（游戏退出后恢复）" />
+         <ComboBoxItem Content="关闭启动器" />
+        </views:ScrollSafeComboBox>
+        <views:ScrollSafeComboBox x:Name="TrayClose" Header="托盘模式下关闭窗口" HorizontalAlignment="Stretch"
+                  Visibility="Collapsed" SelectionChanged="TrayClose_SelectionChanged" AutomationProperties.Name="托盘模式下关闭窗口">
+         <ComboBoxItem Content="每次询问" />
+         <ComboBoxItem Content="最小化至托盘" />
+         <ComboBoxItem Content="退出启动器" />
+        </views:ScrollSafeComboBox>
+        </StackPanel>
+       </Border>
        <views:AppearanceSettingsView />
        <Border Style="{StaticResource CardStyle}">
         <StackPanel Spacing="10">

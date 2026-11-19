@@ -3,17 +3,21 @@ using System.Text.Json;
 namespace NyxLauncher.Services;
 
 public enum SourceStrategy { MirrorFirst, OfficialWithFallback, OfficialFirst }
+public enum LauncherAfterLaunch { KeepOpen, MinimizeToTray, Close }
+public enum TrayCloseAction { Ask, MinimizeToTray, Exit }
 
-/// <summary>下载与隔离偏好；并行文件数、线程数和限速在新一批下载任务启动时应用。</summary>
+/// <summary>下载与通用偏好；并行文件数、线程数和限速在新一批下载任务启动时应用。</summary>
 public sealed record DownloadSettings(
     SourceStrategy FileSource = SourceStrategy.OfficialWithFallback,
     SourceStrategy VersionSource = SourceStrategy.OfficialWithFallback,
     int MaxConnections = 16,
     int SpeedLimitMiB = 0,
     IsolationMode Isolation = IsolationMode.All,
-    int MaxParallelDownloads = 16);
+    int MaxParallelDownloads = 16,
+    LauncherAfterLaunch AfterLaunch = LauncherAfterLaunch.KeepOpen,
+    TrayCloseAction CloseInTrayMode = TrayCloseAction.Ask);
 
-/// <summary>独立保存下载偏好，不读取或修改游戏目录。</summary>
+/// <summary>保存下载与通用偏好，不读取或修改游戏目录。</summary>
 public sealed class DownloadSettingsStore
 {
     private readonly string _path;
@@ -33,7 +37,7 @@ public sealed class DownloadSettingsStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException)
         {
-            LoadError = "无法读取下载设置，暂用默认值：" + ex.Message;
+            LoadError = "无法读取启动器设置，暂用默认值：" + ex.Message;
         }
     }
 
@@ -42,8 +46,9 @@ public sealed class DownloadSettingsStore
     {
         if (!Enum.IsDefined(settings.FileSource) || !Enum.IsDefined(settings.VersionSource) ||
             settings.MaxConnections is < 1 or > 64 || settings.MaxParallelDownloads is < 1 or > 64 ||
-            settings.SpeedLimitMiB is < 0 or > 100 || !Enum.IsDefined(settings.Isolation))
-            throw new ArgumentException("下载设置超出有效范围。");
+            settings.SpeedLimitMiB is < 0 or > 100 || !Enum.IsDefined(settings.Isolation) ||
+            !Enum.IsDefined(settings.AfterLaunch) || !Enum.IsDefined(settings.CloseInTrayMode))
+            throw new ArgumentException("启动器设置超出有效范围。");
         return settings;
     }
 

@@ -18,15 +18,19 @@ public sealed partial class MainWindow
         Closed += (_, _) => _idleCollection.Stop();
     }
 
-    /// <summary>失焦时暂停可见内存预览及背景文字取样，五秒后回收不可达对象；重新聚焦立即取消待执行回收并恢复原页面采样。</summary>
-    private void Window_Activated(object sender, WindowActivatedEventArgs args)
+    /// <summary>根据窗口激活事件同步采样状态；托盘菜单获得焦点时仍保持暂停。</summary>
+    private void Window_Activated(object sender, WindowActivatedEventArgs args) =>
+        SetWindowForeground(_trayIcon is null && args.WindowActivationState != WindowActivationState.Deactivated);
+
+    /// <summary>失焦时暂停内存预览及背景文字取样，普通失焦延迟回收；托盘期间保持采样与强制回收关闭。</summary>
+    private void SetWindowForeground(bool foreground)
     {
-        bool foreground = args.WindowActivationState != WindowActivationState.Deactivated;
         _foreground = foreground;
         _idleCollection.Stop();
         Themes.ThemeManager.Current.SetForeground(foreground);
         SetMemoryForeground(ThemeRoot, foreground);
-        if (!foreground && !_closing && Environment.TickCount64 - _lastCollection >= 60000) _idleCollection.Start();
+        if (!foreground && !_closing && _trayIcon is null && Environment.TickCount64 - _lastCollection >= 60000)
+            _idleCollection.Start();
     }
 
     /// <summary>只在焦点变化时遍历现有控件，将窗口状态传给内存采样和衣柜动画；不切换页面或重新读取配置。</summary>

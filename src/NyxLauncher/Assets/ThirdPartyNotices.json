@@ -204,6 +204,24 @@
     "Packages": []
   },
   {
+    "Name": "Terracotta（陶瓦联机）",
+    "Version": "0.4.2",
+    "Description": "© Burning_TNT 与贡献者。联机功能按需下载官方发布包，并通过本地 HTTP 接口调用独立进程。",
+    "ProjectUrl": "https://github.com/burningtnt/Terracotta/releases/tag/v0.4.2",
+    "License": "AGPL-3.0-or-later（含例外）",
+    "LicenseUrl": "https://github.com/burningtnt/Terracotta/blob/v0.4.2/README.md#许可",
+    "Packages": []
+  },
+  {
+    "Name": "EasyTier",
+    "Version": "2.5.0-terracotta.2",
+    "Description": "陶瓦联机使用的组网组件，随陶瓦官方发布包按需下载。",
+    "ProjectUrl": "https://github.com/burningtnt/EasyTier",
+    "License": "LGPL-3.0",
+    "LicenseUrl": "https://github.com/burningtnt/EasyTier/blob/v2.5.0-terracotta.2/LICENSE",
+    "Packages": []
+  },
+  {
     "Name": "authlib-injector",
     "Version": "1.2.8",
     "Description": "外置账户启动时按需下载的认证注入器。",

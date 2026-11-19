@@ -32,6 +32,7 @@ public sealed partial class MainWindow : Window
         if (_closing) return;
         Services.LauncherUpdateInstaller.CleanupBackup(Services.LauncherInfo.ExecutablePath);
         RootFrame.Navigate(typeof(MainPage));
+        if (RootFrame.Content is MainPage page) page.ConfigureLaunchBehavior(ApplyLaunchBehavior, RestoreFromTray);
     }
 
     /// <summary>响应窗口标题栏左上角的折叠按钮，将切换请求交给当前主页面。</summary>
@@ -40,15 +41,28 @@ public sealed partial class MainWindow : Window
         if (RootFrame.Content is MainPage page) page.ToggleNavigationPane();
     }
 
-    /// <summary>关闭时先禁用页面交互，再停止下载和游戏并等待清理，防止等待期间创建新工作；重复关闭复用本轮等待。</summary>
+    /// <summary>拦截窗口关闭请求；托盘模式交给关闭选项处理，其他情况执行常规关闭。</summary>
     private async void Window_Closing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
     {
         if (_readyToClose) return;
         args.Cancel = true;
+        if (_closing || _choosingTrayAction) return;
+        if (RootFrame.Content is MainPage page && page.TrayClosePreference is { } preference)
+        {
+            await CloseInTrayModeAsync(page, preference);
+            return;
+        }
+        await CloseLauncherAsync(leaveGameRunning: false);
+    }
+
+    /// <summary>禁用页面交互并等待后台工作收尾；从托盘退出时仅解除对已就绪游戏的监控。</summary>
+    private async Task CloseLauncherAsync(bool leaveGameRunning)
+    {
         if (_closing) return;
         _closing = true;
         RootFrame.IsEnabled = false;
-        try { if (RootFrame.Content is MainPage page) await page.StopDownloadsAsync(); }
+        RemoveTrayIcon();
+        try { if (RootFrame.Content is MainPage page) await page.StopDownloadsAsync(leaveGameRunning); }
         finally { _readyToClose = true; Close(); }
     }
 }

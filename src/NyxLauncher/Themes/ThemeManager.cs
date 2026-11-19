@@ -18,6 +18,7 @@ public sealed class ThemeManager
     private BackgroundScene? _scene;
     private string? _loadedPath;
     private int _imageGeneration;
+    private bool _trayHidden;
     private BackgroundTextContrast? _contrast;
     private readonly Dictionary<string, SolidColorBrush> _brushes = new();
     private readonly Dictionary<string, AcrylicBrush> _acrylics = new();
@@ -40,6 +41,18 @@ public sealed class ThemeManager
 
     /// <summary>把窗口焦点状态交给背景文字取样器，不改变用户保存的主题设置。</summary>
     public void SetForeground(bool foreground) => _contrast?.SetForeground(foreground);
+
+    /// <summary>隐藏至托盘时停止轮换并卸载背景位图和取样；恢复时按当前时段及外观配置重新加载。</summary>
+    public void SetTrayHidden(bool hidden)
+    {
+        _trayHidden = hidden;
+        if (!hidden) { Apply(); return; }
+        _imageGeneration++;
+        _loadedPath = null;
+        _scene?.SetFollowing(false);
+        _scene?.Swap(null, animate: false);
+        _contrast?.SetImage(null);
+    }
 
     /// <summary>绑定窗口根节点和背景层，监听系统明暗变化并启动时段场景；窗口生命周期内仅调用一次。</summary>
     public void Attach(FrameworkElement root, Image background, Microsoft.UI.Windowing.AppWindow? window = null)
@@ -104,8 +117,8 @@ public sealed class ThemeManager
         _root.RequestedTheme = current.Mode switch { AppearanceMode.Light => ElementTheme.Light, AppearanceMode.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
         UpdateBrushes(_root.ActualTheme == ElementTheme.Dark);
         // 只有内置场景需要按时段轮换；自选图片或移除背景时停止计时。
-        _scene?.SetFollowing(current.HasBackground && current.BackgroundPath is null);
-        var path = ResolveBackground(current);
+        _scene?.SetFollowing(!_trayHidden && current.HasBackground && current.BackgroundPath is null);
+        var path = _trayHidden ? null : ResolveBackground(current);
         if (path != _loadedPath)
         {
             _loadedPath = path;
@@ -128,8 +141,10 @@ public sealed class ThemeManager
             if (input.Length is 0 or > 32 * 1024 * 1024) throw new IOException("背景图片须小于 32 MiB。");
             using var stream = new MemoryStream();
             await input.CopyToAsync(stream);
+            if (generation != _imageGeneration) return;
             stream.Position = 0;
             var decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(stream.AsRandomAccessStream());
+            if (generation != _imageGeneration) return;
             if (decoder.PixelWidth is 0 or > 8192 || decoder.PixelHeight is 0 or > 8192 || (long)decoder.PixelWidth * decoder.PixelHeight > 32_000_000)
                 throw new IOException("背景图片尺寸超出限制。 ");
             double scale = Math.Min(1, 1024d / Math.Max(decoder.PixelWidth, decoder.PixelHeight));
@@ -138,6 +153,7 @@ public sealed class ThemeManager
                 Windows.Graphics.Imaging.BitmapAlphaMode.Straight, new Windows.Graphics.Imaging.BitmapTransform { ScaledWidth = width, ScaledHeight = height },
                 Windows.Graphics.Imaging.ExifOrientationMode.RespectExifOrientation, Windows.Graphics.Imaging.ColorManagementMode.ColorManageToSRgb);
             bool rotated = decoder.OrientedPixelWidth != decoder.PixelWidth;
+            if (generation != _imageGeneration) return;
             var sample = new BackgroundContrast((int)(rotated ? height : width), (int)(rotated ? width : height), pixels.DetachPixelData());
             stream.Position = 0;
             var bitmap = new BitmapImage { DecodePixelWidth = (int)Math.Min(2048u, decoder.PixelWidth) };
