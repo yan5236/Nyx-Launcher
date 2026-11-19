@@ -6,7 +6,7 @@
  <Grid RowSpacing="16" ColumnSpacing="24" Padding="0,0,0,20">
   <Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <ComboBox x:Name="AccountPicker" MinHeight="56" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+  <views:ScrollSafeComboBox x:Name="AccountPicker" MinHeight="56" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
     PlaceholderText="选择微软账户" AutomationProperties.Name="衣柜账户" SelectionChanged="Account_Changed">
    <ComboBox.ItemTemplate><DataTemplate>
     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -14,7 +14,7 @@
      <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontWeight="SemiBold"/>
     </StackPanel>
    </DataTemplate></ComboBox.ItemTemplate>
-  </ComboBox>
+  </views:ScrollSafeComboBox>
   <Grid Grid.Column="1" ColumnSpacing="12">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <TextBox x:Name="Search" PlaceholderText="搜索" VerticalAlignment="Center" TextChanged="Search_Changed" AutomationProperties.Name="搜索皮肤或披风"/>

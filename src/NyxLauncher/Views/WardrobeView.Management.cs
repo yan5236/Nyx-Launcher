@@ -26,7 +26,7 @@ public sealed partial class WardrobeView
             }
             WardrobeStore.ValidatePng(png);
             var name = new TextBox { Header = "皮肤名称", Text = Path.GetFileNameWithoutExtension(file.Path), MaxLength = 64 };
-            var model = new ComboBox { Header = "模型", HorizontalAlignment = HorizontalAlignment.Stretch, ItemsSource = new[] { "经典（宽手臂）", "纤细（窄手臂）" }, SelectedIndex = 0 };
+            var model = new ScrollSafeComboBox { Header = "模型", HorizontalAlignment = HorizontalAlignment.Stretch, ItemsSource = new[] { "经典（宽手臂）", "纤细（窄手臂）" }, SelectedIndex = 0 };
             var panel = new StackPanel { Spacing = 12 }; panel.Children.Add(name); panel.Children.Add(model);
             var error = new TextBlock { TextWrapping = TextWrapping.Wrap }; panel.Children.Add(error);
             var dialog = new ContentDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme, Title = "上传皮肤", Content = panel, PrimaryButtonText = "保存", CloseButtonText = "取消" };

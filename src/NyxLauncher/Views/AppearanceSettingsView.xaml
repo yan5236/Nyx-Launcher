@@ -48,16 +48,16 @@
  </UserControl.Resources>
  <Border Style="{StaticResource CardStyle}">
   <StackPanel Spacing="16">
-   <ComboBox x:Name="Mode" Header="外观" HorizontalAlignment="Stretch" SelectionChanged="Options_Changed" AutomationProperties.Name="外观">
+   <views:ScrollSafeComboBox x:Name="Mode" Header="外观" HorizontalAlignment="Stretch" SelectionChanged="Options_Changed" AutomationProperties.Name="外观">
     <ComboBoxItem Content="跟随系统"/><ComboBoxItem Content="浅色"/><ComboBoxItem Content="深色"/>
-   </ComboBox>
+   </views:ScrollSafeComboBox>
    <views:ScrollSafeComboBox x:Name="Preset" Header="主题色" HorizontalAlignment="Stretch" SelectionChanged="Options_Changed" AutomationProperties.Name="主题色">
     <ComboBoxItem Content="绿色"/><ComboBoxItem Content="WinUI 经典蓝"/><ComboBoxItem Content="自定义"/>
    </views:ScrollSafeComboBox>
    <StackPanel x:Name="CustomPanel" x:Load="False" Spacing="12" Visibility="Collapsed">
-    <ComboBox x:Name="ColorMode" Header="自定义配色" SelectedIndex="0" SelectionChanged="ColorMode_Changed" AutomationProperties.Name="自定义配色">
+    <views:ScrollSafeComboBox x:Name="ColorMode" Header="自定义配色" SelectedIndex="0" SelectionChanged="ColorMode_Changed" AutomationProperties.Name="自定义配色">
      <ComboBoxItem Content="浅色"/><ComboBoxItem Content="深色"/>
-    </ComboBox>
+    </views:ScrollSafeComboBox>
     <Button x:Name="ToneRow" Style="{StaticResource ColorSettingRowStyle}" AutomationProperties.Name="色调颜色" AutomationProperties.HelpText="打开取色器">
      <Button.Flyout>
       <Flyout Placement="BottomEdgeAlignedRight" Closed="Picker_Closed">

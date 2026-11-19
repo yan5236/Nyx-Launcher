@@ -29,7 +29,7 @@
                 </Grid.ColumnDefinitions>
 
                 <Grid x:Name="SelectorHost" Height="56" HorizontalAlignment="Stretch">
-                    <ComboBox x:Name="VersionList" MinWidth="0" Height="56" HorizontalAlignment="Stretch"
+                    <views:ScrollSafeComboBox x:Name="VersionList" MinWidth="0" Height="56" HorizontalAlignment="Stretch"
                               VerticalAlignment="Center" VerticalContentAlignment="Center" FontSize="14" Padding="12,0,10,0"
                               Background="{ThemeResource CardBrush}" BorderBrush="{ThemeResource LineBrush}"
                               CornerRadius="{StaticResource CardCornerRadius}"
@@ -52,7 +52,7 @@
                                 </Grid>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
-                    </ComboBox>
+                    </views:ScrollSafeComboBox>
 
                     <Grid x:Name="LaunchProgress" Opacity="0" Visibility="Collapsed" ColumnSpacing="12" Padding="6,0" VerticalAlignment="Center">
                         <Grid.RenderTransform>

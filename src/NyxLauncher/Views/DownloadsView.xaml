@@ -41,7 +41,7 @@
                                 FontSize="15" VerticalAlignment="Center"
                                 TextChanged="SearchBox_TextChanged"
                                 AutomationProperties.Name="搜索下载内容" />
-                <ComboBox x:Name="TypeFilter" Grid.Column="1" MinWidth="140" SelectedIndex="1"
+                <views:ScrollSafeComboBox x:Name="TypeFilter" Grid.Column="1" MinWidth="140" SelectedIndex="1"
                           FontSize="15" VerticalAlignment="Center"
                           SelectionChanged="TypeFilter_SelectionChanged"
                           AutomationProperties.Name="版本类型筛选">
@@ -50,7 +50,7 @@
                     <ComboBoxItem Content="快照版" />
                     <ComboBoxItem Content="远古版" />
                     <ComboBoxItem Content="愚人节版" />
-                </ComboBox>
+                </views:ScrollSafeComboBox>
             </Grid>
 
             <Grid x:Name="ContentGrid" Grid.Row="1">

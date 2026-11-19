@@ -63,15 +63,16 @@ if (Find-TextBlockByText (Join-Path $project 'Views/HomeView.xaml') '首页') {
 $homeNs = [System.Xml.XmlNamespaceManager]::new($homeDoc.NameTable)
 $homeNs.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
 $homeNs.AddNamespace('x', $xns)
+$homeNs.AddNamespace('views', 'using:NyxLauncher.Views')
 $launch = $homeDoc.SelectSingleNode("//ui:Button[@x:Name='LaunchButton']", $homeNs)
 if (-not $launch -or $launch.Width -ne '196' -or $launch.Height -ne '56' -or
     $launch.Style -ne '{StaticResource DeepButtonStyle}' -or -not $launch.SelectSingleNode('ui:StackPanel', $homeNs)) {
     throw '首页启动按钮必须固定尺寸并复用主色样式，最大化后不能拉伸。'
 }
-$selector = $homeDoc.SelectSingleNode("//ui:ComboBox[@x:Name='VersionList']", $homeNs)
+$selector = $homeDoc.SelectSingleNode("//views:ScrollSafeComboBox[@x:Name='VersionList']", $homeNs)
 if (-not $selector -or $selector.SelectionChanged -ne 'Version_SelectionChanged' -or
     -not $selector.SelectSingleNode('ui:ComboBox.ItemTemplate', $homeNs)) {
-    throw '首页版本选择必须使用带项目模板的原生选择器。'
+    throw '首页版本选择必须使用带项目模板且滚轮安全的 ScrollSafeComboBox。'
 }
 if (-not $homeDoc.SelectSingleNode("//ui:ProgressBar[@x:Name='StageProgress']", $homeNs) -or
     -not $homeDoc.SelectSingleNode("//ui:TextBlock[@x:Name='StageLabel']", $homeNs)) {
@@ -113,8 +114,8 @@ if ($search.ParentNode.ParentNode.LocalName -ne 'TabContentPanel' -or
     $search.ParentNode.GetAttribute('Grid.Row') -notin @('', '0')) {
     throw '搜索框必须位于 Tab 栏下方的第二行。'
 }
-$combo = $downloads.SelectSingleNode('//ui:ComboBox', $dns)
-if (-not $combo) { throw '搜索框右侧必须提供类型筛选 ComboBox。' }
+$combo = $downloads.SelectSingleNode("//*[local-name()='ScrollSafeComboBox']", $dns)
+if (-not $combo) { throw '搜索框右侧必须提供类型筛选选择器。' }
 if (-not [object]::ReferenceEquals($combo.ParentNode, $search.ParentNode) -or $combo.GetAttribute('Grid.Column') -ne '1') {
     throw '类型筛选必须与搜索框同一行并位于其右侧。'
 }
@@ -155,11 +156,11 @@ if (-not $resourceSearch -or $resourceSearch.HasAttribute('TextChanged') -or
     throw '资源搜索必须由独立按钮或 Enter 提交，不能逐字发起请求。'
 }
 foreach ($name in @('GameVersionFilter', 'LoaderFilter', 'CategoryFilter', 'SourceFilter')) {
-    if (-not $resources.SelectSingleNode("//ui:ComboBox[@x:Name='$name']", $rns)) {
+    if (-not $resources.SelectSingleNode("//*[local-name()='ScrollSafeComboBox'][@x:Name='$name']", $rns)) {
         throw "资源目录缺少筛选：$name"
     }
 }
-$versionFilter = $resources.SelectSingleNode('//ui:ComboBox[@x:Name="GameVersionFilter"]', $rns)
+$versionFilter = $resources.SelectSingleNode("//*[local-name()='ScrollSafeComboBox'][@x:Name='GameVersionFilter']", $rns)
 if ($versionFilter.IsEditable -ne 'True' -or $versionFilter.TextSubmitted -ne 'GameVersionFilter_TextSubmitted') {
     throw 'Minecraft 版本筛选必须保留下拉并允许提交手动输入。'
 }
@@ -226,7 +227,7 @@ foreach ($component in @('Java Launch Wrapper', 'LWJGL Unsafe Agent', 'authlib-i
     if ($component -notin $notices.Name) { throw "第三方清单缺少非 NuGet 组件：$component" }
 }
 foreach ($name in @('FileSource', 'VersionSource')) {
-    $source = $settings.SelectSingleNode("//ui:ComboBox[@x:Name='$name']", $sns)
+    $source = $settings.SelectSingleNode("//*[local-name()='ScrollSafeComboBox'][@x:Name='$name']", $sns)
     if ($source.SelectNodes('ui:ComboBoxItem', $sns).Count -ne 3) {
         throw "源策略必须提供三个选项：$name"
     }
@@ -352,7 +353,7 @@ $srv = [System.Xml.XmlNamespaceManager]::new($servers.NameTable)
 $srv.AddNamespace('ui', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
 $srv.AddNamespace('x', $xns)
 $srv.AddNamespace('views', 'using:NyxLauncher.Views')
-if ($servers.SelectSingleNode('//ui:ComboBox', $srv)) {
+if ($servers.SelectSingleNode("//*[local-name()='ComboBox' or local-name()='ScrollSafeComboBox']", $srv)) {
     throw '服务器页版本选择不得使用下拉选择器，必须打开卡片弹窗。'
 }
 $editorLayer = $servers.SelectSingleNode("//ui:Grid[@x:Name='EditorLayer']", $srv)
@@ -374,6 +375,16 @@ if ($versionDialog.DocumentElement.LocalName -ne 'ContentDialog' -or
     throw '版本选择必须使用带图标、版本名、副标题小字和默认标记的卡片弹窗。'
 }
 
+# 下拉选择器必须使用 ScrollSafeComboBox：原生 ComboBox 收起时可能被滚轮改选，滚动页面时容易误操作。
+$projectSources = Get-ChildItem $project -Recurse -Include '*.xaml', '*.cs' -File |
+    Where-Object FullName -notmatch '\\(bin|obj)\\'
+foreach ($file in $projectSources) {
+    $raw = Get-Content $file.FullName -Raw -Encoding utf8
+    if ($raw -match '<(\w+:)?ComboBox[ >]' -or $raw -match 'new\s+([\w.]+\.)?ComboBox\s*[\({]') {
+        throw "下拉选择器必须使用 ScrollSafeComboBox，避免收起时滚轮改选：$($file.Name)"
+    }
+}
+
 # 检查 XAML 引用的本地图片资源是否存在。
 foreach ($file in $xamlFiles) {
     [xml]$document = Get-Content $file.FullName -Raw -Encoding utf8
@@ -386,5 +397,5 @@ foreach ($file in $xamlFiles) {
         }
     }
 }
-Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、详情危险区、设置 Tab/源策略/滑块范围、账户区域限制说明、服务器版本卡片弹窗及图片资源。'
+Write-Output '通过：XAML 语法、导航与账户菜单、页面标题移除、下载页结构、安装配置页、详情危险区、设置 Tab/源策略/滑块范围、账户区域限制说明、服务器版本卡片弹窗、选择器滚轮安全及图片资源。'
 

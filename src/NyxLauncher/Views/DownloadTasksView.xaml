@@ -2,14 +2,14 @@
 <UserControl x:Class="NyxLauncher.Views.DownloadTasksView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- xmlns:services="using:NyxLauncher.Services">
+ xmlns:services="using:NyxLauncher.Services" xmlns:views="using:NyxLauncher.Views">
  <Grid RowSpacing="16">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
-   <ComboBox x:Name="Filter" SelectedIndex="0" MinWidth="130" SelectionChanged="Filter_Changed" AutomationProperties.Name="下载状态筛选">
+   <views:ScrollSafeComboBox x:Name="Filter" SelectedIndex="0" MinWidth="130" SelectionChanged="Filter_Changed" AutomationProperties.Name="下载状态筛选">
     <ComboBoxItem Content="全部状态"/><ComboBoxItem Content="正在下载"/><ComboBoxItem Content="已暂停"/>
     <ComboBoxItem Content="已完成"/><ComboBoxItem Content="失败"/><ComboBoxItem Content="已取消"/>
-   </ComboBox>
+   </views:ScrollSafeComboBox>
    <Button Content="创建下载" Click="Create_Click" />
   </StackPanel>
   <ListView x:Name="TaskList" Grid.Row="1" SelectionMode="None" AutomationProperties.Name="下载任务列表">

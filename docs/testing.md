@@ -98,6 +98,22 @@ Get-Content (Join-Path $appearanceOutput 'appearance-checks.log')
 if ($appearanceProcess.ExitCode -ne 0) { throw '自定义配色检查失败' }
 ```
 
+## 选择器滚轮检查
+
+在解锁的 Windows 桌面会话中执行以下命令，用真实控件与真实鼠标滚轮验证 `ScrollSafeComboBox` 收起时不会被滚轮改选，并且滚轮继续滚动外层页面；同时用普通 `ComboBox` 对照记录默认行为，并确认下拉弹层仍能打开。检查需要验收窗口位于前台才能注入滚轮（前台被占用时注入会失败并给出提示），运行期间请勿操作验收窗口。
+
+```powershell
+$wheelTargets = Join-Path $PWD 'tests/NyxLauncher.UiChecks/Wheel.targets'
+$wheelOutput = Join-Path $PWD '.local/wheel-checks/'
+dotnet build src/NyxLauncher/NyxLauncher.csproj -c Debug -p:Platform=x64 "-p:CustomAfterMicrosoftCommonTargets=$wheelTargets" "-p:OutputPath=$wheelOutput"
+if ($LASTEXITCODE -ne 0) { throw '选择器滚轮检查构建失败' }
+$wheelProcess = Start-Process (Join-Path $wheelOutput 'NyxLauncher.exe') -Wait -PassThru
+Get-Content (Join-Path $wheelOutput 'wheel-checks.log')
+if ($wheelProcess.ExitCode -ne 0) { throw '选择器滚轮检查失败' }
+```
+
+结构脚本同时禁止在页面和代码里直接使用 `ComboBox`，新增选择器必须使用 `ScrollSafeComboBox`。
+
 ## 陶瓦联机检查
 
 运行 `dotnet run --project tests/NyxLauncher.Checks -- --terracotta`，验证局域网通告和陶瓦房间成员解析。完整联机验收使用两个已启动 Minecraft Java 版的客户端，检查下载提示、通用设置中的模块管理、房主邀请码、访客弹窗和直连地址、双方的玩家列表，以及返回首页后房间仍在运行。关闭房间或退出游戏后确认访客断开，并在通用设置分别导出运行中和停止后的陶瓦日志。

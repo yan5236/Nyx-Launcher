@@ -20,32 +20,32 @@
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <StackPanel Spacing="6">
     <TextBlock Text="版本" VerticalAlignment="Center"/>
-    <ComboBox x:Name="GameVersionFilter" HorizontalAlignment="Stretch"
+    <views:ScrollSafeComboBox x:Name="GameVersionFilter" HorizontalAlignment="Stretch"
      IsEditable="True" IsTextSearchEnabled="False" TextSubmitted="GameVersionFilter_TextSubmitted"
      SelectionChanged="GameVersionFilter_SelectionChanged" AutomationProperties.Name="Minecraft 版本筛选"/>
    </StackPanel>
    <StackPanel x:Name="LoaderControls" Grid.Column="1" Spacing="6">
     <TextBlock Text="加载器" VerticalAlignment="Center"/>
-    <ComboBox x:Name="LoaderFilter" Width="134" SelectedIndex="0" SelectionChanged="Filter_SelectionChanged"
+    <views:ScrollSafeComboBox x:Name="LoaderFilter" Width="134" SelectedIndex="0" SelectionChanged="Filter_SelectionChanged"
      AutomationProperties.Name="加载器筛选">
      <ComboBoxItem Content="全部" Tag=""/>
      <ComboBoxItem Content="Fabric" Tag="fabric"/><ComboBoxItem Content="Forge" Tag="forge"/>
      <ComboBoxItem Content="NeoForge" Tag="neoforge"/><ComboBoxItem Content="Quilt" Tag="quilt"/>
      <ComboBoxItem Content="LiteLoader" Tag="liteloader"/><ComboBoxItem Content="Rift" Tag="rift"/>
-    </ComboBox>
+    </views:ScrollSafeComboBox>
    </StackPanel>
    <StackPanel Grid.Column="2" Spacing="6">
     <TextBlock Text="类型"/>
-    <ComboBox x:Name="CategoryFilter" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectedValuePath="Id"
+    <views:ScrollSafeComboBox x:Name="CategoryFilter" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectedValuePath="Id"
      SelectionChanged="Filter_SelectionChanged" AutomationProperties.Name="资源类型筛选"/>
    </StackPanel>
    <StackPanel Grid.Column="3" Spacing="6">
     <TextBlock Text="来源" VerticalAlignment="Center"/>
-    <ComboBox x:Name="SourceFilter" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="Filter_SelectionChanged"
+    <views:ScrollSafeComboBox x:Name="SourceFilter" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="Filter_SelectionChanged"
      AutomationProperties.Name="资源来源筛选">
      <ComboBoxItem Content="全部"/><ComboBoxItem Content="Modrinth"/>
      <ComboBoxItem Content="CurseForge（暂不可用）" IsEnabled="False"/>
-    </ComboBox>
+    </views:ScrollSafeComboBox>
    </StackPanel>
    <StackPanel x:Name="Pagination" Grid.Column="4" Orientation="Horizontal" Spacing="12"
     HorizontalAlignment="Right" VerticalAlignment="Bottom" Visibility="Collapsed">

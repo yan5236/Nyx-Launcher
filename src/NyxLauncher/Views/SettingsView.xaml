@@ -16,14 +16,14 @@
       <ScrollViewer x:Name="GeneralPanel" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="16" Margin="0,0,16,0">
        <Border Style="{StaticResource CardStyle}">
-        <ComboBox x:Name="Isolation" Header="版本隔离" HorizontalAlignment="Stretch"
+        <views:ScrollSafeComboBox x:Name="Isolation" Header="版本隔离" HorizontalAlignment="Stretch"
                   SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="版本隔离">
          <ComboBoxItem Content="关闭" />
          <ComboBoxItem Content="隔离可安装 Mod 的版本" />
          <ComboBoxItem Content="隔离非正式版" />
          <ComboBoxItem Content="隔离可安装 Mod 的版本与非正式版" />
          <ComboBoxItem Content="隔离所有版本" />
-        </ComboBox>
+        </views:ScrollSafeComboBox>
        </Border>
        <views:AppearanceSettingsView />
        <Border Style="{StaticResource CardStyle}">
@@ -44,14 +44,14 @@
       <StackPanel Spacing="16" Margin="0,0,16,0">
        <Border Style="{StaticResource CardStyle}">
         <StackPanel Spacing="16">
-         <ComboBox x:Name="FileSource" Header="文件下载源" HorizontalAlignment="Stretch"
+         <views:ScrollSafeComboBox x:Name="FileSource" Header="文件下载源" HorizontalAlignment="Stretch"
            SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="文件下载源">
           <ComboBoxItem Content="尽量使用镜像源" /><ComboBoxItem Content="优先使用官方源，在加载缓慢时换用镜像源" /><ComboBoxItem Content="尽量使用官方源" />
-         </ComboBox>
-         <ComboBox x:Name="VersionSource" Header="版本列表源" HorizontalAlignment="Stretch"
+         </views:ScrollSafeComboBox>
+         <views:ScrollSafeComboBox x:Name="VersionSource" Header="版本列表源" HorizontalAlignment="Stretch"
            SelectionChanged="Source_SelectionChanged" AutomationProperties.Name="版本列表源">
           <ComboBoxItem Content="尽量使用镜像源" /><ComboBoxItem Content="优先使用官方源，在加载缓慢时换用镜像源" /><ComboBoxItem Content="尽量使用官方源" />
-         </ComboBox>
+         </views:ScrollSafeComboBox>
          <TextBlock Text="优先源失败时自动尝试另一来源；混合策略在官方加载超过 3 秒时同时尝试镜像。" TextWrapping="Wrap" Foreground="{ThemeResource MutedBrush}" />
         </StackPanel>
        </Border>

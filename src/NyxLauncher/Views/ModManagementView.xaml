@@ -13,9 +13,9 @@
   <Grid Grid.Row="1" ColumnSpacing="12">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <TextBlock Grid.Column="1" Text="状态" VerticalAlignment="Center"/>
-   <ComboBox x:Name="StateFilter" Grid.Column="2" Width="104" Height="38" FontSize="15" VerticalAlignment="Center" VerticalContentAlignment="Center" SelectedIndex="0" SelectionChanged="State_Changed" AutomationProperties.Name="模组状态">
+   <views:ScrollSafeComboBox x:Name="StateFilter" Grid.Column="2" Width="104" Height="38" FontSize="15" VerticalAlignment="Center" VerticalContentAlignment="Center" SelectedIndex="0" SelectionChanged="State_Changed" AutomationProperties.Name="模组状态">
     <ComboBoxItem Content="全部"/><ComboBoxItem Content="已启用"/><ComboBoxItem Content="已禁用"/>
-   </ComboBox>
+   </views:ScrollSafeComboBox>
    <Button x:Name="InstallButton" Grid.Column="3" Content="从文件安装" Click="Install_Click"/>
    <Button Grid.Column="4" Content="下载模组" Click="Download_Click"/>
   <StackPanel x:Name="BatchPanel" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">

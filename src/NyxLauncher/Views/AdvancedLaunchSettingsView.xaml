@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <UserControl x:Class="NyxLauncher.Views.AdvancedLaunchSettingsView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
- xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="using:NyxLauncher.Views">
  <Border Style="{StaticResource CardStyle}">
   <StackPanel Spacing="16">
    <InfoBar IsOpen="True" IsClosable="False" Severity="Warning" Message="除非你知道自己在做什么，否则不应修改这些选项。" />
    <TextBox x:Name="JvmInput" Header="Java 虚拟机参数" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="140" MaxLength="16000" LostFocus="Input_LostFocus" AutomationProperties.Name="Java 虚拟机参数" />
    <TextBox x:Name="GameInput" Header="游戏参数" MaxLength="16000" LostFocus="Input_LostFocus" AutomationProperties.Name="游戏参数" />
-   <ComboBox x:Name="Collector" Header="垃圾回收器（GC）" HorizontalAlignment="Stretch" SelectionChanged="Collector_Changed" AutomationProperties.Name="垃圾回收器">
+   <views:ScrollSafeComboBox x:Name="Collector" Header="垃圾回收器（GC）" HorizontalAlignment="Stretch" SelectionChanged="Collector_Changed" AutomationProperties.Name="垃圾回收器">
     <ComboBoxItem Content="不指定（Java 默认）"/><ComboBoxItem Content="G1 GC"/><ComboBoxItem Content="ZGC"/><ComboBoxItem Content="Parallel GC"/><ComboBoxItem Content="Serial GC"/>
-   </ComboBox>
+   </views:ScrollSafeComboBox>
    <StackPanel Spacing="4">
     <CheckBox x:Name="DisableWrapper" Content="禁用 Java Launch Wrapper" Click="Option_Click"/>
     <CheckBox x:Name="DisableAgent" Content="禁用 LWJGL Unsafe Agent" Click="Option_Click"/>
